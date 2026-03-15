@@ -361,4 +361,4 @@ EF Core actúa como el ORM (Mapeador Objeto-Relacional) para interactuar con la 
 
 ## 📄 Licencia
 
-Desarrollo de un proyecto educativo FullStack para el curso — Universidad de Puerto Rico en Ponce.
+Desarrollo por Alexis Y. Barriera Pacheco en el curso de CCOM4019-H30.
