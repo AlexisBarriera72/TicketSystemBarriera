@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using TicketSystemBarriera.Components;
 using TicketSystemBarriera.Components.Account;
 using TicketSystemBarriera.Data;
+using TicketSystemBarriera.Models;
+using TicketSystemBarriera.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+builder.Services.AddScoped<TicketService>();
 
 builder.Services.AddAuthentication(options =>
     {
@@ -23,7 +26,7 @@ builder.Services.AddAuthentication(options =>
     .AddIdentityCookies();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -32,6 +35,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
         options.SignIn.RequireConfirmedAccount = true;
         options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
     })
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
@@ -63,4 +67,43 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    // Ejecutar la lógica asincrona dentro de un Task. Run para no bloquear el inicio. away funciona 
+    // como un "dispara y olvida" para esta tarea de inicialización.
+    await Task.Run(async () => {
+        // 1. Crear Roles
+        string[] roleNames = { Roles.Admin, Roles.Technician, Roles.Employee };
+        foreach (var roleName in roleNames)
+        {
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                await roleManager.CreateAsync(new IdentityRole(roleName));
+            }
+        }
+        // 2. Crear Admin por defecto
+        var adminEmail = "admin@system.com";
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+        if (adminUser == null)
+        {
+        }
+        adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true }; await userManager.CreateAsync(adminUser, "P@ssword123!");
+        await userManager.AddToRoleAsync(adminUser, Roles.Admin);
+        // 3. Crear Categorías
+        if (!context.Categories.Any())
+        {
+            context.Categories.AddRange(
+           
+            new Category { name = "Hardware", description = "Physical devices" },
+            new Category { name = "Software", description = "Applications" },
+            new Category { name = "Network", description = "Connectivity" } 
+            );
+        await context.SaveChangesAsync();
+        }
+    });
+}
 app.Run();
