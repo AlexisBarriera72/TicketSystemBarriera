@@ -224,9 +224,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
 ## 👥 Roles (a implementar en Módulo 5)
 
-- **Admin** — Acceso total: usuarios, roles, todas las categorías y tickets.
-- **Technician** — Gestionar tickets asignados, cambiar estado, agregar comentarios.
-- **Employee** — Crear y consultar sus propios tickets; agregar comentarios.
+- **Admin** Acceso total: usuarios, roles, todas las categorías y tickets.
+- **Technician** Gestionar tickets asignados, cambiar estado, agregar comentarios.
+- **Employee** Crear y consultar sus propios tickets; agregar comentarios.
 
 ---
 
@@ -237,6 +237,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 | 1 | Creación del Proyecto SystemLastName | ✅ Completado |
 | 2 | Fundamentos de EF Core en Blazor Web App | ✅ Completado |
 | 3 | Modelado del Dominio del Sistema de Tickets | ✅ Completado |
+| 4 | CRUD Básico de Tickets (Creación) | ✅ Completado |
+| 5 | Sistema de Roles y Seguridad (Extensión) | ✅ Completado |
+
 
 ---
 
@@ -293,7 +296,7 @@ O desde Visual Studio: **Ctrl + F5**
 
 ## ✅ Características Implementadas
 
-### Módulo 1 — Creación del Proyecto
+### Módulo 1 Creación del Proyecto
 
 **Checkpoint:**
 - ✅ Proyecto Blazor Web App creado con .NET 10 y C# 14
@@ -304,7 +307,7 @@ O desde Visual Studio: **Ctrl + F5**
 
 ---
 
-### Módulo 2 — Fundamentos de EF Core en Blazor Web App
+### Módulo 2 Fundamentos de EF Core en Blazor Web App
 
 EF Core actúa como el ORM (Mapeador Objeto-Relacional) para interactuar con la base de datos usando objetos C# en lugar de SQL. Puntos clave:
 
@@ -321,7 +324,7 @@ EF Core actúa como el ORM (Mapeador Objeto-Relacional) para interactuar con la 
 
 ---
 
-### Módulo 3 — Modelado del Dominio del Sistema de Tickets
+### Módulo 3 Modelado del Dominio del Sistema de Tickets
 
 **Objetivos:**
 - Diseñar las entidades que representan la lógica de los tickets y sus relaciones con los usuarios de Identity.
@@ -345,6 +348,41 @@ EF Core actúa como el ORM (Mapeador Objeto-Relacional) para interactuar con la 
 - ✅ Uso de Enums para control de estado y prioridad
 - ✅ Relación establecida entre el sistema de tickets y el sistema de usuarios (Identity)
 - ✅ Base de datos actualizada con la nueva estructura de negocio
+
+---
+
+### Módulo 4 CRUD Básico de Tickets (Creación)
+Objetivo: Implementar el formulario de creación de tickets utilizando componentes de Blazor y validación de datos.
+Implementado:
+
+- Carpeta /Services + TicketService.cs (Primary Constructor C# 14)
+- Métodos: GetCategoriesAsync() y CreateTicketAsync(Ticket ticket)
+- Registro del servicio en Program.cs
+- Seed Data de categorías (Hardware, Software, Network)
+- Página CreateTicket.razor con <EditForm>, validación y InputSelect
+
+Checkpoint: ✅ Primer puente real entre frontend y base de datos completado.
+
+---
+
+### Módulo 5 Sistema de Roles y Seguridad (Extensión)
+Objetivo: Implementar Control de Acceso Basado en Roles (RBAC).
+Implementado:
+
+- Archivo /Data/Roles.cs con constantes
+- Seeding automático de roles + usuario admin@system.com
+- Actualización completa de NavMenu.razor con <AuthorizeView>
+- Filtrado seguro en TicketService.cs (GetTicketsForUserAsync)
+- Logout seguro con antiforgery token
+
+Limpieza profunda recomendada (una sola vez):
+
+1. Borrar carpeta Migrations
+2. Drop-Database
+3. Add-Migration InitialMigration
+4. Update-Database
+
+Checkpoint: ✅ Roles, menú inteligente y filtrado de datos por rol completamente funcional.
 
 ---
 
