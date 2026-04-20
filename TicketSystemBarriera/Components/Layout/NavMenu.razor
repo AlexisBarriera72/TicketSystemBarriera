@@ -28,6 +28,12 @@
                     </NavLink>
                 </div>
 
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="tickets/my-list">
+                        <span class="bi bi-list-ul" aria-hidden="true"></span> My Tickets
+                    </NavLink>
+                </div>
+
                 @* ---- SECCIÓN 3: Solo para Administradores ---- *@
                 <AuthorizeView Roles="@Roles.Admin" Context="adminContext">
                     <div class="nav-item px-3">

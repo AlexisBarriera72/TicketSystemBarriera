@@ -1,0 +1,62 @@
+﻿@page "/tickets/my-list"
+@using Microsoft.AspNetCore.Authorization
+@using TicketSystemBarriera.Services
+@using TicketSystemBarriera.Models
+@inject TicketService TicketService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<h3>My Ticket List</h3>
+
+@if (userTickets == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-hover mt-3">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var ticket in userTickets)
+            {
+                <tr>
+                    <td>@ticket.Title</td>
+                    <td><span class="badge bg-secondary">@ticket.Status</span></td>
+                    <td>@ticket.Priority</td>
+                    <td>
+                        @* IMPORTANTE: Agregamos Context="authContext" para evitar
+                           conflictos con la variable 'ticket' o contextos superiores
+                        *@
+                        <AuthorizeView Roles="Technician, Admin" Context="authContext">
+                            <Authorized>
+                                <button class="btn btn-sm btn-success"
+                                        @onclick="@(() => Navigation.NavigateTo($"/tickets/manage/{ticket.Id}"))">
+                                    Work on it
+                                </button>
+                            </Authorized>
+                        </AuthorizeView>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Ticket>? userTickets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        userTickets = await TicketService.GetTicketsForUserAsync(authState.User);
+    }
+}

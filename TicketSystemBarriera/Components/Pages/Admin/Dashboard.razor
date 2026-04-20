@@ -1,0 +1,93 @@
+﻿@page "/admin/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using TicketSystemBarriera.Data
+@using TicketSystemBarriera.Models
+@using TicketSystemBarriera.Services
+@using TicketSystemBarriera.Enums
+@inject TicketService TicketService
+@inject NavigationManager Navigation
+@attribute [Authorize(Roles = Roles.Admin)]
+@rendermode InteractiveServer
+
+<PageTitle>Admin Dashboard</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-speedometer2"></i> Administrative Dashboard</h3>
+    </div>
+
+    @* ---- TABLA DE GESTIÓN (MÓDULO 6) ---- *@
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 text-secondary">All Support Requests</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Technician</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ticket in allTickets)
+                        {
+                            <tr>
+                                <td class="fw-bold">@ticket.Title</td>
+                                <td>@ticket.Author?.Email</td>
+                                <td>
+                                    <span class="badge rounded-pill bg-light text-dark border">
+                                        @ticket.Category?.name
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">@ticket.Status</span>
+                                </td>
+                                <td>
+                                    @if (ticket.Technician != null)
+                                    {
+                                        <span class="text-primary">
+                                            <i class="bi bi-person-check"></i>
+                                            @ticket.Technician.Email
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted italic">Unassigned</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-primary shadow-sm"
+                                            @onclick="@(() => Navigation.NavigateTo($"/tickets/manage/{ticket.Id}"))">
+                                        <i class="bi bi-gear-fill"></i> Manage
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Ticket> allTickets = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargar Lista
+        allTickets = await TicketService.GetAllTicketsAsync();
+    }
+
+    private void SelectTicket(Ticket ticket)
+    {
+        // Aquí redirigimos a una pagina de gestión del ticket, donde el admin podrá editar el ticket,
+        // asignar técnicos, cambiar estado, etc.
+    }
+}

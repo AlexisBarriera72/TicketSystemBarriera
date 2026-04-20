@@ -1,0 +1,89 @@
+﻿@page "/tickets/manage/{TicketId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using TicketSystemBarriera.Data
+@using TicketSystemBarriera.Models
+@using TicketSystemBarriera.Enums
+@using TicketSystemBarriera.Services
+@inject TicketService TicketService
+@inject NavigationManager Navigation
+@attribute [Authorize(Roles = $"{Roles.Admin},{Roles.Technician}")]
+@rendermode InteractiveServer
+
+<div class="container mt-4">
+    @if (ticket == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between">
+                <h4 class="mb-0">Manage Ticket #@ticket.Id</h4>
+                <span class="badge bg-light text-dark">@ticket.Status</span>
+            </div>
+            <div class="card-body">
+                <h5>@ticket.Title</h5>
+                <p class="text-muted">
+                    Reported by: @ticket.Author?.Email on @ticket.CreatedAt.ToShortDateString()
+                </p>
+                <hr />
+                <p>@ticket.Description</p>
+
+                <div class="row mt-4 bg-light p-3 rounded">
+                    @* SECCIÓN PARA EL ADMINISTRADOR: ASIGNACIÓN *@
+                    <AuthorizeView Roles="@Roles.Admin">
+                        <div class="col-md-6 border-end">
+                            <h6>Assign Technician</h6>
+                            <select class="form-select mb-2" @bind="selectedTechId">
+                                <option value="">-- Select Technician --</option>
+                                @foreach (var tech in technicians)
+                                {
+                                    <option value="@tech.Id">@tech.Email</option>
+                                }
+                            </select>
+                            <button class="btn btn-success w-100" @onclick="AssignTicket">
+                                Confirm Assignment
+                            </button>
+                        </div>
+                    </AuthorizeView>
+
+                    @* SECCIÓN PARA EL TÉCNICO: CAMBIO DE ESTADO *@
+                    <div class="col-md-6">
+                        <h6>Update Status</h6>
+                        <div class="d-grid gap-2 d-md-block">
+                            <button class="btn btn-outline-warning" @onclick="() => UpdateStatus(TicketStatus.InProgress)">Start Work</button>
+                            <button class="btn btn-outline-success" @onclick="() => UpdateStatus(TicketStatus.Resolved)">Mark Resolved</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int TicketId { get; set; }
+    private Ticket? ticket;
+    private List<ApplicationUser> technicians = [];
+    private string selectedTechId = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        ticket = await TicketService.GetTicketByIdAsync(TicketId);
+        technicians = await TicketService.GetTechniciansAsync();
+        if (ticket?.TechnicianId != null) selectedTechId = ticket.TechnicianId;
+    }
+
+    private async Task AssignTicket()
+    {
+        if (string.IsNullOrEmpty(selectedTechId)) return;
+        await TicketService.UpdateTicketStatusAsync(TicketId, TicketStatus.InProgress, selectedTechId);
+        Navigation.NavigateTo("/admin/dashboard");
+    }
+
+    private async Task UpdateStatus(TicketStatus status)
+    {
+        await TicketService.UpdateTicketStatusAsync(TicketId, status);
+        ticket = await TicketService.GetTicketByIdAsync(TicketId); // Recargar datos
+    }
+}
