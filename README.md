@@ -313,10 +313,10 @@ O desde Visual Studio: **Ctrl + F5**
 
 EF Core actúa como el ORM (Mapeador Objeto-Relacional) para interactuar con la base de datos usando objetos C# en lugar de SQL. Puntos clave:
 
-- **DbContext** — Centro del acceso a datos; registrado en `Program.cs` con `AddDbContext`.
-- **Modelos (Entidades)** — Clases C# que mapean a tablas (enfoque Code-First).
-- **Ciclo de Vida** — Para Blazor Server se recomienda `IDbContextFactory` para evitar problemas de concurrencia entre componentes.
-- **`MultipleActiveResultSets=true`** — Necesario para consultas asíncronas paralelas en Blazor.
+- **DbContext** Centro del acceso a datos; registrado en `Program.cs` con `AddDbContext`.
+- **Modelos (Entidades)** Clases C# que mapean a tablas (enfoque Code-First).
+- **Ciclo de Vida** Para Blazor Server se recomienda `IDbContextFactory` para evitar problemas de concurrencia entre componentes.
+- **`MultipleActiveResultSets=true`** Necesario para consultas asíncronas paralelas en Blazor.
 
 **Checkpoint:**
 - ✅ Conexión establecida con SQL Server Local
@@ -393,11 +393,11 @@ Objetivo: Implementar la interactividad completa del ciclo de vida del ticket (c
 Implementado:
 1. Consolidación de TicketService.cs (Módulo 6)
 
-- GetAllTicketsAsync() — Lista todos los tickets (para Admin)
+- GetAllTicketsAsync() Lista todos los tickets (para Admin)
 - UpdateTicketAsync(Ticket)
 - GetTicketByIdAsync(int)
-- GetTechniciansAsync() — Lista solo usuarios con rol Technician
-- UpdateTicketStatusAsync(int ticketId, TicketStatus, string? technicianId) — Asignación + cambio de estado en una sola operación
+- GetTechniciansAsync() Lista solo usuarios con rol Technician
+- UpdateTicketStatusAsync(int ticketId, TicketStatus, string? technicianId) Asignación + cambio de estado en una sola operación
 - GetUsersByRoleAsync(string roleName)
 
 2. Dashboard Administrativo
