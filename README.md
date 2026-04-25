@@ -238,8 +238,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 | 2 | Fundamentos de EF Core en Blazor Web App | ✅ Completado |
 | 3 | Modelado del Dominio del Sistema de Tickets | ✅ Completado |
 | 4 | CRUD Básico de Tickets (Creación) | ✅ Completado |
-| 5 | Sistema de Roles y Seguridad (Extensión) | ✅ Completado |
-| 6 | Flujo Real del Sistema de Soporte parte 1 y 2 | ✅ Completado |
+| 5 | Sistema de Roles y Seguridad (RBAC) | ✅ Completado |
+| 6 | Flujo Real del Sistema de Soporte | ✅ Completado |
+| 7 | Dashboard Visual y Gestión de Usuarios | ✅ Completado |
+| 8 | Refactorización y Estructura del Proyecto | ✅ Completado |
 
 
 
@@ -318,12 +320,6 @@ EF Core actúa como el ORM (Mapeador Objeto-Relacional) para interactuar con la 
 - **Ciclo de Vida** Para Blazor Server se recomienda `IDbContextFactory` para evitar problemas de concurrencia entre componentes.
 - **`MultipleActiveResultSets=true`** Necesario para consultas asíncronas paralelas en Blazor.
 
-**Checkpoint:**
-- ✅ Conexión establecida con SQL Server Local
-- ✅ Uso de Primary Constructors en el `DbContext`
-- ✅ Base de datos creada físicamente mediante migraciones
-- ✅ Registro e inicio de sesión de usuarios funcional
-
 ---
 
 ### Módulo 3 Modelado del Dominio del Sistema de Tickets
@@ -345,12 +341,6 @@ EF Core actúa como el ORM (Mapeador Objeto-Relacional) para interactuar con la 
 
 **Resultado:** La base de datos contiene las tablas `dbo.Tickets`, `dbo.Categories` y `dbo.TicketComments` con sus respectivas llaves foráneas apuntando a `AspNetUsers`.
 
-**Checkpoint:**
-- ✅ Modelado de datos completado en inglés
-- ✅ Uso de Enums para control de estado y prioridad
-- ✅ Relación establecida entre el sistema de tickets y el sistema de usuarios (Identity)
-- ✅ Base de datos actualizada con la nueva estructura de negocio
-
 ---
 
 ### Módulo 4 CRUD Básico de Tickets (Creación)
@@ -362,8 +352,6 @@ Implementado:
 - Registro del servicio en Program.cs
 - Seed Data de categorías (Hardware, Software, Network)
 - Página CreateTicket.razor con <EditForm>, validación y InputSelect
-
-Checkpoint: ✅ Primer puente real entre frontend y base de datos completado.
 
 ---
 
@@ -383,8 +371,6 @@ Limpieza profunda recomendada (una sola vez):
 2. Drop-Database
 3. Add-Migration InitialMigration
 4. Update-Database
-
-Checkpoint: ✅ Roles, menú inteligente y filtrado de datos por rol completamente funcional.
 
 ---
 
@@ -431,12 +417,63 @@ Flujo completo del sistema:
 3. Técnico → Ve sus tickets en My Tickets → Gestiona estado
 4. Empleado → Puede dar seguimiento en My Tickets
 
-Checkpoint del Módulo 6:
+### Módulo 7: Dashboard Visual y Gestión de Usuarios
+Objetivo: Crear un centro de control profesional con KPIs y gestión de usuarios.
+Implementado:
 
-✅ Flujo real completo (Open → Assigned → InProgress → Resolved)
-✅ Seguridad granular con AuthorizeView y [Authorize]
-✅ Interactividad total con InteractiveServer
-✅ Parámetros de ruta y recarga parcial de datos
+TicketService.cs (actualizado):
+ * GetTicketStatsAsync() → Devuelve estadísticas agregadas (Total, Open, InProgress, Resolved, Urgent)
+ * GetAllUsersAsync() → Lista todos los usuarios
+ * Métodos existentes de módulos anteriores consolidados
+
+Admin Dashboard (/admin/dashboard):
+
+ * Tarjetas visuales (KPI Cards) con colores semánticos:
+  * Total Tickets
+  * Open / In Progress
+  * Resolved
+  * Urgent Cases
+
+ * Tabla de todos los tickets con acciones
+ * Uso de Bootstrap cards y iconos
+
+User Management (/admin/users):
+
+ * Nueva página para que el Admin gestione roles
+ * Lista de todos los usuarios registrados
+ * Botones para asignar rol Technician o Employee con un clic
+ * Integración con UserManager<ApplicationUser>
+
+Mejoras visuales:
+
+ * Uso intensivo de Bootstrap 5
+ * Iconos de Bootstrap Icons
+ * Diseño responsivo y profesional
+
+---
+
+### Módulo 8: Refactorización y Estructura del Proyecto
+Objetivo: Organizar el código, corregir namespaces y mejorar mantenibilidad.
+Implementado:
+
+ * Estructura clara de carpetas:
+  * /Components/Pages/Admin
+  * /Components/Pages/Tickets
+  * /Data, /Models, /Enums, /Services
+
+ * Centralización de namespaces en Components/_Imports.razor:
+  * Todos los @using comunes aplicados automáticamente a los componentes
+
+ * Limpieza de código:
+  * Eliminación de páginas por defecto (Counter, Weather)
+  * Remoción de using repetidos en archivos .razor
+  * Uso recomendado de File-Scoped Namespaces (C# 14)
+
+ * Mejora general en organización y legibilidad del proyecto
+
+Resultado final: Código más limpio, mantenible y profesional.
+
+---
 
 ## 📦 NuGet Packages
 
