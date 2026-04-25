@@ -44,9 +44,9 @@ namespace TicketSystemBarriera.Services
             {
                 return await query.Where(t => t.TechnicianId == userId || t.Status == Enums.TicketStatus.Open).ToListAsync();
             }
-                // El empleado solo ve los tickets que él mismo creó
-                return await query.Where(t => t.AuthorId == userId).ToListAsync();
-            }
+            // El empleado solo ve los tickets que él mismo creó
+            return await query.Where(t => t.AuthorId == userId).ToListAsync();
+        }
         public async Task<List<Ticket>> GetAllTicketsAsync()
         {
             using var context = dbFactory.CreateDbContext();
@@ -124,6 +124,23 @@ namespace TicketSystemBarriera.Services
 
                 await context.SaveChangesAsync();
             }
+        }
+        public async Task<Dictionary<string, int>> GetTicketStatsAsync()
+        {
+            using var context = dbFactory.CreateDbContext();
+            return new Dictionary<string, int>
+            {
+                ["Total"] = await context.Tickets.CountAsync(),
+                ["Open"] = await context.Tickets.CountAsync(t => t.Status == TicketStatus.Open),
+                ["InProgress"] = await context.Tickets.CountAsync(t => t.Status == TicketStatus.InProgress),
+                ["Resolved"] = await context.Tickets.CountAsync(t => t.Status == TicketStatus.Resolved),
+                ["Urgent"] = await context.Tickets.CountAsync(t => t.Status == TicketStatus.Urgent)
+            };
+        }
+        public async Task<List<ApplicationUser>> GetAllUsersAsync()
+        {
+            using var context = dbFactory.CreateDbContext();
+            return await context.Users.OrderBy(u => u.Email).ToListAsync();
         }
     }
 }

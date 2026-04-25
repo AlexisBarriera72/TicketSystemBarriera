@@ -6,5 +6,6 @@
         InProgress,
         Resolved,
         Closed,
+        Urgent,
     }
 }

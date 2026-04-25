@@ -1,0 +1,156 @@
+﻿@page "/admin/users"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using TicketSystemBarriera.Data
+@using TicketSystemBarriera.Models
+@using TicketSystemBarriera.Services
+@inject UserManager<ApplicationUser> UserManager
+@inject TicketService TicketService
+@attribute [Authorize(Roles = Roles.Admin)]
+@rendermode InteractiveServer
+
+<PageTitle>User Management - Ticket System</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h3><i class="bi bi-people-fill text-primary"></i> User Management</h3>
+            <p class="text-muted mb-0">Manage system access and assign technical roles.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Cargando usuarios y roles...</p>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">User Information</th>
+                            <th>Current Role</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in users)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-3">
+                                            @user.Email?[0].ToString().ToUpper()
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">@user.Email</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @* Ahora leemos del diccionario, sin .Result *@
+                                    <span class="badge @GetRoleBadgeClass(userRoles[user.Id]) px-3 py-2">
+                                        @userRoles[user.Id]
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group shadow-sm">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick="() => UpdateUserRole(user, Roles.Technician)">
+                                            <i class="bi bi-tools"></i> Make Tech
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick="() => UpdateUserRole(user, Roles.Employee)">
+                                            <i class="bi bi-person"></i> Make Employee
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .avatar-circle {
+        width: 45px;
+        height: 45px;
+        background-color: #0d6efd; /* Azul Bootstrap */
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-transform: uppercase;
+    }
+</style>
+
+@code {
+    private List<ApplicationUser> users = [];
+    private Dictionary<string, string> userRoles = new(); // Diccionario para evitar bloqueos
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        users = await TicketService.GetAllUsersAsync();
+
+        userRoles.Clear();
+        foreach (var user in users)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            userRoles[user.Id] = roles.FirstOrDefault() ?? "No Role";
+        }
+        isLoading = false;
+    }
+
+    private string GetRoleBadgeClass(string role) => role switch
+    {
+        Roles.Admin => "bg-dark",
+        Roles.Technician => "bg-primary",
+        Roles.Employee => "bg-secondary",
+        _ => "bg-light text-dark border"
+    };
+
+    private async Task UpdateUserRole(ApplicationUser user, string newRole)
+    {
+        // 1. Busca una instancia del usuario que el UserManager pueda trackear sin conflictos
+        var freshUser = await UserManager.FindByIdAsync(user.Id);
+
+        if (freshUser != null)
+        {
+            // 2. Obtener los roles de esa instancia fresca
+            var currentRoles = await UserManager.GetRolesAsync(freshUser);
+
+            // 3. Remover los roles antiguos
+            if (currentRoles.Any())
+            {
+                await UserManager.RemoveFromRolesAsync(freshUser, currentRoles);
+            }
+
+            // 4. Añadir el nuevo rol
+            await UserManager.AddToRoleAsync(freshUser, newRole);
+
+            // 5. Recargar los datos para actualizar la interfaz
+            await LoadData();
+        }
+    }
+}

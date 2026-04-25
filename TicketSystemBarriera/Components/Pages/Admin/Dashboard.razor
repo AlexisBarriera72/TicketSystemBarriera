@@ -7,13 +7,49 @@
 @inject TicketService TicketService
 @inject NavigationManager Navigation
 @attribute [Authorize(Roles = Roles.Admin)]
-@rendermode InteractiveServer
 
 <PageTitle>Admin Dashboard</PageTitle>
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3><i class="bi bi-speedometer2"></i> Administrative Dashboard</h3>
+        <span class="text-muted">Real-time Support Metrics</span>
+    </div>
+
+    @* ---- SECCION DE ESTADISTICAS (MÓDULO 7) ---- *@
+    <div class="row g-3 mb-5">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Total Tickets</h6>
+                    <h2 class="display-6 fw-bold">@stats["Total"]</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Open / In Progress</h6>
+                    <h2 class="display-6 fw-bold">@(stats["Open"] + stats["InProgress"])</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Resolved</h6>
+                    <h2 class="display-6 fw-bold">@stats["Resolved"]</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Urgent Cases</h6>
+                    <h2 class="display-6 fw-bold">@stats["Urgent"]</h2>
+                </div>
+            </div>
+        </div>
     </div>
 
     @* ---- TABLA DE GESTIÓN (MÓDULO 6) ---- *@
@@ -78,16 +114,28 @@
 
 @code {
     private List<Ticket> allTickets = new();
+    private Dictionary<string, int> stats = new()
+    {
+        ["Total"] = 0,
+        ["Open"] = 0,
+        ["InProgress"] = 0,
+        ["Resolved"] = 0,
+        ["Urgent"] = 0
+    };
 
     protected override async Task OnInitializedAsync()
     {
         // Cargar Lista
         allTickets = await TicketService.GetAllTicketsAsync();
+        // Cargar estadísticas
+        stats = await TicketService.GetTicketStatsAsync();
     }
 
-    private void SelectTicket(Ticket ticket)
-    {
-        // Aquí redirigimos a una pagina de gestión del ticket, donde el admin podrá editar el ticket,
-        // asignar técnicos, cambiar estado, etc.
-    }
+    private string GetStatusBadgeClass(TicketStatus status) => status switch
+        {
+            TicketStatus.Open => "bg-info",
+            TicketStatus.InProgress => "bg-warning text-dark",
+            TicketStatus.Resolved => "bg-success",
+            _ => "bg-secondary"
+        };
 }
