@@ -239,6 +239,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 | 3 | Modelado del Dominio del Sistema de Tickets | ✅ Completado |
 | 4 | CRUD Básico de Tickets (Creación) | ✅ Completado |
 | 5 | Sistema de Roles y Seguridad (Extensión) | ✅ Completado |
+| 6 | Flujo Real del Sistema de Soporte parte 1 y 2 | ✅ Completado |
+
 
 
 ---
@@ -311,10 +313,10 @@ O desde Visual Studio: **Ctrl + F5**
 
 EF Core actúa como el ORM (Mapeador Objeto-Relacional) para interactuar con la base de datos usando objetos C# en lugar de SQL. Puntos clave:
 
-- **DbContext** — Centro del acceso a datos; registrado en `Program.cs` con `AddDbContext`.
-- **Modelos (Entidades)** — Clases C# que mapean a tablas (enfoque Code-First).
-- **Ciclo de Vida** — Para Blazor Server se recomienda `IDbContextFactory` para evitar problemas de concurrencia entre componentes.
-- **`MultipleActiveResultSets=true`** — Necesario para consultas asíncronas paralelas en Blazor.
+- **DbContext** Centro del acceso a datos; registrado en `Program.cs` con `AddDbContext`.
+- **Modelos (Entidades)** Clases C# que mapean a tablas (enfoque Code-First).
+- **Ciclo de Vida** Para Blazor Server se recomienda `IDbContextFactory` para evitar problemas de concurrencia entre componentes.
+- **`MultipleActiveResultSets=true`** Necesario para consultas asíncronas paralelas en Blazor.
 
 **Checkpoint:**
 - ✅ Conexión establecida con SQL Server Local
@@ -385,6 +387,56 @@ Limpieza profunda recomendada (una sola vez):
 Checkpoint: ✅ Roles, menú inteligente y filtrado de datos por rol completamente funcional.
 
 ---
+
+### Módulo 6 Flujo Real del Sistema de Soporte
+Objetivo: Implementar la interactividad completa del ciclo de vida del ticket (creación → asignación → cambio de estado → resolución).
+Implementado:
+1. Consolidación de TicketService.cs (Módulo 6)
+
+- GetAllTicketsAsync() Lista todos los tickets (para Admin)
+- UpdateTicketAsync(Ticket)
+- GetTicketByIdAsync(int)
+- GetTechniciansAsync() Lista solo usuarios con rol Technician
+- UpdateTicketStatusAsync(int ticketId, TicketStatus, string? technicianId) Asignación + cambio de estado en una sola operación
+- GetUsersByRoleAsync(string roleName)
+
+2. Dashboard Administrativo
+
+- Nueva carpeta /Components/Pages/Admin
+- Dashboard.razor (/admin/dashboard)
+- Tabla completa de todos los tickets con botón Manage
+
+3. Gestión Individual de Tickets
+
+- ManageTicket.razor (/tickets/manage/{ticketId:int})
+- Permisos: Admin + Technician ([Authorize(Roles = "Admin,Technician")])
+- Sección Assign Technician (solo Admin)
+- Sección Update Status (Start Work / Mark Resolved)
+
+4. Acceso para Técnicos y Empleados
+
+- Actualización de NavMenu.razor:
+- Enlace My Tickets visible para todos los usuarios autenticados (/tickets/my-list)
+- Admin Panel sigue restringido solo a Admin
+
+- Nueva página MyTickets.razor:
+ - Usa GetTicketsForUserAsync() para filtrado inteligente según rol
+ - Botón Work on it solo visible para Technician/Admin
+
+
+Flujo completo del sistema:
+
+1. Empleado → Crea ticket (/tickets/create)
+2. Admin → Ve todos los tickets en Dashboard → Asigna técnico
+3. Técnico → Ve sus tickets en My Tickets → Gestiona estado
+4. Empleado → Puede dar seguimiento en My Tickets
+
+Checkpoint del Módulo 6:
+
+✅ Flujo real completo (Open → Assigned → InProgress → Resolved)
+✅ Seguridad granular con AuthorizeView y [Authorize]
+✅ Interactividad total con InteractiveServer
+✅ Parámetros de ruta y recarga parcial de datos
 
 ## 📦 NuGet Packages
 
