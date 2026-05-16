@@ -1,7 +1,4 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
-@using TicketSystemBarriera.Data
-
-<div class="top-row ps-3 navbar navbar-dark">
+﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Ticket System</a>
     </div>
@@ -38,7 +35,7 @@
                 <AuthorizeView Roles="@Roles.Admin" Context="adminContext">
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="admin/dashboard">
-                            <span class="bi bi-shield-lock-fill" aria-hidden="true"></span> Admin Panel
+                            <span class="bi bi-shield-lock-fill" aria-hidden="true"></span> Dashboard
                         </NavLink>
                     </div>
                     <div class="nav-item px-3">

@@ -87,12 +87,13 @@ using (var scope = app.Services.CreateScope())
         }
         // 2. Crear Admin por defecto
         var adminEmail = "admin@system.com";
-        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+var adminUser = await userManager.FindByEmailAsync(adminEmail);
         if (adminUser == null)
-        {
+      {
+        adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+            await userManager.CreateAsync(adminUser, "P@ssword123!");
+            await userManager.AddToRoleAsync(adminUser, Roles.Admin);
         }
-        adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true }; await userManager.CreateAsync(adminUser, "P@ssword123!");
-        await userManager.AddToRoleAsync(adminUser, Roles.Admin);
         // 3. Crear Categorías
         if (!context.Categories.Any())
         {

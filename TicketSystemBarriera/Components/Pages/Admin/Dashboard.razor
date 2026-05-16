@@ -1,20 +1,20 @@
 ﻿@page "/admin/dashboard"
 @using Microsoft.AspNetCore.Authorization
-@using TicketSystemBarriera.Data
-@using TicketSystemBarriera.Models
-@using TicketSystemBarriera.Services
-@using TicketSystemBarriera.Enums
 @inject TicketService TicketService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @attribute [Authorize(Roles = Roles.Admin)]
+@rendermode InteractiveServer
 
-<PageTitle>Admin Dashboard</PageTitle>
+<PageTitle>Admin Dashboard - System Overview</PageTitle>
 
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-speedometer2"></i> Administrative Dashboard</h3>
-        <span class="text-muted">Real-time Support Metrics</span>
-    </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-speedometer2"></i> Administrative Dashboard</h3>
+    <span class="text-muted">Real-time Support Metrics</span>
+    <button class="btn btn-outline-success" @onclick="ExportToExcel">
+        <i class="bi bi-file-earmark-excel"></i> Exportar Reporte SLA
+    </button>
+</div>
 
     @* ---- SECCION DE ESTADISTICAS (MÓDULO 7) ---- *@
     <div class="row g-3 mb-5">
@@ -78,12 +78,14 @@
                                 <td>@ticket.Author?.Email</td>
                                 <td>
                                     <span class="badge rounded-pill bg-light text-dark border">
-                                        @ticket.Category?.name
-                                    </span>
+                                                  @ticket.Category?.name
+                                             </span>
                                 </td>
                                 <td>
-                                    <span class="badge bg-info">@ticket.Status</span>
-                                </td>
+                                   <span class="badge @GetStatusBadgeClass(ticket.Status)">
+                                    @ticket.Status
+                                    </span>
+                                   </td>
                                 <td>
                                     @if (ticket.Technician != null)
                                     {
@@ -110,8 +112,6 @@
             </div>
         </div>
     </div>
-</div>
-
 @code {
     private List<Ticket> allTickets = new();
     private Dictionary<string, int> stats = new()
@@ -132,10 +132,25 @@
     }
 
     private string GetStatusBadgeClass(TicketStatus status) => status switch
+    {
+        TicketStatus.Open => "bg-info",
+        TicketStatus.InProgress => "bg-warning text-dark",
+        TicketStatus.Resolved => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private async Task ExportToExcel()
+    {
+        try
         {
-            TicketStatus.Open => "bg-info",
-            TicketStatus.InProgress => "bg-warning text-dark",
-            TicketStatus.Resolved => "bg-success",
-            _ => "bg-secondary"
-        };
+            var excelData = await TicketService.GenerateExcelReportAsync();
+            var base64 = Convert.ToBase64String(excelData);    
+            var fileName = $"Reporte_Tickets_{DateTime.Now:yyyyMMdd}.xlsx";
+            await JS.InvokeVoidAsync("downloadFile", fileName, base64);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
 }

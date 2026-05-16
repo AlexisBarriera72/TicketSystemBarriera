@@ -1,9 +1,6 @@
 ﻿@page "/admin/users"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
-@using TicketSystemBarriera.Data
-@using TicketSystemBarriera.Models
-@using TicketSystemBarriera.Services
 @inject UserManager<ApplicationUser> UserManager
 @inject TicketService TicketService
 @attribute [Authorize(Roles = Roles.Admin)]

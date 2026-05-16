@@ -1,89 +1,243 @@
 ﻿@page "/tickets/manage/{TicketId:int}"
 @using Microsoft.AspNetCore.Authorization
-@using TicketSystemBarriera.Data
-@using TicketSystemBarriera.Models
-@using TicketSystemBarriera.Enums
-@using TicketSystemBarriera.Services
+@using System.Security.Claims
 @inject TicketService TicketService
 @inject NavigationManager Navigation
-@attribute [Authorize(Roles = $"{Roles.Admin},{Roles.Technician}")]
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
 @rendermode InteractiveServer
 
 <div class="container mt-4">
+    @* ---Alertas --- *@
+    @if (!string.IsNullOrEmpty(feedbackMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> @feedbackMessage
+            <button type="button" class="btn-close" @onclick="() => feedbackMessage = string.Empty"></button>
+        </div>
+    }
+
     @if (ticket == null)
     {
-        <p><em>Loading...</em></p>
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando detalles del ticket...</p>
+        </div>
     }
     else
     {
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white d-flex justify-content-between">
-                <h4 class="mb-0">Manage Ticket #@ticket.Id</h4>
-                <span class="badge bg-light text-dark">@ticket.Status</span>
+        <div class="card shadow border-0 mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 text-white">Ticket #@ticket.Id: @ticket.Title</h4>
+                <span class="badge rounded-pill bg-light text-dark px-3 shadow-sm">@ticket.Status</span>
             </div>
             <div class="card-body">
-                <h5>@ticket.Title</h5>
-                <p class="text-muted">
-                    Reported by: @ticket.Author?.Email on @ticket.CreatedAt.ToShortDateString()
-                </p>
-                <hr />
-                <p>@ticket.Description</p>
-
-                <div class="row mt-4 bg-light p-3 rounded">
-                    @* SECCIÓN PARA EL ADMINISTRADOR: ASIGNACIÓN *@
-                    <AuthorizeView Roles="@Roles.Admin">
-                        <div class="col-md-6 border-end">
-                            <h6>Assign Technician</h6>
-                            <select class="form-select mb-2" @bind="selectedTechId">
-                                <option value="">-- Select Technician --</option>
-                                @foreach (var tech in technicians)
-                                {
-                                    <option value="@tech.Id">@tech.Email</option>
-                                }
-                            </select>
-                            <button class="btn btn-success w-100" @onclick="AssignTicket">
-                                Confirm Assignment
-                            </button>
-                        </div>
-                    </AuthorizeView>
-
-                    @* SECCIÓN PARA EL TÉCNICO: CAMBIO DE ESTADO *@
-                    <div class="col-md-6">
-                        <h6>Update Status</h6>
-                        <div class="d-grid gap-2 d-md-block">
-                            <button class="btn btn-outline-warning" @onclick="() => UpdateStatus(TicketStatus.InProgress)">Start Work</button>
-                            <button class="btn btn-outline-success" @onclick="() => UpdateStatus(TicketStatus.Resolved)">Mark Resolved</button>
-                        </div>
+                <div class="row">
+                    <div class="col-md-8">
+                        <p class="text-muted small mb-1">Reportado por: <strong>@ticket.Author?.Email</strong></p>
+                        <p class="text-muted small">Fecha: @ticket.CreatedAt.ToString("f")</p>
+                        <hr />
+                        <p class="fs-5">@ticket.Description</p>
+                    </div>
+                    <div class="col-md-4 border-start">
+                        <h6 class="text-muted small fw-bold text-uppercase">Información de Asignación</h6>
+                        <p class="mb-1">Técnico: <strong>@(ticket.Technician?.Email ?? "No asignado")</strong></p>
+                        <p>Prioridad: <span class="badge bg-secondary">@ticket.Priority</span></p>
                     </div>
                 </div>
+
+                @* --- Hilo de comentarios --- *@
+                <div class="mt-5">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-chat-square-text-fill me-1"></i> Canal de Comunicación
+                    </h6>
+                    <div class="bg-light p-3 rounded-3 shadow-inner mb-3"
+                         style="max-height: 400px; overflow-y: auto; border: 1px solid #e9ecef;">
+                        @if (comments == null || !comments.Any())
+                        {
+                            <p class="text-center text-muted py-4">No hay mensajes en este ticket aún.</p>
+                        }
+                        else
+                        {
+                            @foreach (var c in comments)
+{
+    bool isSystem = c.Content.StartsWith("["); // Detectar prefijos de sistema
+    bool isClient = c.UserId == ticket.AuthorId;
+    bool isMe = c.UserId == currentUserId;
+
+    @if (isSystem)
+    {
+        @* MENSAJE DE SISTEMA / AUDITORÍA *@
+        <div class="text-center my-3">
+            <span class="badge rounded-pill bg-light text-muted border px-3">
+                <i class="bi bi-info-circle me-1"></i>@c.Content.Replace("[EVENTO]", "").Replace("[SISTEMA]", "")
+            </span>
+            <div style="font-size: 0.6rem;" class="text-muted mt-1">@c.CreatedAt.ToLocalTime().ToString("t")</div>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex mb-4 @(isMe ? "justify-content-end" : "justify-content-start")">
+            <div class="shadow-sm rounded-3 @(isClient ?
+                "bg-white border-start border-4 border-secondary" :
+                "bg-primary text-white border-start border-4 border-info")"
+                 style="max-width: 80%; min-width: 200px; padding: 12px;">
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge @(isClient ? "bg-info text-dark" : "bg-secondary")
+                          text-uppercase" style="font-size: 0.65rem;">
+                        @(isClient ? "Cliente" : "Soporte Técnico")
+                    </span>
+                    <small class="opacity-75 ms-2" style="font-size: 0.7rem;">
+                        @c.CreatedAt.ToLocalTime().ToString("t")
+                    </small>
+                </div>
+
+                <div class="fw-bold small mb-1 @(isClient ? "text-primary" : "text-white-50")">
+                    @c.User?.Email
+                </div>
+                <div class="text-break">@c.Content</div>
+            </div>
+        </div>
+    }
+}
+                            }
+                        }
+                    </div>
+                    <div class="input-group shadow-sm">
+                        <input type="text" class="form-control" placeholder="Escribir mensaje..."
+                               @bind="newCommentContent" @onkeyup="@(e => e.Key == "Enter" ? SendComment() : Task.CompletedTask)" />
+                        <button class="btn btn-primary px-4" @onclick="SendComment">
+                            Enviar <i class="bi bi-send-fill ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @* --- ACCIONES DE STAFF (PROTEGIDAS) --- *@
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Technician}")">
+                    <Authorized>
+                        <div class="row mt-5 bg-light p-4 rounded-3 border">
+                            <AuthorizeView Roles="@Roles.Admin" Context="adminCtx">
+                                <div class="col-md-5 border-end">
+                                    <h6 class="text-uppercase small fw-bold text-muted mb-3">
+                                        Panel Admin: Asignación
+                                    </h6>
+                                    <select class="form-select mb-2 shadow-sm" @bind="selectedTechId">
+                                        <option value="">-- Seleccionar Técnico --</option>
+                                        @foreach (var tech in technicians)
+                                        {
+                                            <option value="@tech.Id">@tech.Email</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-success w-100 shadow-sm" @onclick="AssignTicket">
+                                        <i class="bi bi-person-check"></i> Confirmar Asignación
+                                    </button>
+                                </div>
+                            </AuthorizeView>
+
+                            <div class="col-md-7 ps-4">
+                                <h6 class="text-uppercase small fw-bold text-muted mb-3">
+                                    Control de Estados (Técnico)
+                                </h6>
+                                      <div class="btn-group w-100 shadow-sm">
+                                            @if (ticket.Status == TicketStatus.Open)
+                                {
+                                              @* Solo el técnico asignado (o el admin) puede iniciar el trabajo *@
+                                  <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(TicketStatus.InProgress)">
+                                     <i class="bi bi-play-fill"></i> Iniciar Trabajo
+                                 </button>
+                                      }
+                                    @if (ticket.Status == TicketStatus.InProgress)
+                                    {
+                                        <button class="btn btn-success py-2" @onclick="() => UpdateStatus(TicketStatus.Resolved)">
+                                            <i class="bi bi-check-all"></i> Marcar como Resuelto
+                                        </button>
+                                    }
+                                    @if (ticket.Status == TicketStatus.Resolved)
+                                    {
+                                        <div class="alert alert-info w-100 mb-0 py-2 text-center">
+                                            <i class="bi bi-lock-fill"></i> El ticket está cerrado y resuelto.
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
             </div>
         </div>
     }
 </div>
-
 @code {
     [Parameter] public int TicketId { get; set; }
     private Ticket? ticket;
     private List<ApplicationUser> technicians = [];
+    private List<TicketComment> comments = [];
     private string selectedTechId = "";
+    private string newCommentContent = "";
+    private string currentUserId = "";
+    private string feedbackMessage = "";
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+
+        await LoadData();
+
+        // Verificar permisos: Solo el autor del ticket, técnicos o administradores pueden acceder
+        bool isAdminOrTech = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Technician);
+        if (!isAdminOrTech && ticket?.AuthorId != currentUserId)
+        {
+            Navigation.NavigateTo("/tickets/my-list"); // Redirige a la lista de tickets del usuario
+        }
+    }
+
+    private async Task LoadData()
+    {
         ticket = await TicketService.GetTicketByIdAsync(TicketId);
         technicians = await TicketService.GetTechniciansAsync();
+        comments = await TicketService.GetCommentsAsync(TicketId);
         if (ticket?.TechnicianId != null) selectedTechId = ticket.TechnicianId;
+    }
+
+    private async Task SendComment()
+    {
+        if (string.IsNullOrWhiteSpace(newCommentContent) || string.IsNullOrEmpty(currentUserId)) return;
+
+        var comment = new TicketComment
+        {
+            Content = newCommentContent,
+            TicketId = TicketId,
+            UserId = currentUserId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await TicketService.AddCommentAsync(comment);
+        newCommentContent = "";
+        comments = await TicketService.GetCommentsAsync(TicketId);
+        feedbackMessage = "Mensaje enviado con éxito.";
     }
 
     private async Task AssignTicket()
     {
         if (string.IsNullOrEmpty(selectedTechId)) return;
-        await TicketService.UpdateTicketStatusAsync(TicketId, TicketStatus.InProgress, selectedTechId);
-        Navigation.NavigateTo("/admin/dashboard");
+
+        // Mantenemos el status actual (ticket.Status) en lugar de forzar InProgress
+        await TicketService.UpdateTicketStatusAsync(TicketId, ticket!.Status, selectedTechId, currentUserId);
+
+        feedbackMessage = "Técnico asignado. El ticket está a la espera de ser iniciado.";
+        await LoadData();
     }
 
     private async Task UpdateStatus(TicketStatus status)
     {
-        await TicketService.UpdateTicketStatusAsync(TicketId, status);
-        ticket = await TicketService.GetTicketByIdAsync(TicketId); // Recargar datos
+        // Pasamos currentUserId como el técnico que está operando
+        await TicketService.UpdateTicketStatusAsync(TicketId, status, null, currentUserId);
+
+    feedbackMessage = $"Estado actualizado a {status}.";
+        await LoadData();
     }
 }
