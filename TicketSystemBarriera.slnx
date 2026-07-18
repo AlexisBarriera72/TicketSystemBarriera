@@ -1,3 +1,5 @@
 <Solution>
-  <Project Path="TicketSystemBarriera/TicketSystemBarriera.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/BarrieraMoving.Server/BarrieraMoving.Server.csproj" />
+  </Folder>
 </Solution>
