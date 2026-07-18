@@ -1,0 +1,75 @@
+@page "/orders/create"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject OrderService OrderService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Nueva Orden de Mudanza</PageTitle>
+
+<div class="container mt-4">
+	<h2>Solicitar una Mudanza</h2>
+	<hr />
+
+	<EditForm Model="newOrder" OnValidSubmit="HandleSubmit" FormName="CreateOrderForm">
+		<DataAnnotationsValidator />
+		<ValidationSummary class="text-danger" />
+
+		<div class="mb-3">
+			<label class="form-label">Título</label>
+			<InputText @bind-Value="newOrder.Title" class="form-control" placeholder="Resumen breve de la mudanza" />
+		</div>
+
+		<div class="mb-3">
+			<label class="form-label">Tipo de mudanza</label>
+			<InputSelect @bind-Value="newOrder.CategoryId" class="form-select">
+				<option value="0">-- Seleccionar tipo --</option>
+				@foreach (var cat in categories)
+				{
+					<option value="@cat.Id">@cat.Name</option>
+				}
+			</InputSelect>
+		</div>
+
+		<div class="mb-3">
+			<label class="form-label">Prioridad</label>
+			<InputSelect @bind-Value="newOrder.Priority" class="form-select">
+				@foreach (var priority in Enum.GetValues<OrderPriority>())
+				{
+					<option value="@priority">@priority</option>
+				}
+			</InputSelect>
+		</div>
+
+		<div class="mb-3">
+			<label class="form-label">Descripción (direcciones, fechas, detalles)</label>
+			<InputTextArea @bind-Value="newOrder.Description" class="form-control" rows="4" />
+		</div>
+
+		<button type="submit" class="btn btn-primary">Crear Orden</button>
+		<a href="/" class="btn btn-secondary">Cancelar</a>
+	</EditForm>
+</div>
+
+@code {
+	private Order newOrder = new() { AuthorId = "", Title = "", Description = "" };
+	private List<Category> categories = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		categories = await OrderService.GetCategoriesAsync();
+		// Obtener el ID del usuario actual autenticado
+		var authState = await AuthProvider.GetAuthenticationStateAsync();
+		var user = authState.User;
+		newOrder.AuthorId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+	}
+
+	private async Task HandleSubmit()
+	{
+		if (newOrder.CategoryId == 0) return; // Validación simple de tipo de mudanza
+		await OrderService.CreateOrderAsync(newOrder);
+		Navigation.NavigateTo("/orders/my-list");
+	}
+}

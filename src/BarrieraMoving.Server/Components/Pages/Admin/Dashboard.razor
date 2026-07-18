@@ -1,27 +1,27 @@
-﻿@page "/admin/dashboard"
+@page "/admin/dashboard"
 @using Microsoft.AspNetCore.Authorization
-@inject TicketService TicketService
+@inject OrderService OrderService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @attribute [Authorize(Roles = Roles.Admin)]
 @rendermode InteractiveServer
 
-<PageTitle>Admin Dashboard - System Overview</PageTitle>
+<PageTitle>Dashboard - Barriera Moving</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="bi bi-speedometer2"></i> Administrative Dashboard</h3>
-    <span class="text-muted">Real-time Support Metrics</span>
+    <h3><i class="bi bi-speedometer2"></i> Panel Administrativo</h3>
+    <span class="text-muted">Métricas de operación en tiempo real</span>
     <button class="btn btn-outline-success" @onclick="ExportToExcel">
-        <i class="bi bi-file-earmark-excel"></i> Exportar Reporte SLA
+        <i class="bi bi-file-earmark-excel"></i> Exportar Reporte
     </button>
 </div>
 
-    @* ---- SECCION DE ESTADISTICAS (MÓDULO 7) ---- *@
+    @* ---- SECCIÓN DE ESTADÍSTICAS ---- *@
     <div class="row g-3 mb-5">
         <div class="col-md-3">
             <div class="card bg-primary text-white border-0 shadow-sm">
                 <div class="card-body">
-                    <h6 class="card-title text-uppercase opacity-75 small">Total Tickets</h6>
+                    <h6 class="card-title text-uppercase opacity-75 small">Total Órdenes</h6>
                     <h2 class="display-6 fw-bold">@stats["Total"]</h2>
                 </div>
             </div>
@@ -29,80 +29,80 @@
         <div class="col-md-3">
             <div class="card bg-warning text-dark border-0 shadow-sm">
                 <div class="card-body">
-                    <h6 class="card-title text-uppercase opacity-75 small">Open / In Progress</h6>
-                    <h2 class="display-6 fw-bold">@(stats["Open"] + stats["InProgress"])</h2>
+                    <h6 class="card-title text-uppercase opacity-75 small">Activas</h6>
+                    <h2 class="display-6 fw-bold">@stats["Active"]</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-dark border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Esperando Firma</h6>
+                    <h2 class="display-6 fw-bold">@stats["PendingSignature"]</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card bg-success text-white border-0 shadow-sm">
                 <div class="card-body">
-                    <h6 class="card-title text-uppercase opacity-75 small">Resolved</h6>
-                    <h2 class="display-6 fw-bold">@stats["Resolved"]</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-title text-uppercase opacity-75 small">Urgent Cases</h6>
-                    <h2 class="display-6 fw-bold">@stats["Urgent"]</h2>
+                    <h6 class="card-title text-uppercase opacity-75 small">Completadas</h6>
+                    <h2 class="display-6 fw-bold">@stats["Completed"]</h2>
                 </div>
             </div>
         </div>
     </div>
 
-    @* ---- TABLA DE GESTIÓN (MÓDULO 6) ---- *@
+    @* ---- TABLA DE GESTIÓN ---- *@
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3">
-            <h5 class="mb-0 text-secondary">All Support Requests</h5>
+            <h5 class="mb-0 text-secondary">Todas las Órdenes</h5>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Title</th>
-                            <th>Author</th>
-                            <th>Category</th>
-                            <th>Status</th>
-                            <th>Technician</th>
-                            <th class="text-center">Actions</th>
+                            <th>Título</th>
+                            <th>Cliente</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Conductor</th>
+                            <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var ticket in allTickets)
+                        @foreach (var order in allOrders)
                         {
                             <tr>
-                                <td class="fw-bold">@ticket.Title</td>
-                                <td>@ticket.Author?.Email</td>
+                                <td class="fw-bold">@order.Title</td>
+                                <td>@(order.Author?.DisplayName ?? order.Author?.Email)</td>
                                 <td>
                                     <span class="badge rounded-pill bg-light text-dark border">
-                                                  @ticket.Category?.name
-                                             </span>
+                                        @order.Category?.Name
+                                    </span>
                                 </td>
                                 <td>
-                                   <span class="badge @GetStatusBadgeClass(ticket.Status)">
-                                    @ticket.Status
+                                    <span class="badge @GetStatusBadgeClass(order.Status)">
+                                        @order.Status
                                     </span>
-                                   </td>
+                                </td>
                                 <td>
-                                    @if (ticket.Technician != null)
+                                    @if (order.AssignedDriver != null)
                                     {
                                         <span class="text-primary">
                                             <i class="bi bi-person-check"></i>
-                                            @ticket.Technician.Email
+                                            @(order.AssignedDriver.DisplayName ?? order.AssignedDriver.Email)
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="text-muted italic">Unassigned</span>
+                                        <span class="text-muted italic">Sin asignar</span>
                                     }
                                 </td>
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-primary shadow-sm"
-                                            @onclick="@(() => Navigation.NavigateTo($"/tickets/manage/{ticket.Id}"))">
-                                        <i class="bi bi-gear-fill"></i> Manage
+                                            @onclick="@(() => Navigation.NavigateTo($"/orders/manage/{order.Id}"))">
+                                        <i class="bi bi-gear-fill"></i> Gestionar
                                     </button>
                                 </td>
                             </tr>
@@ -113,29 +113,30 @@
         </div>
     </div>
 @code {
-    private List<Ticket> allTickets = new();
+    private List<Order> allOrders = new();
     private Dictionary<string, int> stats = new()
     {
         ["Total"] = 0,
-        ["Open"] = 0,
-        ["InProgress"] = 0,
-        ["Resolved"] = 0,
+        ["Active"] = 0,
+        ["PendingSignature"] = 0,
+        ["Completed"] = 0,
         ["Urgent"] = 0
     };
 
     protected override async Task OnInitializedAsync()
     {
-        // Cargar Lista
-        allTickets = await TicketService.GetAllTicketsAsync();
-        // Cargar estadísticas
-        stats = await TicketService.GetTicketStatsAsync();
+        allOrders = await OrderService.GetAllOrdersAsync();
+        stats = await OrderService.GetOrderStatsAsync();
     }
 
-    private string GetStatusBadgeClass(TicketStatus status) => status switch
+    private string GetStatusBadgeClass(OrderStatus status) => status switch
     {
-        TicketStatus.Open => "bg-info",
-        TicketStatus.InProgress => "bg-warning text-dark",
-        TicketStatus.Resolved => "bg-success",
+        OrderStatus.Requested => "bg-info text-dark",
+        OrderStatus.Assigned => "bg-secondary",
+        OrderStatus.EnRoute => "bg-warning text-dark",
+        OrderStatus.InProgress => "bg-warning text-dark",
+        OrderStatus.PendingSignature => "bg-primary",
+        OrderStatus.Completed => "bg-success",
         _ => "bg-secondary"
     };
 
@@ -143,9 +144,9 @@
     {
         try
         {
-            var excelData = await TicketService.GenerateExcelReportAsync();
-            var base64 = Convert.ToBase64String(excelData);    
-            var fileName = $"Reporte_Tickets_{DateTime.Now:yyyyMMdd}.xlsx";
+            var excelData = await OrderService.GenerateExcelReportAsync();
+            var base64 = Convert.ToBase64String(excelData);
+            var fileName = $"Reporte_Ordenes_{DateTime.Now:yyyyMMdd}.xlsx";
             await JS.InvokeVoidAsync("downloadFile", fileName, base64);
         }
         catch (Exception ex)

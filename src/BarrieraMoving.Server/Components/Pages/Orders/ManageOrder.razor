@@ -1,0 +1,260 @@
+@page "/orders/manage/{OrderId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject OrderService OrderService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<div class="container mt-4">
+    @* ---Alertas --- *@
+    @if (!string.IsNullOrEmpty(feedbackMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> @feedbackMessage
+            <button type="button" class="btn-close" @onclick="() => feedbackMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (order == null)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando detalles de la orden...</p>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow border-0 mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 text-white">Orden #@order.Id: @order.Title</h4>
+                <span class="badge rounded-pill bg-light text-dark px-3 shadow-sm">@order.Status</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p class="text-muted small mb-1">Cliente: <strong>@(order.Author?.DisplayName ?? order.Author?.Email)</strong></p>
+                        <p class="text-muted small">Fecha: @order.CreatedAt.ToString("f")</p>
+                        <hr />
+                        <p class="fs-5">@order.Description</p>
+                    </div>
+                    <div class="col-md-4 border-start">
+                        <h6 class="text-muted small fw-bold text-uppercase">Información de Asignación</h6>
+                        <p class="mb-1">Conductor: <strong>@(order.AssignedDriver?.DisplayName ?? order.AssignedDriver?.Email ?? "No asignado")</strong></p>
+                        <p class="mb-1">Tipo: <span class="badge bg-light text-dark border">@order.Category?.Name</span></p>
+                        <p>Prioridad: <span class="badge bg-secondary">@order.Priority</span></p>
+                    </div>
+                </div>
+
+                @* --- Chat de la orden --- *@
+                <div class="mt-5">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-chat-square-text-fill me-1"></i> Canal de Comunicación
+                    </h6>
+                    <div class="bg-light p-3 rounded-3 shadow-inner mb-3"
+                         style="max-height: 400px; overflow-y: auto; border: 1px solid #e9ecef;">
+                        @if (messages == null || !messages.Any())
+                        {
+                            <p class="text-center text-muted py-4">No hay mensajes en esta orden aún.</p>
+                        }
+                        else
+                        {
+                            @foreach (var m in messages)
+                            {
+                                bool isSystem = m.Content.StartsWith("["); // Detectar prefijos de sistema
+                                bool isClient = m.UserId == order.AuthorId;
+                                bool isMe = m.UserId == currentUserId;
+
+                                @if (isSystem)
+                                {
+                                    @* MENSAJE DE SISTEMA / AUDITORÍA *@
+                                    <div class="text-center my-3">
+                                        <span class="badge rounded-pill bg-light text-muted border px-3">
+                                            <i class="bi bi-info-circle me-1"></i>@m.Content.Replace("[EVENTO]", "").Replace("[SISTEMA]", "")
+                                        </span>
+                                        <div style="font-size: 0.6rem;" class="text-muted mt-1">@m.CreatedAt.ToLocalTime().ToString("t")</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex mb-4 @(isMe ? "justify-content-end" : "justify-content-start")">
+                                        <div class="shadow-sm rounded-3 @(isClient ?
+                                            "bg-white border-start border-4 border-secondary" :
+                                            "bg-primary text-white border-start border-4 border-info")"
+                                             style="max-width: 80%; min-width: 200px; padding: 12px;">
+
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="badge @(isClient ? "bg-info text-dark" : "bg-secondary")
+                                                      text-uppercase" style="font-size: 0.65rem;">
+                                                    @(isClient ? "Cliente" : "Equipo Barriera")
+                                                </span>
+                                                <small class="opacity-75 ms-2" style="font-size: 0.7rem;">
+                                                    @m.CreatedAt.ToLocalTime().ToString("t")
+                                                </small>
+                                            </div>
+
+                                            <div class="fw-bold small mb-1 @(isClient ? "text-primary" : "text-white-50")">
+                                                @(m.User?.DisplayName ?? m.User?.Email)
+                                            </div>
+                                            <div class="text-break">@m.Content</div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        }
+                    </div>
+                    <div class="input-group shadow-sm">
+                        <input type="text" class="form-control" placeholder="Escribir mensaje..."
+                               @bind="newMessageContent" @onkeyup="@(e => e.Key == "Enter" ? SendMessage() : Task.CompletedTask)" />
+                        <button class="btn btn-primary px-4" @onclick="SendMessage">
+                            Enviar <i class="bi bi-send-fill ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @* --- ACCIONES DE STAFF (PROTEGIDAS) --- *@
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office},{Roles.Driver}")">
+                    <Authorized>
+                        <div class="row mt-5 bg-light p-4 rounded-3 border">
+                            <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staffCtx">
+                                <div class="col-md-5 border-end">
+                                    <h6 class="text-uppercase small fw-bold text-muted mb-3">
+                                        Oficina: Asignación de Conductor
+                                    </h6>
+                                    <select class="form-select mb-2 shadow-sm" @bind="selectedDriverId">
+                                        <option value="">-- Seleccionar Conductor --</option>
+                                        @foreach (var driver in drivers)
+                                        {
+                                            <option value="@driver.Id">@(driver.DisplayName ?? driver.Email)</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-success w-100 shadow-sm" @onclick="AssignDriver">
+                                        <i class="bi bi-person-check"></i> Confirmar Asignación
+                                    </button>
+                                </div>
+                            </AuthorizeView>
+
+                            <div class="col-md-7 ps-4">
+                                <h6 class="text-uppercase small fw-bold text-muted mb-3">
+                                    Control de Estados (Conductor)
+                                </h6>
+                                <div class="btn-group w-100 shadow-sm">
+                                    @if (order.Status == OrderStatus.Requested)
+                                    {
+                                        <div class="alert alert-secondary w-100 mb-0 py-2 text-center">
+                                            <i class="bi bi-hourglass-split"></i> Esperando asignación de conductor.
+                                        </div>
+                                    }
+                                    @if (order.Status == OrderStatus.Assigned)
+                                    {
+                                        <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(OrderStatus.EnRoute)">
+                                            <i class="bi bi-truck"></i> Salir en Camino
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.EnRoute)
+                                    {
+                                        <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(OrderStatus.InProgress)">
+                                            <i class="bi bi-play-fill"></i> Llegué — Iniciar Trabajo
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.InProgress)
+                                    {
+                                        <button class="btn btn-primary py-2" @onclick="() => UpdateStatus(OrderStatus.PendingSignature)">
+                                            <i class="bi bi-pen"></i> Solicitar Firma del Cliente
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.PendingSignature)
+                                    {
+                                        @* Fase 6 añadirá el gate: no se puede completar sin documento firmado y aprobado *@
+                                        <button class="btn btn-success py-2" @onclick="() => UpdateStatus(OrderStatus.Completed)">
+                                            <i class="bi bi-check-all"></i> Marcar como Completada
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.Completed)
+                                    {
+                                        <div class="alert alert-info w-100 mb-0 py-2 text-center">
+                                            <i class="bi bi-lock-fill"></i> La orden está completada.
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+            </div>
+        </div>
+    }
+</div>
+@code {
+    [Parameter] public int OrderId { get; set; }
+    private Order? order;
+    private List<ApplicationUser> drivers = [];
+    private List<Message> messages = [];
+    private string selectedDriverId = "";
+    private string newMessageContent = "";
+    private string currentUserId = "";
+    private string feedbackMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+
+        await LoadData();
+
+        // Solo el autor (cliente), el staff (Admin/Oficina) o el conductor pueden ver la orden
+        bool isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office) || user.IsInRole(Roles.Driver);
+        if (!isStaff && order?.AuthorId != currentUserId)
+        {
+            Navigation.NavigateTo("/orders/my-list");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        order = await OrderService.GetOrderByIdAsync(OrderId);
+        drivers = await OrderService.GetDriversAsync();
+        messages = await OrderService.GetMessagesAsync(OrderId);
+        if (order?.AssignedDriverId != null) selectedDriverId = order.AssignedDriverId;
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(newMessageContent) || string.IsNullOrEmpty(currentUserId)) return;
+
+        var message = new Message
+        {
+            Content = newMessageContent,
+            OrderId = OrderId,
+            UserId = currentUserId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await OrderService.AddMessageAsync(message);
+        newMessageContent = "";
+        messages = await OrderService.GetMessagesAsync(OrderId);
+        feedbackMessage = "Mensaje enviado con éxito.";
+    }
+
+    private async Task AssignDriver()
+    {
+        if (string.IsNullOrEmpty(selectedDriverId)) return;
+
+        // El servicio avanza automáticamente Requested → Assigned al asignar conductor
+        await OrderService.UpdateOrderStatusAsync(OrderId, order!.Status, selectedDriverId, currentUserId);
+
+        feedbackMessage = "Conductor asignado a la orden.";
+        await LoadData();
+    }
+
+    private async Task UpdateStatus(OrderStatus status)
+    {
+        await OrderService.UpdateOrderStatusAsync(OrderId, status, null, currentUserId);
+
+        feedbackMessage = $"Estado actualizado a {status}.";
+        await LoadData();
+    }
+}

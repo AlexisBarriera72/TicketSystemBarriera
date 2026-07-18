@@ -1,9 +1,9 @@
-﻿namespace BarrieraMoving.Server.Data
+namespace BarrieraMoving.Server.Data;
+
+public static class Roles
 {
-    public class Roles
-    {
-        public const string Admin = "Admin";
-        public const string Technician = "Technician"; 
-        public const string Employee = "Employee";
-    }
+    public const string Admin = "Admin";
+    public const string Office = "Office";
+    public const string Driver = "Driver";
+    public const string Client = "Client";
 }

@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace BarrieraMoving.Server.Data
-{
-    // Add profile data for application users by adding properties to the ApplicationUser class
-    public class ApplicationUser : IdentityUser
-    {
-    }
+namespace BarrieraMoving.Server.Data;
 
+public class ApplicationUser : IdentityUser
+{
+    // Nombre visible en el chat y en la app (ej. "Luis (Conductor)")
+    public string? DisplayName { get; set; }
 }
