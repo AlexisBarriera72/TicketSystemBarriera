@@ -1,6 +1,7 @@
 @page "/admin/dashboard"
 @using Microsoft.AspNetCore.Authorization
-@inject OrderService OrderService
+@inject IOrderService OrderService
+@inject IReportService ReportService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @attribute [Authorize(Roles = Roles.Admin)]
@@ -126,7 +127,7 @@
     protected override async Task OnInitializedAsync()
     {
         allOrders = await OrderService.GetAllOrdersAsync();
-        stats = await OrderService.GetOrderStatsAsync();
+        stats = await ReportService.GetOrderStatsAsync();
     }
 
     private string GetStatusBadgeClass(OrderStatus status) => status switch
@@ -144,7 +145,7 @@
     {
         try
         {
-            var excelData = await OrderService.GenerateExcelReportAsync();
+            var excelData = await ReportService.GenerateExcelReportAsync();
             var base64 = Convert.ToBase64String(excelData);
             var fileName = $"Reporte_Ordenes_{DateTime.Now:yyyyMMdd}.xlsx";
             await JS.InvokeVoidAsync("downloadFile", fileName, base64);

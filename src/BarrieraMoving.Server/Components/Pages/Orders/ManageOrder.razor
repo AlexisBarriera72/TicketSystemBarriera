@@ -1,7 +1,7 @@
 @page "/orders/manage/{OrderId:int}"
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
-@inject OrderService OrderService
+@inject IOrderService OrderService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
 @attribute [Authorize]
@@ -196,12 +196,14 @@
     private string newMessageContent = "";
     private string currentUserId = "";
     private string feedbackMessage = "";
+    private bool canBypassFlow = false; // Admin/Oficina pueden saltarse el flujo normal de estados
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        canBypassFlow = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
 
         await LoadData();
 
@@ -244,17 +246,17 @@
         if (string.IsNullOrEmpty(selectedDriverId)) return;
 
         // El servicio avanza automáticamente Requested → Assigned al asignar conductor
-        await OrderService.UpdateOrderStatusAsync(OrderId, order!.Status, selectedDriverId, currentUserId);
+        var ok = await OrderService.UpdateOrderStatusAsync(OrderId, order!.Status, selectedDriverId, currentUserId);
 
-        feedbackMessage = "Conductor asignado a la orden.";
+        feedbackMessage = ok ? "Conductor asignado a la orden." : "No se pudo asignar el conductor.";
         await LoadData();
     }
 
     private async Task UpdateStatus(OrderStatus status)
     {
-        await OrderService.UpdateOrderStatusAsync(OrderId, status, null, currentUserId);
+        var ok = await OrderService.UpdateOrderStatusAsync(OrderId, status, null, currentUserId, canBypassFlow);
 
-        feedbackMessage = $"Estado actualizado a {status}.";
+        feedbackMessage = ok ? $"Estado actualizado a {status}." : "Transición de estado no permitida.";
         await LoadData();
     }
 }

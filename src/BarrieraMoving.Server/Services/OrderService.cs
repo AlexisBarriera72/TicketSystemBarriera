@@ -1,4 +1,3 @@
-using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using BarrieraMoving.Server.Data;
@@ -8,8 +7,24 @@ using BarrieraMoving.Shared.Enums;
 namespace BarrieraMoving.Server.Services;
 
 // Using Primary Constructor de C# 14
-public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory)
+public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : IOrderService
 {
+    // Transiciones válidas del flujo de una mudanza. Admin/Oficina pueden saltárselas
+    // (bypassValidation); el conductor no. En la Fase 6, PendingSignature → Completed
+    // exigirá además documento firmado + aprobación de oficina.
+    private static readonly Dictionary<OrderStatus, OrderStatus[]> AllowedTransitions = new()
+    {
+        [OrderStatus.Requested] = [OrderStatus.Assigned],
+        [OrderStatus.Assigned] = [OrderStatus.EnRoute],
+        [OrderStatus.EnRoute] = [OrderStatus.InProgress],
+        [OrderStatus.InProgress] = [OrderStatus.PendingSignature],
+        [OrderStatus.PendingSignature] = [OrderStatus.Completed],
+        [OrderStatus.Completed] = [],
+    };
+
+    public static bool IsValidTransition(OrderStatus from, OrderStatus to) =>
+        AllowedTransitions.TryGetValue(from, out var next) && next.Contains(to);
+
     // Órdenes donde el usuario es el autor (cliente) o el conductor asignado
     public async Task<List<Order>> GetMyWorkAndRequestsAsync(string userId)
     {
@@ -73,8 +88,10 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory)
             .ToListAsync();
     }
 
-    // Actualiza estado y/o conductor asignado, registrando el evento en el chat de la orden
-    public async Task UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string? newDriverId = null, string? performerId = null)
+    // Actualiza estado y/o conductor asignado, registrando el evento en el chat de la orden.
+    // Devuelve false si la orden no existe o la transición de estado no está permitida.
+    public async Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string? newDriverId = null,
+        string? performerId = null, bool bypassValidation = false)
     {
         using var context = dbFactory.CreateDbContext();
 
@@ -82,7 +99,7 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory)
             .Include(o => o.AssignedDriver)
             .FirstOrDefaultAsync(o => o.Id == orderId);
 
-        if (order is null) return;
+        if (order is null) return false;
 
         string systemLog = "";
         var oldStatus = order.Status;
@@ -103,6 +120,10 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory)
         // ESCENARIO 2: cambio de estado
         if (newStatus != oldStatus)
         {
+            if (!bypassValidation && !IsValidTransition(oldStatus, newStatus))
+            {
+                return false;
+            }
             order.Status = newStatus;
             systemLog = string.IsNullOrEmpty(systemLog)
                 ? $"[EVENTO] El estado cambió de {oldStatus} a {newStatus}."
@@ -123,6 +144,7 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory)
             order.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
         }
+        return true;
     }
 
     public async Task<List<ApplicationUser>> GetUsersByRoleAsync(string roleName)
@@ -156,21 +178,6 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory)
     // Listar los conductores disponibles para asignar
     public Task<List<ApplicationUser>> GetDriversAsync() => GetUsersByRoleAsync(Roles.Driver);
 
-    // --- REPORTES Y ESTADÍSTICAS (dashboard del jefe) ---
-    public async Task<Dictionary<string, int>> GetOrderStatsAsync()
-    {
-        using var context = dbFactory.CreateDbContext();
-        return new Dictionary<string, int>
-        {
-            ["Total"] = await context.Orders.CountAsync(),
-            ["Active"] = await context.Orders.CountAsync(o =>
-                o.Status != OrderStatus.Completed && o.Status != OrderStatus.PendingSignature),
-            ["PendingSignature"] = await context.Orders.CountAsync(o => o.Status == OrderStatus.PendingSignature),
-            ["Completed"] = await context.Orders.CountAsync(o => o.Status == OrderStatus.Completed),
-            ["Urgent"] = await context.Orders.CountAsync(o => o.Priority == OrderPriority.Urgent)
-        };
-    }
-
     public async Task<List<ApplicationUser>> GetAllUsersAsync()
     {
         using var context = dbFactory.CreateDbContext();
@@ -193,53 +200,5 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory)
             .Where(m => m.OrderId == orderId)
             .OrderBy(m => m.CreatedAt)
             .ToListAsync();
-    }
-
-    // Reporte Excel con el resumen de órdenes, usando ClosedXML
-    public async Task<byte[]> GenerateExcelReportAsync()
-    {
-        using var context = dbFactory.CreateDbContext();
-        var orders = await context.Orders
-            .Include(o => o.Author)
-            .Include(o => o.AssignedDriver)
-            .Include(o => o.Category)
-            .ToListAsync();
-
-        using var workbook = new XLWorkbook();
-        var worksheet = workbook.Worksheets.Add("Resumen de Órdenes");
-
-        var headers = new[] { "ID", "Título", "Tipo", "Prioridad", "Estado", "Creado", "Completado",
-            "Tiempo (Días)", "Cliente", "Conductor" };
-        for (int i = 0; i < headers.Length; i++)
-        {
-            worksheet.Cell(1, i + 1).Value = headers[i];
-            worksheet.Cell(1, i + 1).Style.Font.Bold = true;
-            worksheet.Cell(1, i + 1).Style.Fill.BackgroundColor = XLColor.LightGray;
-        }
-
-        int row = 2;
-        foreach (var o in orders)
-        {
-            worksheet.Cell(row, 1).Value = o.Id;
-            worksheet.Cell(row, 2).Value = o.Title;
-            worksheet.Cell(row, 3).Value = o.Category?.Name ?? "N/A";
-            worksheet.Cell(row, 4).Value = o.Priority.ToString();
-            worksheet.Cell(row, 5).Value = o.Status.ToString();
-            worksheet.Cell(row, 6).Value = o.CreatedAt;
-            if (o.Status == OrderStatus.Completed && o.UpdatedAt.HasValue)
-            {
-                worksheet.Cell(row, 7).Value = o.UpdatedAt.Value;
-                var duration = o.UpdatedAt.Value - o.CreatedAt;
-                worksheet.Cell(row, 8).Value = Math.Round(duration.TotalDays, 2);
-            }
-            worksheet.Cell(row, 9).Value = o.Author?.Email;
-            worksheet.Cell(row, 10).Value = o.AssignedDriver?.Email ?? "No asignado";
-            row++;
-        }
-        worksheet.Columns().AdjustToContents();
-
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
     }
 }
