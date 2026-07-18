@@ -1,7 +1,7 @@
 namespace BarrieraMoving.Server.Models;
 
 using BarrieraMoving.Server.Data;
-using BarrieraMoving.Server.Enums;
+using BarrieraMoving.Shared.Enums;
 
 // Una orden = un trabajo de mudanza (antes "Ticket" en el sistema de soporte)
 public class Order

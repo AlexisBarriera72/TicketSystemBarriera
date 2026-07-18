@@ -1,4 +1,4 @@
-namespace BarrieraMoving.Server.Enums;
+namespace BarrieraMoving.Shared.Enums;
 
 public enum OrderPriority
 {

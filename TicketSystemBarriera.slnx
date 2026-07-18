@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/BarrieraMoving.Server/BarrieraMoving.Server.csproj" />
+    <Project Path="src/BarrieraMoving.Shared/BarrieraMoving.Shared.csproj" />
   </Folder>
 </Solution>

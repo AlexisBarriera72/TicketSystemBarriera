@@ -1,4 +1,4 @@
-namespace BarrieraMoving.Server.Enums;
+namespace BarrieraMoving.Shared.Enums;
 
 // Flujo de una mudanza: Requested → Assigned → EnRoute → InProgress → PendingSignature → Completed
 public enum OrderStatus

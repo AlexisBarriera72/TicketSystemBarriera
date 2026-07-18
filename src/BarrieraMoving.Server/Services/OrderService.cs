@@ -2,8 +2,8 @@ using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using BarrieraMoving.Server.Data;
-using BarrieraMoving.Server.Enums;
 using BarrieraMoving.Server.Models;
+using BarrieraMoving.Shared.Enums;
 
 namespace BarrieraMoving.Server.Services;
 
