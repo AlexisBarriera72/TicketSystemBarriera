@@ -75,6 +75,10 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
   from VS Code / terminal. Visual Studio can still be used to build/debug in parallel.
 - VS Code's C# Dev Kit build host can lock project folders on Windows (renames fail
   with "Permission denied"); deleting the project's bin/ and obj/ releases the lock.
+- MAUI Android: tras añadir/quitar archivos en Platforms/Android/Resources haz clean
+  rebuild (borra bin/obj del Mobile) — la caché de recursos desfasada crashea al abrir
+  con "No view found for id". Android 16 fuerza edge-to-edge: los insets se aplican
+  desde Blazor (Services/SafeInsets), NUNCA con un insets-listener nativo (rompe MAUI).
 - Verify UI/flows by running the app yourself — the agent builds and reads errors but
   does not click through the running app.
 
