@@ -1,5 +1,8 @@
 .app-header {
-    height: 3.25rem;
+    min-height: 3.25rem;
+    /* Respaldo por si la app vuelve a dibujar edge-to-edge (ver styles.xml Android):
+       empuja el contenido del header por debajo de la barra de estado/cámara */
+    padding-top: env(safe-area-inset-top, 0px);
     background-color: #0d6efd;
     color: white;
     position: sticky;

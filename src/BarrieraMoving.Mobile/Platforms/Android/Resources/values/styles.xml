@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 15+ (API 35) fuerza dibujar edge-to-edge: el WebView quedaba debajo
+         de la barra de estado / cámara y el botón "Salir" no recibía los toques.
+         Con este opt-out la ventana vuelve a empezar debajo de las barras del sistema.
+         (El atributo está deprecado en API 36 pero sigue funcionando; si Android 37
+         lo elimina, el padding con env(safe-area-inset-top) del layout toma el relevo.) -->
+    <style name="Maui.MainTheme" parent="Maui.MainTheme.Base">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+</resources>

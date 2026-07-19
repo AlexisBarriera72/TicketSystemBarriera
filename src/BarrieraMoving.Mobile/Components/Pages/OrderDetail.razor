@@ -42,12 +42,12 @@ else
                 <dd class="col-8">@(order.AssignedDriverName ?? "Sin asignar")</dd>
 
                 <dt class="col-4">Creada</dt>
-                <dd class="col-8">@order.CreatedAt.ToLocalTime().ToString("g")</dd>
+                <dd class="col-8">@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
 
                 @if (order.UpdatedAt is not null)
                 {
                     <dt class="col-4">Actualizada</dt>
-                    <dd class="col-8">@order.UpdatedAt.Value.ToLocalTime().ToString("g")</dd>
+                    <dd class="col-8">@order.UpdatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
                 }
             </dl>
 
