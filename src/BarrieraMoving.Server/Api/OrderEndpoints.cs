@@ -88,14 +88,17 @@ public static class OrderEndpoints
                 $"Transición no permitida: {order.Status} → {request.NewStatus}.");
         });
 
-        // Chat de la orden
-        group.MapGet("/{id:int}/messages", async (int id, ClaimsPrincipal user, IOrderService orders) =>
+        // Chat de la orden. Paginado: ?take= (máx 200, def. 50) devuelve los últimos;
+        // ?beforeId= página hacia atrás; ?afterId= solo nuevos (polling delta).
+        group.MapGet("/{id:int}/messages", async (int id, int? take, int? beforeId, int? afterId,
+            ClaimsPrincipal user, IOrderService orders) =>
         {
             var order = await orders.GetOrderByIdAsync(id);
             if (order is null) return Results.NotFound();
             if (!CanAccess(user, order)) return Results.Forbid();
 
-            return Results.Ok((await orders.GetMessagesAsync(id)).Select(m => m.ToDto()));
+            var messages = await orders.GetMessagesAsync(id, take ?? 50, beforeId, afterId);
+            return Results.Ok(messages.Select(m => m.ToDto()));
         });
 
         group.MapPost("/{id:int}/messages", async (int id, CreateMessageRequest request,
@@ -111,9 +114,12 @@ public static class OrderEndpoints
             var message = new Message
             {
                 OrderId = id,
-                Content = request.Content,
+                Content = request.Content.Trim(),
                 UserId = user.FindFirstValue(ClaimTypes.NameIdentifier)!,
                 CreatedAt = DateTime.UtcNow,
+                // El rol se congela al enviar: un ascenso posterior no reetiqueta el historial
+                SenderRole = Roles.PrimaryRole(user),
+                IsSystem = false,
             };
             await orders.AddMessageAsync(message);
             return Results.Created($"{ApiRoutes.Orders}/{id}/messages", message.ToDto());

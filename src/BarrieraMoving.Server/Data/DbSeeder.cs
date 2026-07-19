@@ -85,6 +85,34 @@ public static class DbSeeder
             }
         }
 
+        // 2c. Cliente de desarrollo (opcional) — para probar el chat como cliente
+        var clientEmail = config["Seed:ClientEmail"];
+        var clientPassword = config["Seed:ClientPassword"];
+        if (!string.IsNullOrEmpty(clientEmail) && !string.IsNullOrEmpty(clientPassword))
+        {
+            var clientUser = await userManager.FindByEmailAsync(clientEmail);
+            if (clientUser == null)
+            {
+                clientUser = new ApplicationUser
+                {
+                    UserName = clientEmail,
+                    Email = clientEmail,
+                    EmailConfirmed = true,
+                    DisplayName = "Cliente Dev"
+                };
+                var clientResult = await userManager.CreateAsync(clientUser, clientPassword);
+                if (clientResult.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(clientUser, Roles.Client);
+                }
+                else
+                {
+                    logger.LogWarning("No se pudo crear el cliente dev: {Errors}",
+                        string.Join("; ", clientResult.Errors.Select(e => e.Description)));
+                }
+            }
+        }
+
         // 3. Tipos de mudanza
         if (!context.Categories.Any())
         {

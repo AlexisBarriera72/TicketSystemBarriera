@@ -9,4 +9,15 @@ public static class RoleNames
     public const string Office = "Office";
     public const string Driver = "Driver";
     public const string Client = "Client";
+
+    // Etiqueta visible del rol en el chat (petición explícita del cliente:
+    // que se sepa siempre con quién se habla)
+    public static string DisplayLabel(string? role) => role switch
+    {
+        Admin => "Jefe",
+        Office => "Oficina",
+        Driver => "Conductor",
+        Client => "Cliente",
+        _ => ""
+    };
 }

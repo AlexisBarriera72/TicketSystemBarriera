@@ -75,8 +75,16 @@ Authorization: Bearer {{token}}
   "newStatus": "EnRoute"
 }
 
-### 9) Chat: mensajes de la orden
+### 9) Chat: últimos 50 mensajes de la orden
 GET {{host}}/api/v1/orders/1/messages
+Authorization: Bearer {{token}}
+
+### 9b) Chat: página anterior (mensajes más antiguos que el id 20)
+GET {{host}}/api/v1/orders/1/messages?take=50&beforeId=20
+Authorization: Bearer {{token}}
+
+### 9c) Chat: solo los nuevos desde el id 20 (polling delta)
+GET {{host}}/api/v1/orders/1/messages?afterId=20
 Authorization: Bearer {{token}}
 
 ### 10) Chat: enviar mensaje

@@ -16,7 +16,7 @@ public static class MappingExtensions
     public static MessageDto ToDto(this Message m) => new(
         m.Id, m.OrderId, m.Content, m.CreatedAt, m.UserId,
         m.User?.DisplayName ?? m.User?.Email,
-        IsSystem: m.Content.StartsWith('['));
+        m.IsSystem, m.SenderRole);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Description);
 

@@ -137,7 +137,8 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : I
                 OrderId = orderId,
                 UserId = performerId ?? (newDriverId ?? order.AuthorId),
                 Content = systemLog,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                IsSystem = true
             };
 
             context.Messages.Add(systemMessage);
@@ -190,15 +191,40 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : I
         using var context = dbFactory.CreateDbContext();
         context.Messages.Add(message);
         await context.SaveChangesAsync();
+        // Cargar el remitente para que la respuesta de la API traiga el nombre
+        await context.Entry(message).Reference(m => m.User).LoadAsync();
     }
 
-    public async Task<List<Message>> GetMessagesAsync(int orderId)
+    // Paginado: por defecto los últimos `take`; beforeId = página anterior
+    // ("cargar mensajes antiguos"); afterId = solo los nuevos (polling delta).
+    public async Task<List<Message>> GetMessagesAsync(int orderId, int take = 50, int? beforeId = null, int? afterId = null)
     {
         using var context = dbFactory.CreateDbContext();
-        return await context.Messages
+        take = Math.Clamp(take, 1, 200);
+
+        var query = context.Messages
             .Include(m => m.User)
-            .Where(m => m.OrderId == orderId)
-            .OrderBy(m => m.CreatedAt)
+            .Where(m => m.OrderId == orderId);
+
+        if (afterId is not null)
+        {
+            return await query
+                .Where(m => m.Id > afterId)
+                .OrderBy(m => m.Id)
+                .Take(take)
+                .ToListAsync();
+        }
+
+        if (beforeId is not null)
+        {
+            query = query.Where(m => m.Id < beforeId);
+        }
+
+        var page = await query
+            .OrderByDescending(m => m.Id)
+            .Take(take)
             .ToListAsync();
+        page.Reverse(); // devolver siempre en orden cronológico
+        return page;
     }
 }

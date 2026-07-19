@@ -24,7 +24,8 @@ public record MessageDto(
     DateTime CreatedAt,
     string UserId,
     string? UserName,
-    bool IsSystem);
+    bool IsSystem,
+    string? SenderRole);
 
 public record CategoryDto(int Id, string Name, string? Description);
 
