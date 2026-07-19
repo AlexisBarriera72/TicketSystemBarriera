@@ -1,6 +1,11 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+using System.Text;
+using BarrieraMoving.Server.Api;
 using BarrieraMoving.Server.Components;
 using BarrieraMoving.Server.Components.Account;
 using BarrieraMoving.Server.Data;
@@ -17,13 +22,44 @@ builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<TokenService>();
 
-builder.Services.AddAuthentication(options =>
+// Cookies para el dashboard web; JWT Bearer para la API (teléfonos MAUI).
+// La clave de firma vive en user-secrets, nunca en appsettings.json.
+var jwtKey = builder.Configuration["Jwt:SigningKey"];
+var authBuilder = builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = IdentityConstants.ApplicationScheme;
         options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-    })
-    .AddIdentityCookies();
+    });
+authBuilder.AddIdentityCookies();
+
+if (!string.IsNullOrEmpty(jwtKey))
+{
+    authBuilder.AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            RoleClaimType = ClaimTypes.Role,
+            NameClaimType = ClaimTypes.Name,
+        };
+    });
+}
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(ApiAuth.Policy, p => p
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser())
+    .AddPolicy(ApiAuth.StaffPolicy, p => p
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireRole(Roles.Admin, Roles.Office));
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
@@ -42,12 +78,15 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
+builder.Services.AddOpenApi();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
+    app.MapOpenApi(); // especificación en /openapi/v1.json
 }
 else
 {
@@ -66,6 +105,19 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+// API REST /api/v1 para los clientes (MAUI en Fase 2)
+if (!string.IsNullOrEmpty(jwtKey))
+{
+    app.MapAuthApi();
+    app.MapOrderApi();
+    app.MapCatalogApi();
+}
+else
+{
+    app.Logger.LogWarning(
+        "API deshabilitada: falta Jwt:SigningKey. Configúrala con 'dotnet user-secrets set \"Jwt:SigningKey\" ...'.");
+}
 
 // Datos iniciales: roles, admin (desde user-secrets) y tipos de mudanza
 using (var scope = app.Services.CreateScope())

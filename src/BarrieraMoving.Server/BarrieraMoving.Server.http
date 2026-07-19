@@ -1,0 +1,93 @@
+@host = https://localhost:7171
+
+# Credenciales de desarrollo: las mismas que configuraste en user-secrets
+# (Seed:AdminEmail / Seed:AdminPassword). No pongas contraseñas reales en este archivo.
+@adminEmail = admin@system.com
+@adminPassword = CAMBIA_ESTO
+
+### 1) Login → devuelve accessToken + refreshToken
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### Pega aquí el accessToken de la respuesta anterior
+@token = PEGA_AQUI_EL_ACCESS_TOKEN
+
+### 2) Renovar tokens con el refresh token
+POST {{host}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "PEGA_AQUI_EL_REFRESH_TOKEN"
+}
+
+### 3) Tipos de mudanza
+GET {{host}}/api/v1/categories
+Authorization: Bearer {{token}}
+
+### 4) Mis órdenes (según rol)
+GET {{host}}/api/v1/orders
+Authorization: Bearer {{token}}
+
+### 5) Crear una orden
+POST {{host}}/api/v1/orders
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Mudanza de prueba",
+  "description": "Del punto A al punto B",
+  "categoryId": 1,
+  "priority": "Medium"
+}
+
+### 6) Detalle de una orden
+GET {{host}}/api/v1/orders/1
+Authorization: Bearer {{token}}
+
+### 7) Asignar conductor (Admin/Oficina)
+POST {{host}}/api/v1/orders/1/assign
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "driverId": "ID_DEL_CONDUCTOR"
+}
+
+### 8) Cambiar estado
+POST {{host}}/api/v1/orders/1/status
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "newStatus": "EnRoute"
+}
+
+### 9) Chat: mensajes de la orden
+GET {{host}}/api/v1/orders/1/messages
+Authorization: Bearer {{token}}
+
+### 10) Chat: enviar mensaje
+POST {{host}}/api/v1/orders/1/messages
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "content": "Hola, vamos en camino"
+}
+
+### 11) Usuarios (Admin/Oficina) — filtro opcional ?role=Driver
+GET {{host}}/api/v1/users?role=Driver
+Authorization: Bearer {{token}}
+
+### 12) KPIs del dashboard
+GET {{host}}/api/v1/reports/stats
+Authorization: Bearer {{token}}
+
+### 13) Export Excel
+GET {{host}}/api/v1/reports/orders.xlsx
+Authorization: Bearer {{token}}
