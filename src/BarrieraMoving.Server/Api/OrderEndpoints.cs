@@ -23,7 +23,7 @@ public static class OrderEndpoints
         {
             var order = await orders.GetOrderByIdAsync(id);
             if (order is null) return Results.NotFound();
-            if (!CanAccess(user, order)) return Results.Forbid();
+            if (!CanAccess(user, order)) return ApiForbid();
             return Results.Ok(order.ToDto());
         });
 
@@ -81,7 +81,7 @@ public static class OrderEndpoints
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
             var isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
             var isAssignedDriver = user.IsInRole(Roles.Driver) && order.AssignedDriverId == userId;
-            if (!isStaff && !isAssignedDriver) return Results.Forbid();
+            if (!isStaff && !isAssignedDriver) return ApiForbid();
 
             var ok = await orders.UpdateOrderStatusAsync(id, request.NewStatus, null, userId, bypassValidation: isStaff);
             return ok ? Results.NoContent() : Results.BadRequest(
@@ -95,7 +95,7 @@ public static class OrderEndpoints
         {
             var order = await orders.GetOrderByIdAsync(id);
             if (order is null) return Results.NotFound();
-            if (!CanAccess(user, order)) return Results.Forbid();
+            if (!CanAccess(user, order)) return ApiForbid();
 
             var messages = await orders.GetMessagesAsync(id, take ?? 50, beforeId, afterId);
             return Results.Ok(messages.Select(m => m.ToDto()));
@@ -109,7 +109,7 @@ public static class OrderEndpoints
 
             var order = await orders.GetOrderByIdAsync(id);
             if (order is null) return Results.NotFound();
-            if (!CanAccess(user, order)) return Results.Forbid();
+            if (!CanAccess(user, order)) return ApiForbid();
 
             var message = new Message
             {
@@ -127,6 +127,11 @@ public static class OrderEndpoints
 
         return app;
     }
+
+    // Forbid con el esquema JWT explícito: el Forbid por defecto usa la cookie de
+    // Identity y responde con un 302 al login web — la API debe devolver 403 limpio
+    private static IResult ApiForbid() =>
+        Results.Forbid(authenticationSchemes: [Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme]);
 
     // Admin/Oficina ven todo; el conductor asignado y el autor ven su orden
     private static bool CanAccess(ClaimsPrincipal user, Order order)
