@@ -22,6 +22,7 @@ builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<ITimeService, TimeService>();
 builder.Services.AddScoped<TokenService>();
 
 // Cookies para el dashboard web; JWT Bearer para la API (teléfonos MAUI).
@@ -59,7 +60,10 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser())
     .AddPolicy(ApiAuth.StaffPolicy, p => p
         .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-        .RequireRole(Roles.Admin, Roles.Office));
+        .RequireRole(Roles.Admin, Roles.Office))
+    .AddPolicy(ApiAuth.EmployeePolicy, p => p
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireRole(Roles.Admin, Roles.Office, Roles.Driver));
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
@@ -120,6 +124,7 @@ if (!string.IsNullOrEmpty(jwtKey))
     app.MapAuthApi();
     app.MapOrderApi();
     app.MapCatalogApi();
+    app.MapTimeApi();
 }
 else
 {

@@ -56,6 +56,35 @@ public static class DbSeeder
                 "Configúralos con 'dotnet user-secrets set'.");
         }
 
+        // 2b. Conductor de desarrollo (opcional) — para probar la app móvil y el
+        //     gating de fichaje sin crear usuarios a mano. Mismas reglas: user-secrets.
+        var driverEmail = config["Seed:DriverEmail"];
+        var driverPassword = config["Seed:DriverPassword"];
+        if (!string.IsNullOrEmpty(driverEmail) && !string.IsNullOrEmpty(driverPassword))
+        {
+            var driverUser = await userManager.FindByEmailAsync(driverEmail);
+            if (driverUser == null)
+            {
+                driverUser = new ApplicationUser
+                {
+                    UserName = driverEmail,
+                    Email = driverEmail,
+                    EmailConfirmed = true,
+                    DisplayName = "Conductor Dev"
+                };
+                var driverResult = await userManager.CreateAsync(driverUser, driverPassword);
+                if (driverResult.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(driverUser, Roles.Driver);
+                }
+                else
+                {
+                    logger.LogWarning("No se pudo crear el conductor dev: {Errors}",
+                        string.Join("; ", driverResult.Errors.Select(e => e.Description)));
+                }
+            }
+        }
+
         // 3. Tipos de mudanza
         if (!context.Categories.Any())
         {

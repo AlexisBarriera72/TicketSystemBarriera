@@ -22,4 +22,11 @@ public static class MappingExtensions
 
     public static UserSummaryDto ToDto(this ApplicationUser u, IEnumerable<string>? roles = null) =>
         new(u.Id, u.DisplayName, u.Email, roles?.ToList() ?? []);
+
+    public static TimeEntryDto ToDto(this TimeEntry t) => new(
+        t.Id, t.UserId, t.User?.DisplayName ?? t.User?.Email,
+        t.ClockInUtc, t.ClockOutUtc,
+        t.ClockInLatitude, t.ClockInLongitude,
+        t.ClockOutLatitude, t.ClockOutLongitude,
+        t.AutoClosed);
 }

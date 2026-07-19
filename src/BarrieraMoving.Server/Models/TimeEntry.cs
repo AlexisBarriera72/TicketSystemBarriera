@@ -17,4 +17,8 @@ public class TimeEntry
     public double? ClockInLongitude { get; set; }
     public double? ClockOutLatitude { get; set; }
     public double? ClockOutLongitude { get; set; }
+
+    // true = el servidor cerró la jornada al tope máximo porque el empleado
+    // olvidó fichar la salida; la oficina debe verificar las horas reales
+    public bool AutoClosed { get; set; }
 }

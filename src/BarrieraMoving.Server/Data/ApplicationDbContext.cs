@@ -41,6 +41,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(t => t.OrderId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Garantía a nivel de BD: UNA sola jornada abierta por empleado.
+        // Dos clock-in simultáneos no pueden colarse (es dato de nómina).
+        builder.Entity<TimeEntry>()
+            .HasIndex(t => t.UserId)
+            .HasFilter("[ClockOutUtc] IS NULL")
+            .IsUnique()
+            .HasDatabaseName("IX_TimeEntries_OneOpenPerUser");
+
         builder.Entity<RefreshToken>()
             .HasIndex(t => t.TokenHash)
             .IsUnique();

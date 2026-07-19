@@ -9,4 +9,5 @@ public static class ApiRoutes
     public const string Categories = $"{Base}/categories";
     public const string Users = $"{Base}/users";
     public const string Reports = $"{Base}/reports";
+    public const string Time = $"{Base}/time";
 }

@@ -4,5 +4,6 @@ namespace BarrieraMoving.Server.Api;
 public static class ApiAuth
 {
     public const string Policy = "ApiJwt";
-    public const string StaffPolicy = "ApiJwtStaff"; // Admin u Oficina
+    public const string StaffPolicy = "ApiJwtStaff";       // Admin u Oficina
+    public const string EmployeePolicy = "ApiJwtEmployee"; // Admin, Oficina o Conductor (no clientes)
 }
