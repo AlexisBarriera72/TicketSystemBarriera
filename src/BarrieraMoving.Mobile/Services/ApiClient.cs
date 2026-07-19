@@ -23,6 +23,35 @@ public class ApiClient(HttpClient http)
         return await response.Content.ReadFromJsonAsync<OrderDto>(ApiJson.Options);
     }
 
+    // --- CHAT DE LA ORDEN ---
+
+    public async Task<List<MessageDto>> GetOrderMessagesAsync(int orderId, int take = 50,
+        int? beforeId = null, int? afterId = null)
+    {
+        var query = $"?take={take}";
+        if (beforeId is not null) query += $"&beforeId={beforeId}";
+        if (afterId is not null) query += $"&afterId={afterId}";
+        return await http.GetFromJsonAsync<List<MessageDto>>(
+            $"{ApiRoutes.Orders}/{orderId}/messages{query}", ApiJson.Options) ?? [];
+    }
+
+    public async Task<(MessageDto? Message, string? Error)> SendMessageAsync(int orderId, string content)
+    {
+        var response = await http.PostAsJsonAsync(
+            $"{ApiRoutes.Orders}/{orderId}/messages", new CreateMessageRequest(content), ApiJson.Options);
+
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            return (null, "No tienes acceso a esta orden.");
+        }
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            return (null, "El mensaje no puede estar vacío.");
+        }
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<MessageDto>(ApiJson.Options), null);
+    }
+
     // --- FICHAJE (la hora la pone el servidor; aquí solo van coordenadas opcionales) ---
 
     public async Task<TimeEntryDto?> GetCurrentTimeEntryAsync()

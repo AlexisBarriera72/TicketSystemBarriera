@@ -23,6 +23,10 @@
         <span class="dismiss">🗙</span>
     </div>
 
+    <script>
+        // Baja el hilo del chat al último mensaje (lo llama Chat.razor)
+        window.chatScrollToBottom = (el) => { if (el) { el.scrollTop = el.scrollHeight; } };
+    </script>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
 </body>

@@ -1,0 +1,267 @@
+@page "/orders/{Id:int}/chat"
+@implements IDisposable
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ClockState Clock
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="d-flex align-items-center mb-2">
+    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))">←</button>
+    <div>
+        <div class="fw-bold">💬 Orden #@Id</div>
+        @if (order is not null)
+        {
+            <div class="text-muted small">@order.Title</div>
+        }
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else if (loadError is not null)
+{
+    <div class="alert alert-warning">@loadError</div>
+    <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+}
+else
+{
+    <div @ref="chatBox" class="bg-light border rounded-3 p-2 mb-2"
+         style="height: calc(100vh - 250px); overflow-y: auto;">
+        @if (canLoadOlder)
+        {
+            <div class="text-center mb-2">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadOlderAsync">
+                    Cargar mensajes anteriores
+                </button>
+            </div>
+        }
+        @if (!messages.Any())
+        {
+            <p class="text-center text-muted py-4">No hay mensajes aún. ¡Escribe el primero!</p>
+        }
+        else
+        {
+            @foreach (var m in messages)
+            {
+                @if (m.IsSystem)
+                {
+                    <div class="text-center my-2">
+                        <span class="badge rounded-pill bg-light text-muted border px-3 text-wrap">
+                            @m.Content.Replace("[EVENTO]", "").Replace("[SISTEMA]", "")
+                        </span>
+                        <div style="font-size: 0.6rem;" class="text-muted">@m.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+                    </div>
+                }
+                else
+                {
+                    bool isMe = m.UserId == myUserId;
+                    <div class="d-flex mb-2 @(isMe ? "justify-content-end" : "justify-content-start")">
+                        <div class="shadow-sm rounded-3 @(isMe ? "bg-primary text-white" : "bg-white border")"
+                             style="max-width: 85%; min-width: 140px; padding: 8px 12px;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>
+                                    <span class="fw-bold" style="font-size: 0.75rem;">@(m.UserName ?? "—")</span>
+                                    @if (!string.IsNullOrEmpty(m.SenderRole))
+                                    {
+                                        <span class="badge @(isMe ? "bg-light text-dark" : RoleBadgeClass(m.SenderRole)) ms-1"
+                                              style="font-size: 0.55rem;">@RoleNames.DisplayLabel(m.SenderRole)</span>
+                                    }
+                                </span>
+                                <small class="opacity-75 ms-2" style="font-size: 0.65rem;">
+                                    @m.CreatedAt.ToLocalTime().ToString("HH:mm")
+                                </small>
+                            </div>
+                            <div class="text-break">@m.Content</div>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+
+    @if (sendError is not null)
+    {
+        <div class="alert alert-warning py-2 mb-2">@sendError</div>
+    }
+
+    <div class="input-group">
+        <input class="form-control" placeholder="Escribir mensaje..."
+               @bind="draft" @bind:event="oninput" disabled="@sending"
+               @onkeyup="@(e => e.Key == "Enter" ? SendAsync() : Task.CompletedTask)" />
+        <button class="btn btn-primary px-3" @onclick="SendAsync" disabled="@sending">
+            @(sending ? "…" : "➤")
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private OrderDto? order;
+    private List<MessageDto> messages = [];
+    private string myUserId = "";
+    private string draft = "";
+    private bool loading = true;
+    private bool sending;
+    private string? loadError;
+    private string? sendError;
+    private bool canLoadOlder;
+    private bool scrollPending;
+    private ElementReference chatBox;
+    private System.Threading.Timer? pollTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        var user = await Auth.GetCurrentUserAsync();
+        myUserId = user?.Id ?? "";
+
+        // Mismo gating que el resto de pantallas de órdenes (solo conductores)
+        if (UserRoles.IsDriverOnly(user))
+        {
+            try
+            {
+                await Clock.EnsureLoadedAsync(Api);
+            }
+            catch (Exception) { }
+            if (Clock.OpenEntry is null)
+            {
+                Nav.NavigateTo("/clock");
+                return;
+            }
+        }
+
+        await LoadAsync();
+
+        // Polling delta cada 5 s mientras el chat está abierto (sin trabajo en segundo plano)
+        pollTimer = new System.Threading.Timer(
+            _ => _ = InvokeAsync(PollAsync), null,
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        loadError = null;
+        StateHasChanged();
+        try
+        {
+            order = await Api.GetOrderAsync(Id);
+            if (order is null)
+            {
+                loadError = "Orden no encontrada o sin acceso.";
+                loading = false;
+                return;
+            }
+            messages = await Api.GetOrderMessagesAsync(Id);
+            canLoadOlder = messages.Count >= 50;
+            scrollPending = true;
+        }
+        catch (Exception)
+        {
+            if (!await Auth.IsLoggedInAsync())
+            {
+                Nav.NavigateTo("/login");
+                return;
+            }
+            loadError = "No se pudo conectar al servidor.";
+        }
+        loading = false;
+    }
+
+    private async Task PollAsync()
+    {
+        if (loading) return;
+        try
+        {
+            var lastId = messages.Count > 0 ? messages[^1].Id : 0;
+            var fresh = await Api.GetOrderMessagesAsync(Id, take: 200, afterId: lastId);
+            if (fresh.Count > 0)
+            {
+                messages.AddRange(fresh);
+                scrollPending = true;
+                StateHasChanged();
+            }
+        }
+        catch (Exception)
+        {
+            // sin red: el siguiente tick reintenta solo
+        }
+    }
+
+    private async Task LoadOlderAsync()
+    {
+        if (messages.Count == 0) return;
+        try
+        {
+            var older = await Api.GetOrderMessagesAsync(Id, take: 50, beforeId: messages[0].Id);
+            messages.InsertRange(0, older);
+            canLoadOlder = older.Count >= 50;
+        }
+        catch (Exception)
+        {
+            sendError = "No se pudieron cargar los mensajes anteriores.";
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        if (sending || string.IsNullOrWhiteSpace(draft)) return;
+        sending = true;
+        sendError = null;
+        StateHasChanged();
+        try
+        {
+            var (_, error) = await Api.SendMessageAsync(Id, draft.Trim());
+            if (error is not null)
+            {
+                sendError = error; // el texto se conserva en el input
+            }
+            else
+            {
+                draft = "";
+                await PollAsync(); // trae mi mensaje (y los que llegaran mientras)
+            }
+        }
+        catch (Exception)
+        {
+            // Sin conexión: fallo VISIBLE, el texto queda en el input para reintentar.
+            // La cola offline llegará en la Fase 5 junto a la de fotos.
+            sendError = "Sin conexión — el mensaje NO se envió. Revisa la red y reintenta.";
+        }
+        sending = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (scrollPending)
+        {
+            scrollPending = false;
+            try
+            {
+                await JS.InvokeVoidAsync("chatScrollToBottom", chatBox);
+            }
+            catch (Exception) { }
+        }
+    }
+
+    private static string RoleBadgeClass(string? role) => role switch
+    {
+        RoleNames.Admin => "bg-dark",
+        RoleNames.Office => "bg-primary",
+        RoleNames.Driver => "bg-warning text-dark",
+        RoleNames.Client => "bg-secondary",
+        _ => "bg-light text-dark border"
+    };
+
+    public void Dispose() => pollTimer?.Dispose();
+}
