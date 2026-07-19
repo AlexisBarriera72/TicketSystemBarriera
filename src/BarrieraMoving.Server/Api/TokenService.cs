@@ -43,6 +43,19 @@ public class TokenService(
         return stored.User;
     }
 
+    // Revoca un refresh token (logout). Idempotente: no falla si ya estaba revocado o no existe.
+    public async Task RevokeRefreshTokenAsync(string rawToken)
+    {
+        using var context = dbFactory.CreateDbContext();
+        var hash = Hash(rawToken);
+        var stored = await context.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash);
+        if (stored is { RevokedUtc: null })
+        {
+            stored.RevokedUtc = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+        }
+    }
+
     private string CreateAccessToken(ApplicationUser user, IList<string> roles, out DateTime expiresAt)
     {
         var key = config["Jwt:SigningKey"]

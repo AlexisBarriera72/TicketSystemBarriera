@@ -41,6 +41,17 @@ public static class AuthEndpoints
                 : Results.Ok(await tokenService.IssueTokensAsync(user));
         });
 
+        // Logout: revoca el refresh token en el servidor (el cliente borra los suyos).
+        // Devuelve 204 siempre para no revelar si el token era válido.
+        group.MapPost("/logout", async (RefreshRequest request, TokenService tokenService) =>
+        {
+            if (!string.IsNullOrWhiteSpace(request.RefreshToken))
+            {
+                await tokenService.RevokeRefreshTokenAsync(request.RefreshToken);
+            }
+            return Results.NoContent();
+        });
+
         return app;
     }
 }
