@@ -39,7 +39,8 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
 - Status flow     → Requested → Assigned → EnRoute → InProgress → PendingSignature → Completed
 
 ## Roadmap (build in this order)
-1. Refactor into a Web API; move `TicketService` + EF Core behind it.
+1. ✅ Refactor into a Web API; move `TicketService` + EF Core behind it. (Done:
+   co-hosted `/api/v1` + JWT in BarrieraMoving.Server; dashboard keeps cookies.)
 2. MAUI Blazor Hybrid shell + login against the API.
 3. Clock-in / clock-out — small first vertical slice to prove the whole stack.
 4. Chat — port `TicketComment`; add client + office as participants.
@@ -51,17 +52,27 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
 ## Reference material
 - `/docs/*.pdf`            → university module PDFs = reference implementation + spec
 - `/docs/project-plan.md`  → full feasibility analysis, risks, and rationale
-- Existing domain model lives in `/Models`, `/Enums`, `/Services`, `/Data`.
+- Domain model lives in `src/BarrieraMoving.Server` (`/Models`, `/Services`, `/Data`, `/Api`)
+  plus `src/BarrieraMoving.Shared` (`/Dtos`, `/Enums`). Rename Ticket→Order is done.
 
 ## Build / run
+- Layout (Phase 1 done): `src/BarrieraMoving.Server` = Blazor dashboard + `/api/v1`
+  (JWT) + EF Core; `src/BarrieraMoving.Shared` = DTOs/enums for future MAUI client.
 - Restore:      `dotnet restore`
 - Build:        `dotnet build`
+- Run:          `dotnet run --project src/BarrieraMoving.Server` (http: :5070)
 - Migrations:   `dotnet ef migrations add <Name>` / `dotnet ef database update`
+  (run from `src/BarrieraMoving.Server`; DB is localdb `BarrieraMovingDB`)
+- Dev secrets in user-secrets (NOT in git): `Seed:AdminEmail`, `Seed:AdminPassword`,
+  `Jwt:SigningKey`. Missing → app warns, skips admin seed / disables the API.
+- API smoke tests: `src/BarrieraMoving.Server/BarrieraMoving.Server.http`
 - Platform note: iOS builds require macOS + Xcode. Android + the Web API build on Windows.
 
 ## Environment gotchas
 - No official Claude Code plugin for classic Visual Studio 2026; this repo is edited
   from VS Code / terminal. Visual Studio can still be used to build/debug in parallel.
+- VS Code's C# Dev Kit build host can lock project folders on Windows (renames fail
+  with "Permission denied"); deleting the project's bin/ and obj/ releases the lock.
 - Verify UI/flows by running the app yourself — the agent builds and reads errors but
   does not click through the running app.
 

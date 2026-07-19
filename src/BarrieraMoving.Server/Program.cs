@@ -78,6 +78,10 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
+// La API acepta y devuelve enums como texto ("EnRoute"), no como números
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -94,7 +98,11 @@ else
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+// La página /not-found es solo para el dashboard web; la API devuelve sus
+// códigos de estado tal cual (sin re-ejecutar hacia una página Blazor)
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/api"),
+    web => web.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true));
 app.UseHttpsRedirection();
 
 app.UseAntiforgery();
