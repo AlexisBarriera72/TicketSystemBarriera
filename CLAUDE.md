@@ -41,7 +41,8 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
 ## Roadmap (build in this order)
 1. ✅ Refactor into a Web API; move `TicketService` + EF Core behind it. (Done:
    co-hosted `/api/v1` + JWT in BarrieraMoving.Server; dashboard keeps cookies.)
-2. MAUI Blazor Hybrid shell + login against the API.
+2. ✅ MAUI Blazor Hybrid shell + login against the API. (Done:
+   src/BarrieraMoving.Mobile, Android-only; ver docs/mobile-dev.md.)
 3. Clock-in / clock-out — small first vertical slice to prove the whole stack.
 4. Chat — port `TicketComment`; add client + office as participants.
 5. Photo + GPS + timestamp updates posted into the chat.
@@ -56,8 +57,9 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
   plus `src/BarrieraMoving.Shared` (`/Dtos`, `/Enums`). Rename Ticket→Order is done.
 
 ## Build / run
-- Layout (Phase 1 done): `src/BarrieraMoving.Server` = Blazor dashboard + `/api/v1`
-  (JWT) + EF Core; `src/BarrieraMoving.Shared` = DTOs/enums for future MAUI client.
+- Layout: `src/BarrieraMoving.Server` = Blazor dashboard + `/api/v1` (JWT) + EF Core;
+  `src/BarrieraMoving.Shared` = DTOs/enums; `src/BarrieraMoving.Mobile` = MAUI Blazor
+  Hybrid (Android; tokens en SecureStorage, ver docs/mobile-dev.md para emulador/LAN).
 - Restore:      `dotnet restore`
 - Build:        `dotnet build`
 - Run:          `dotnet run --project src/BarrieraMoving.Server` (http: :5070)
