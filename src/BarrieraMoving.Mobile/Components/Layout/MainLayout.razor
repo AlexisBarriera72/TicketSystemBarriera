@@ -1,17 +1,34 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@inject AuthService Auth
+@inject NavigationManager Nav
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<div class="app-shell">
+    <header class="app-header d-flex justify-content-between align-items-center px-3">
+        <span class="fw-bold">🚚 Barriera Moving</span>
+        @if (isLoggedIn)
+        {
+            <button class="btn btn-sm btn-outline-light" @onclick="LogoutAsync">Salir</button>
+        }
+    </header>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
+    <main class="app-content p-3">
+        @Body
     </main>
 </div>
+
+@code {
+    private bool isLoggedIn;
+
+    // Se ejecuta en cada navegación; mantiene el botón "Salir" sincronizado
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoggedIn = await Auth.IsLoggedInAsync();
+    }
+
+    private async Task LogoutAsync()
+    {
+        await Auth.LogoutAsync();
+        isLoggedIn = false;
+        Nav.NavigateTo("/login");
+    }
+}

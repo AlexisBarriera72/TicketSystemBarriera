@@ -1,0 +1,108 @@
+@page "/"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h4 class="mb-0">Mis Órdenes</h4>
+    <button class="btn btn-sm btn-outline-primary" @onclick="LoadAsync" disabled="@loading">
+        ↻ Actualizar
+    </button>
+</div>
+
+@if (user is not null)
+{
+    <p class="text-muted small mb-3">@(user.DisplayName ?? user.Email) · @string.Join(", ", user.Roles)</p>
+}
+
+@if (loading)
+{
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Cargando órdenes...</p>
+    </div>
+}
+else if (error is not null)
+{
+    <div class="alert alert-warning">@error</div>
+    <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+}
+else if (orders.Count == 0)
+{
+    <div class="alert alert-light border text-center p-4">
+        <div style="font-size: 2rem;">📦</div>
+        <p class="mb-0 mt-2">No tienes órdenes todavía.</p>
+    </div>
+}
+else
+{
+    @foreach (var order in orders)
+    {
+        <div class="card mb-2 shadow-sm" style="cursor: pointer;"
+             @onclick="@(() => Nav.NavigateTo($"/orders/{order.Id}"))">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="me-2">
+                        <div class="fw-bold">#@order.Id · @order.Title</div>
+                        <div class="text-muted small">
+                            @order.CategoryName · @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")
+                        </div>
+                    </div>
+                    <span class="badge @GetStatusClass(order.Status)">@order.Status</span>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<OrderDto> orders = [];
+    private UserSummaryDto? user;
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        user = await Auth.GetCurrentUserAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        StateHasChanged();
+        try
+        {
+            orders = await Api.GetOrdersAsync();
+        }
+        catch (Exception)
+        {
+            // Si el auto-refresh falló, TokenStore quedó limpio → volver al login
+            if (!await Auth.IsLoggedInAsync())
+            {
+                Nav.NavigateTo("/login");
+                return;
+            }
+            error = "No se pudieron cargar las órdenes. Revisa la conexión con el servidor.";
+        }
+        loading = false;
+    }
+
+    // Mismos colores de estado que el dashboard web
+    private static string GetStatusClass(OrderStatus status) => status switch
+    {
+        OrderStatus.Requested => "bg-info text-dark",
+        OrderStatus.Assigned => "bg-secondary",
+        OrderStatus.EnRoute => "bg-warning text-dark",
+        OrderStatus.InProgress => "bg-warning text-dark",
+        OrderStatus.PendingSignature => "bg-primary",
+        OrderStatus.Completed => "bg-success",
+        _ => "bg-secondary"
+    };
+}

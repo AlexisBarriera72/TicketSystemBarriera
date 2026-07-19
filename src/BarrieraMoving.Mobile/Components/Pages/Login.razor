@@ -1,0 +1,80 @@
+@page "/login"
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="mx-auto" style="max-width: 420px;">
+    <h4 class="mb-3">Iniciar Sesión</h4>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger py-2">@error</div>
+    }
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input class="form-control" type="email" inputmode="email" autocapitalize="none"
+               @bind="email" @bind:event="oninput" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input class="form-control" type="password" @bind="password" @bind:event="oninput" />
+    </div>
+
+    <button class="btn btn-primary w-100" @onclick="DoLoginAsync" disabled="@busy">
+        @(busy ? "Conectando..." : "Entrar")
+    </button>
+
+    @* El servidor es configurable por entorno: emulador, teléfono en LAN, producción *@
+    <details class="mt-4">
+        <summary class="text-muted small">Servidor: @serverUrl</summary>
+        <div class="mt-2">
+            <input class="form-control form-control-sm" @bind="serverUrl" />
+            <div class="form-text">
+                Emulador: http://10.0.2.2:5070 · Teléfono físico: http://IP-del-PC:5070
+            </div>
+        </div>
+    </details>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string serverUrl = ApiOptions.BaseUrl;
+    private string? error;
+    private bool busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/");
+        }
+    }
+
+    private async Task DoLoginAsync()
+    {
+        if (busy) return;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            error = "Escribe tu email y contraseña.";
+            return;
+        }
+
+        busy = true;
+        ApiOptions.BaseUrl = serverUrl; // persiste el servidor elegido antes de conectar
+        var (success, loginError) = await Auth.LoginAsync(email.Trim(), password);
+        busy = false;
+
+        if (success)
+        {
+            Nav.NavigateTo("/");
+        }
+        else
+        {
+            error = loginError;
+        }
+    }
+}
