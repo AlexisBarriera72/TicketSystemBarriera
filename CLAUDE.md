@@ -48,7 +48,11 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
    auto-cierre a Time:MaxShiftHours con flag AutoClosed; gating solo Drivers;
    ubicación opcional que nunca bloquea; dashboard + hoja Excel "Fichajes".
    Cola offline diferida a propósito — se hará junto a la cola de fotos (fase 5).)
-4. Chat — port `TicketComment`; add client + office as participants.
+4. ✅ Chat. (Done: móvil /orders/{id}/chat + web ManageOrder unificados;
+   rol del remitente CONGELADO al enviar (Message.SenderRole) + flag IsSystem
+   real; polling delta 5s (afterId) en ambos — SignalR descartado a propósito
+   hasta la fase 7; paginado últimos 50 + beforeId; cliente participa desde
+   su orden; sin lector de "leído" (llegará con las notificaciones push).)
 5. Photo + GPS + timestamp updates posted into the chat.
 6. Embedded e-signature + completion gate + email copy to client.
 7. Live location / ETA — hardest; scope to active jobs only, not always-on.
