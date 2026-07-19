@@ -13,3 +13,21 @@
 .app-content {
     padding-bottom: 2rem;
 }
+
+/* El WebView mantiene :focus tras el tap, dejando los botones outline "pegados"
+   en blanco sobre el header azul. Los fijamos siempre transparentes con texto blanco. */
+.app-header .btn,
+.app-header .btn:hover,
+.app-header .btn:focus,
+.app-header .btn:focus-visible,
+.app-header .btn:active {
+    color: #fff;
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.7);
+    box-shadow: none;
+    outline: none;
+}
+
+.app-header .btn:active {
+    background-color: rgba(255, 255, 255, 0.2); /* feedback breve al pulsar */
+}

@@ -12,6 +12,11 @@ public static class UserRoles
         !user.Roles.Contains(RoleNames.Admin) &&
         !user.Roles.Contains(RoleNames.Office);
 
+    // Admin/Oficina: ven el equipo (quién está fichado) también desde el teléfono
+    public static bool IsManager(UserSummaryDto? user) =>
+        user is not null &&
+        (user.Roles.Contains(RoleNames.Admin) || user.Roles.Contains(RoleNames.Office));
+
     // Personal que puede fichar (los clientes no)
     public static bool IsStaff(UserSummaryDto? user) =>
         user is not null &&

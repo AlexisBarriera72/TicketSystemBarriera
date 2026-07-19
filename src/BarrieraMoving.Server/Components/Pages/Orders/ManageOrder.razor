@@ -35,7 +35,7 @@
                 <div class="row">
                     <div class="col-md-8">
                         <p class="text-muted small mb-1">Cliente: <strong>@(order.Author?.DisplayName ?? order.Author?.Email)</strong></p>
-                        <p class="text-muted small">Fecha: @order.CreatedAt.ToString("f")</p>
+                        <p class="text-muted small">Fecha: @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
                         <hr />
                         <p class="fs-5">@order.Description</p>
                     </div>

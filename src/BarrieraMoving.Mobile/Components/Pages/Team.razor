@@ -1,0 +1,146 @@
+@page "/team"
+@implements IDisposable
+@inject ApiClient Api
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="mx-auto" style="max-width: 520px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">👥 Equipo</h4>
+        <button class="btn btn-sm btn-outline-primary" @onclick="LoadAsync" disabled="@loading">
+            ↻ Actualizar
+        </button>
+    </div>
+
+    @if (loading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else if (error is not null)
+    {
+        <div class="alert alert-warning">@error</div>
+        <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+    }
+    else
+    {
+        <h6 class="text-muted">Trabajando ahora</h6>
+        @if (!active.Any())
+        {
+            <div class="alert alert-light border text-center py-3 mb-3">
+                Nadie está fichado en este momento.
+            </div>
+        }
+        else
+        {
+            <ul class="list-group mb-3">
+                @foreach (var entry in active)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold">@(entry.UserName ?? entry.UserId)</div>
+                            <div class="text-muted small">Desde @entry.ClockInUtc.ToLocalTime().ToString("HH:mm")</div>
+                        </div>
+                        <span class="badge bg-success">@FormatElapsed(DateTime.UtcNow - entry.ClockInUtc)</span>
+                    </li>
+                }
+            </ul>
+        }
+
+        <h6 class="text-muted mt-3">Fichajes recientes (7 días)</h6>
+        @if (!recent.Any())
+        {
+            <p class="text-muted small">Sin fichajes esta semana.</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var entry in recent)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <span class="small">
+                            <strong>@(entry.UserName ?? "—")</strong><br />
+                            @entry.ClockInUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                            – @(entry.ClockOutUtc?.ToLocalTime().ToString("HH:mm") ?? "…")
+                        </span>
+                        <span>
+                            @if (entry.ClockOutUtc is null)
+                            {
+                                <span class="badge bg-success">Abierta</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-dark border">
+                                    @Math.Round((entry.ClockOutUtc.Value - entry.ClockInUtc).TotalHours, 1)h
+                                </span>
+                            }
+                            @if (entry.AutoClosed)
+                            {
+                                <span class="badge bg-danger ms-1" title="Cerrada automáticamente — verificar horas">Auto</span>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    }
+</div>
+
+@code {
+    private bool loading = true;
+    private string? error;
+    private List<TimeEntryDto> active = [];
+    private List<TimeEntryDto> recent = [];
+    private System.Threading.Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        // Vista de gestión: solo Admin/Oficina (el servidor igualmente devuelve 403 al resto)
+        if (!UserRoles.IsManager(await Auth.GetCurrentUserAsync()))
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        await LoadAsync();
+        // Refresca el tiempo transcurrido de los que están trabajando
+        timer = new System.Threading.Timer(_ => InvokeAsync(StateHasChanged), null,
+            TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        StateHasChanged();
+        try
+        {
+            active = await Api.GetActiveTeamEntriesAsync();
+            recent = await Api.GetTeamEntriesAsync(7);
+        }
+        catch (Exception)
+        {
+            if (!await Auth.IsLoggedInAsync())
+            {
+                Nav.NavigateTo("/login");
+                return;
+            }
+            error = "No se pudo conectar al servidor.";
+        }
+        loading = false;
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+        return elapsed.TotalHours >= 1 ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m" : $"{elapsed.Minutes}m";
+    }
+
+    public void Dispose() => timer?.Dispose();
+}

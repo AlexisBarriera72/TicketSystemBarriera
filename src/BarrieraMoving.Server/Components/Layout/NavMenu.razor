@@ -31,13 +31,17 @@
                     </NavLink>
                 </div>
 
-                @* ---- SECCIÓN 3: Solo para Administradores ---- *@
-                <AuthorizeView Roles="@Roles.Admin" Context="adminContext">
+                @* ---- SECCIÓN 3: Dashboard para Admin y Oficina ---- *@
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staffContext">
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="admin/dashboard">
                             <span class="bi bi-shield-lock-fill" aria-hidden="true"></span> Dashboard
                         </NavLink>
                     </div>
+                </AuthorizeView>
+
+                @* ---- Gestión de usuarios: solo el jefe ---- *@
+                <AuthorizeView Roles="@Roles.Admin" Context="adminContext">
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="admin/users">
                             <span class="bi bi-people-fill" aria-hidden="true"></span> Usuarios

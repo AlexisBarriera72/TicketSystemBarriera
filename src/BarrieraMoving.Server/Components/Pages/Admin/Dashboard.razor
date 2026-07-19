@@ -5,7 +5,7 @@
 @inject ITimeService TimeService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
-@attribute [Authorize(Roles = Roles.Admin)]
+@attribute [Authorize(Roles = Roles.Admin + "," + Roles.Office)]
 @rendermode InteractiveServer
 
 <PageTitle>Dashboard - Barriera Moving</PageTitle>

@@ -55,4 +55,11 @@ public class ApiClient(HttpClient http)
 
     public async Task<List<TimeEntryDto>> GetTimeHistoryAsync(int days = 14) =>
         await http.GetFromJsonAsync<List<TimeEntryDto>>($"{ApiRoutes.Time}/history?days={days}", ApiJson.Options) ?? [];
+
+    // Solo Admin/Oficina (el servidor devuelve 403 al resto)
+    public async Task<List<TimeEntryDto>> GetActiveTeamEntriesAsync() =>
+        await http.GetFromJsonAsync<List<TimeEntryDto>>($"{ApiRoutes.Time}/active", ApiJson.Options) ?? [];
+
+    public async Task<List<TimeEntryDto>> GetTeamEntriesAsync(int days = 7) =>
+        await http.GetFromJsonAsync<List<TimeEntryDto>>($"{ApiRoutes.Time}/entries?days={days}", ApiJson.Options) ?? [];
 }

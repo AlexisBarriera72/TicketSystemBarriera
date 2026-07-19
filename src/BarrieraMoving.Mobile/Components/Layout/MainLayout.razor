@@ -11,7 +11,11 @@
             <div class="d-flex align-items-center">
                 @if (isStaff)
                 {
-                    <a class="btn btn-sm btn-outline-light me-2" href="/clock">⏱ Fichaje</a>
+                    <a class="btn btn-sm btn-outline-light me-2 px-2" href="/clock" title="Fichaje">⏱</a>
+                }
+                @if (isManager)
+                {
+                    <a class="btn btn-sm btn-outline-light me-2 px-2" href="/team" title="Equipo">👥</a>
                 }
                 <button class="btn btn-sm btn-outline-light" @onclick="LogoutAsync">Salir</button>
             </div>
@@ -26,6 +30,7 @@
 @code {
     private bool isLoggedIn;
     private bool isStaff;
+    private bool isManager;
     private double topInset;
     private double bottomInset;
 
@@ -40,7 +45,9 @@
     protected override async Task OnParametersSetAsync()
     {
         isLoggedIn = await Auth.IsLoggedInAsync();
-        isStaff = isLoggedIn && UserRoles.IsStaff(await Auth.GetCurrentUserAsync());
+        var user = isLoggedIn ? await Auth.GetCurrentUserAsync() : null;
+        isStaff = UserRoles.IsStaff(user);
+        isManager = UserRoles.IsManager(user);
     }
 
     private async Task LogoutAsync()
