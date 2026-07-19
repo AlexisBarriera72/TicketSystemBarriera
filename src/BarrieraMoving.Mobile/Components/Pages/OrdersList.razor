@@ -1,6 +1,7 @@
 @page "/"
 @inject ApiClient Api
 @inject AuthService Auth
+@inject ClockState Clock
 @inject NavigationManager Nav
 
 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -69,6 +70,22 @@ else
             return;
         }
         user = await Auth.GetCurrentUserAsync();
+
+        // Gating (solo conductores): sin jornada abierta no se ven las órdenes
+        if (UserRoles.IsDriverOnly(user))
+        {
+            try
+            {
+                await Clock.EnsureLoadedAsync(Api);
+            }
+            catch (Exception) { /* sin red: no bloqueamos por el gate; la lista fallará y mostrará su error */ }
+            if (Clock.OpenEntry is null)
+            {
+                Nav.NavigateTo("/clock");
+                return;
+            }
+        }
+
         await LoadAsync();
     }
 

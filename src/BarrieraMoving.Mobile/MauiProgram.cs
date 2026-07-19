@@ -19,6 +19,7 @@ public static class MauiProgram
 
 		// Auth + API: el teléfono SOLO habla con /api/v1 por HTTP(S), nunca con SQL
 		builder.Services.AddSingleton<TokenStore>();
+		builder.Services.AddSingleton<ClockState>();
 		builder.Services.AddSingleton<AuthService>();
 		builder.Services.AddTransient<AuthMessageHandler>();
 

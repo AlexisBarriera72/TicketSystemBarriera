@@ -1,0 +1,222 @@
+@page "/clock"
+@implements IDisposable
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ClockState State
+@inject NavigationManager Nav
+
+<div class="mx-auto" style="max-width: 480px;">
+    <h4 class="mb-3">⏱ Fichaje</h4>
+
+    @if (loading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else if (loadError is not null)
+    {
+        <div class="alert alert-warning">@loadError</div>
+        <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-3 text-center">
+            <div class="card-body py-4">
+                @if (State.OpenEntry is null)
+                {
+                    <p class="text-muted mb-1">No has fichado</p>
+                    <p class="small text-muted mb-3">Ficha para empezar tu jornada.</p>
+                    <button class="btn btn-success btn-lg w-100" @onclick="() => DoClockAsync(clockIn: true)" disabled="@busy">
+                        @(busy ? "Fichando..." : "▶ Fichar Entrada")
+                    </button>
+                }
+                else
+                {
+                    <p class="mb-1">Trabajando desde
+                        <strong>@State.OpenEntry.ClockInUtc.ToLocalTime().ToString("HH:mm")</strong>
+                    </p>
+                    <p class="display-6 fw-bold mb-3">@ElapsedText()</p>
+                    <button class="btn btn-danger btn-lg w-100" @onclick="() => DoClockAsync(clockIn: false)" disabled="@busy">
+                        @(busy ? "Fichando..." : "⏹ Fichar Salida")
+                    </button>
+                }
+
+                @if (actionError is not null)
+                {
+                    <div class="alert alert-warning mt-3 py-2 mb-0">
+                        @actionError — pulsa el botón para reintentar.
+                    </div>
+                }
+                @if (lastWithoutLocation)
+                {
+                    <p class="text-muted small mt-2 mb-0">Fichaje registrado sin ubicación.</p>
+                }
+            </div>
+        </div>
+
+        <p class="text-muted small">
+            La ubicación se registra solo al fichar y es opcional: si no das permiso,
+            el fichaje funciona igual.
+        </p>
+
+        @if (!DriverGated)
+        {
+            <a href="/" class="btn btn-outline-primary w-100 mb-3">Ver mis órdenes</a>
+        }
+
+        @if (history.Any())
+        {
+            <h6 class="text-muted mt-2">Últimos fichajes</h6>
+            <ul class="list-group">
+                @foreach (var entry in history)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <span class="small">
+                            @entry.ClockInUtc.ToLocalTime().ToString("dd/MM") ·
+                            @entry.ClockInUtc.ToLocalTime().ToString("HH:mm")
+                            – @(entry.ClockOutUtc?.ToLocalTime().ToString("HH:mm") ?? "…")
+                        </span>
+                        <span>
+                            @if (entry.ClockOutUtc is not null)
+                            {
+                                <span class="badge bg-light text-dark border">
+                                    @Math.Round((entry.ClockOutUtc.Value - entry.ClockInUtc).TotalHours, 1)h
+                                </span>
+                            }
+                            @if (entry.AutoClosed)
+                            {
+                                <span class="badge bg-danger ms-1" title="Cerrado automáticamente">Auto</span>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    }
+</div>
+
+@code {
+    private bool loading = true;
+    private bool busy;
+    private string? loadError;
+    private string? actionError;
+    private bool lastWithoutLocation;
+    private List<TimeEntryDto> history = [];
+    private UserSummaryDto? user;
+    private System.Threading.Timer? timer;
+
+    private bool DriverGated => UserRoles.IsDriverOnly(user) && State.OpenEntry is null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        user = await Auth.GetCurrentUserAsync();
+        if (!UserRoles.IsStaff(user))
+        {
+            Nav.NavigateTo("/"); // los clientes no fichan
+            return;
+        }
+
+        await LoadAsync();
+        // Refresca el "tiempo transcurrido" cada 30 s
+        timer = new System.Threading.Timer(_ => InvokeAsync(StateHasChanged), null,
+            TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        loadError = null;
+        StateHasChanged();
+        try
+        {
+            State.Set(await Api.GetCurrentTimeEntryAsync());
+            history = await Api.GetTimeHistoryAsync(14);
+        }
+        catch (Exception)
+        {
+            if (!await Auth.IsLoggedInAsync())
+            {
+                Nav.NavigateTo("/login");
+                return;
+            }
+            loadError = "No se pudo conectar al servidor.";
+        }
+        loading = false;
+    }
+
+    private async Task DoClockAsync(bool clockIn)
+    {
+        if (busy) return;
+        busy = true;
+        actionError = null;
+        lastWithoutLocation = false;
+        StateHasChanged();
+
+        // Ubicación opcional: si falla o se deniega, el fichaje sigue adelante
+        var location = await TryGetLocationAsync();
+
+        try
+        {
+            var (entry, error) = clockIn
+                ? await Api.ClockInAsync(location?.Latitude, location?.Longitude)
+                : await Api.ClockOutAsync(location?.Latitude, location?.Longitude);
+
+            if (error is not null)
+            {
+                actionError = error;
+                await LoadAsync(); // re-sincronizar (doble toque, jornada abierta en otra sesión…)
+            }
+            else
+            {
+                State.Set(clockIn ? entry : null);
+                lastWithoutLocation = location is null;
+                history = await Api.GetTimeHistoryAsync(14);
+            }
+        }
+        catch (Exception)
+        {
+            actionError = "Sin conexión — no se pudo fichar. Comprueba la red";
+        }
+        busy = false;
+    }
+
+    private static async Task<Location?> TryGetLocationAsync()
+    {
+        try
+        {
+            return await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+                if (status != PermissionStatus.Granted)
+                {
+                    status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+                }
+                if (status != PermissionStatus.Granted) return null;
+
+                return await Geolocation.Default.GetLocationAsync(
+                    new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5)));
+            });
+        }
+        catch (Exception)
+        {
+            return null; // GPS apagado, timeout, permiso denegado: nunca bloquea el fichaje
+        }
+    }
+
+    private string ElapsedText()
+    {
+        var elapsed = DateTime.UtcNow - State.OpenEntry!.ClockInUtc;
+        if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+        return elapsed.TotalHours >= 1
+            ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m"
+            : $"{elapsed.Minutes}m";
+    }
+
+    public void Dispose() => timer?.Dispose();
+}

@@ -70,7 +70,9 @@
 
         if (success)
         {
-            Nav.NavigateTo("/");
+            // Los conductores aterrizan en el fichaje (gating); el resto en sus órdenes
+            var user = await Auth.GetCurrentUserAsync();
+            Nav.NavigateTo(UserRoles.IsDriverOnly(user) ? "/clock" : "/");
         }
         else
         {

@@ -8,7 +8,13 @@
         <span class="fw-bold">🚚 Barriera Moving</span>
         @if (isLoggedIn)
         {
-            <button class="btn btn-sm btn-outline-light" @onclick="LogoutAsync">Salir</button>
+            <div class="d-flex align-items-center">
+                @if (isStaff)
+                {
+                    <a class="btn btn-sm btn-outline-light me-2" href="/clock">⏱ Fichaje</a>
+                }
+                <button class="btn btn-sm btn-outline-light" @onclick="LogoutAsync">Salir</button>
+            </div>
         }
     </header>
 
@@ -19,6 +25,7 @@
 
 @code {
     private bool isLoggedIn;
+    private bool isStaff;
     private double topInset;
     private double bottomInset;
 
@@ -29,10 +36,11 @@
         bottomInset = SafeInsets.BottomCssPx();
     }
 
-    // Se ejecuta en cada navegación; mantiene el botón "Salir" sincronizado
+    // Se ejecuta en cada navegación; mantiene los botones del header sincronizados
     protected override async Task OnParametersSetAsync()
     {
         isLoggedIn = await Auth.IsLoggedInAsync();
+        isStaff = isLoggedIn && UserRoles.IsStaff(await Auth.GetCurrentUserAsync());
     }
 
     private async Task LogoutAsync()

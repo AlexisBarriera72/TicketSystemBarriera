@@ -1,6 +1,7 @@
 @page "/orders/{Id:int}"
 @inject ApiClient Api
 @inject AuthService Auth
+@inject ClockState Clock
 @inject NavigationManager Nav
 
 <button class="btn btn-sm btn-outline-secondary mb-3" @onclick="@(() => Nav.NavigateTo("/"))">
@@ -70,6 +71,22 @@ else
         {
             Nav.NavigateTo("/login");
             return;
+        }
+
+        // Gating (solo conductores): mismo criterio que la lista de órdenes
+        var user = await Auth.GetCurrentUserAsync();
+        if (UserRoles.IsDriverOnly(user))
+        {
+            try
+            {
+                await Clock.EnsureLoadedAsync(Api);
+            }
+            catch (Exception) { }
+            if (Clock.OpenEntry is null)
+            {
+                Nav.NavigateTo("/clock");
+                return;
+            }
         }
 
         try
