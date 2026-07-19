@@ -6,6 +6,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @attribute [Authorize]
 @rendermode InteractiveServer
+@implements IDisposable
 
 <div class="container mt-4">
     @* ---Alertas --- *@
@@ -54,7 +55,15 @@
                     </h6>
                     <div class="bg-light p-3 rounded-3 shadow-inner mb-3"
                          style="max-height: 400px; overflow-y: auto; border: 1px solid #e9ecef;">
-                        @if (messages == null || !messages.Any())
+                        @if (canLoadOlder)
+                        {
+                            <div class="text-center mb-2">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadOlderAsync">
+                                    Cargar mensajes anteriores
+                                </button>
+                            </div>
+                        }
+                        @if (!messages.Any())
                         {
                             <p class="text-center text-muted py-4">No hay mensajes en esta orden aún.</p>
                         }
@@ -62,11 +71,7 @@
                         {
                             @foreach (var m in messages)
                             {
-                                bool isSystem = m.Content.StartsWith("["); // Detectar prefijos de sistema
-                                bool isClient = m.UserId == order.AuthorId;
-                                bool isMe = m.UserId == currentUserId;
-
-                                @if (isSystem)
+                                @if (m.IsSystem)
                                 {
                                     @* MENSAJE DE SISTEMA / AUDITORÍA *@
                                     <div class="text-center my-3">
@@ -78,24 +83,23 @@
                                 }
                                 else
                                 {
-                                    <div class="d-flex mb-4 @(isMe ? "justify-content-end" : "justify-content-start")">
-                                        <div class="shadow-sm rounded-3 @(isClient ?
-                                            "bg-white border-start border-4 border-secondary" :
-                                            "bg-primary text-white border-start border-4 border-info")"
+                                    bool isMe = m.UserId == currentUserId;
+                                    <div class="d-flex mb-3 @(isMe ? "justify-content-end" : "justify-content-start")">
+                                        <div class="shadow-sm rounded-3 @(isMe ? "bg-primary text-white" : "bg-white border")"
                                              style="max-width: 80%; min-width: 200px; padding: 12px;">
 
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <span class="badge @(isClient ? "bg-info text-dark" : "bg-secondary")
-                                                      text-uppercase" style="font-size: 0.65rem;">
-                                                    @(isClient ? "Cliente" : "Equipo Barriera")
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <span>
+                                                    <span class="fw-bold small">@(m.User?.DisplayName ?? m.User?.Email)</span>
+                                                    @if (!string.IsNullOrEmpty(m.SenderRole))
+                                                    {
+                                                        <span class="badge @(isMe ? "bg-light text-dark" : RoleBadgeClass(m.SenderRole)) ms-1"
+                                                              style="font-size: 0.6rem;">@RoleNames.DisplayLabel(m.SenderRole)</span>
+                                                    }
                                                 </span>
                                                 <small class="opacity-75 ms-2" style="font-size: 0.7rem;">
                                                     @m.CreatedAt.ToLocalTime().ToString("t")
                                                 </small>
-                                            </div>
-
-                                            <div class="fw-bold small mb-1 @(isClient ? "text-primary" : "text-white-50")">
-                                                @(m.User?.DisplayName ?? m.User?.Email)
                                             </div>
                                             <div class="text-break">@m.Content</div>
                                         </div>
@@ -197,6 +201,9 @@
     private string currentUserId = "";
     private string feedbackMessage = "";
     private bool canBypassFlow = false; // Admin/Oficina pueden saltarse el flujo normal de estados
+    private string? myRole;
+    private bool canLoadOlder;
+    private System.Threading.Timer? pollTimer;
 
     protected override async Task OnInitializedAsync()
     {
@@ -204,6 +211,7 @@
         var user = authState.User;
         currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         canBypassFlow = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
+        myRole = Roles.PrimaryRole(user); // se congela en cada mensaje enviado
 
         await LoadData();
 
@@ -212,15 +220,48 @@
         if (!isStaff && order?.AuthorId != currentUserId)
         {
             Navigation.NavigateTo("/orders/my-list");
+            return;
         }
+
+        // Polling delta cada 5 s: la oficina ve los mensajes del conductor sin recargar
+        pollTimer = new System.Threading.Timer(
+            _ => _ = InvokeAsync(PollNewMessagesAsync), null,
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
     }
 
     private async Task LoadData()
     {
         order = await OrderService.GetOrderByIdAsync(OrderId);
         drivers = await OrderService.GetDriversAsync();
-        messages = await OrderService.GetMessagesAsync(OrderId);
+        messages = await OrderService.GetMessagesAsync(OrderId); // últimos 50
+        canLoadOlder = messages.Count >= 50;
         if (order?.AssignedDriverId != null) selectedDriverId = order.AssignedDriverId;
+    }
+
+    private async Task PollNewMessagesAsync()
+    {
+        try
+        {
+            var lastId = messages.Count > 0 ? messages[^1].Id : 0;
+            var fresh = await OrderService.GetMessagesAsync(OrderId, take: 200, afterId: lastId);
+            if (fresh.Count > 0)
+            {
+                messages.AddRange(fresh);
+                StateHasChanged();
+            }
+        }
+        catch (Exception)
+        {
+            // fallo transitorio: el siguiente tick lo reintenta
+        }
+    }
+
+    private async Task LoadOlderAsync()
+    {
+        if (messages.Count == 0) return;
+        var older = await OrderService.GetMessagesAsync(OrderId, take: 50, beforeId: messages[0].Id);
+        messages.InsertRange(0, older);
+        canLoadOlder = older.Count >= 50;
     }
 
     private async Task SendMessage()
@@ -229,17 +270,29 @@
 
         var message = new Message
         {
-            Content = newMessageContent,
+            Content = newMessageContent.Trim(),
             OrderId = OrderId,
             UserId = currentUserId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            SenderRole = myRole,
+            IsSystem = false
         };
 
         await OrderService.AddMessageAsync(message);
         newMessageContent = "";
-        messages = await OrderService.GetMessagesAsync(OrderId);
-        feedbackMessage = "Mensaje enviado con éxito.";
+        await PollNewMessagesAsync(); // añade el mío y cualquier otro nuevo
     }
+
+    private static string RoleBadgeClass(string? role) => role switch
+    {
+        Roles.Admin => "bg-dark",
+        Roles.Office => "bg-primary",
+        Roles.Driver => "bg-warning text-dark",
+        Roles.Client => "bg-secondary",
+        _ => "bg-light text-dark border"
+    };
+
+    public void Dispose() => pollTimer?.Dispose();
 
     private async Task AssignDriver()
     {
