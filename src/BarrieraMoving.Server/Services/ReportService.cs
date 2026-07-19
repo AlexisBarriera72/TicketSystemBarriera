@@ -65,6 +65,42 @@ public class ReportService(IDbContextFactory<ApplicationDbContext> dbFactory) : 
         }
         worksheet.Columns().AdjustToContents();
 
+        // Hoja 2: fichajes (clock-in/out) — datos de nómina
+        var timeEntries = await context.TimeEntries
+            .Include(t => t.User)
+            .OrderByDescending(t => t.ClockInUtc)
+            .ToListAsync();
+
+        var timeSheet = workbook.Worksheets.Add("Fichajes");
+        var timeHeaders = new[] { "ID", "Empleado", "Entrada (UTC)", "Salida (UTC)", "Horas",
+            "Cierre automático", "Ubicación entrada", "Ubicación salida" };
+        for (int i = 0; i < timeHeaders.Length; i++)
+        {
+            timeSheet.Cell(1, i + 1).Value = timeHeaders[i];
+            timeSheet.Cell(1, i + 1).Style.Font.Bold = true;
+            timeSheet.Cell(1, i + 1).Style.Fill.BackgroundColor = XLColor.LightGray;
+        }
+
+        int timeRow = 2;
+        foreach (var t in timeEntries)
+        {
+            timeSheet.Cell(timeRow, 1).Value = t.Id;
+            timeSheet.Cell(timeRow, 2).Value = t.User?.DisplayName ?? t.User?.Email;
+            timeSheet.Cell(timeRow, 3).Value = t.ClockInUtc;
+            if (t.ClockOutUtc.HasValue)
+            {
+                timeSheet.Cell(timeRow, 4).Value = t.ClockOutUtc.Value;
+                timeSheet.Cell(timeRow, 5).Value = Math.Round((t.ClockOutUtc.Value - t.ClockInUtc).TotalHours, 2);
+            }
+            timeSheet.Cell(timeRow, 6).Value = t.AutoClosed ? "SÍ — verificar horas" : "";
+            timeSheet.Cell(timeRow, 7).Value = t.ClockInLatitude.HasValue
+                ? $"{t.ClockInLatitude}, {t.ClockInLongitude}" : "";
+            timeSheet.Cell(timeRow, 8).Value = t.ClockOutLatitude.HasValue
+                ? $"{t.ClockOutLatitude}, {t.ClockOutLongitude}" : "";
+            timeRow++;
+        }
+        timeSheet.Columns().AdjustToContents();
+
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
