@@ -43,7 +43,11 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
    co-hosted `/api/v1` + JWT in BarrieraMoving.Server; dashboard keeps cookies.)
 2. ✅ MAUI Blazor Hybrid shell + login against the API. (Done:
    src/BarrieraMoving.Mobile, Android-only; ver docs/mobile-dev.md.)
-3. Clock-in / clock-out — small first vertical slice to prove the whole stack.
+3. ✅ Clock-in / clock-out. (Done: /api/v1/time, hora SIEMPRE del servidor,
+   una jornada abierta por empleado (índice único filtrado), olvido de salida →
+   auto-cierre a Time:MaxShiftHours con flag AutoClosed; gating solo Drivers;
+   ubicación opcional que nunca bloquea; dashboard + hoja Excel "Fichajes".
+   Cola offline diferida a propósito — se hará junto a la cola de fotos (fase 5).)
 4. Chat — port `TicketComment`; add client + office as participants.
 5. Photo + GPS + timestamp updates posted into the chat.
 6. Embedded e-signature + completion gate + email copy to client.
