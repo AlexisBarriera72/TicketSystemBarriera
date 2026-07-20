@@ -3,6 +3,7 @@
 @inject ApiClient Api
 @inject AuthService Auth
 @inject ClockState State
+@inject OutboxService Outbox
 @inject NavigationManager Nav
 
 <div class="mx-auto" style="max-width: 480px;">
@@ -27,7 +28,8 @@
                 {
                     <p class="text-muted mb-1">No has fichado</p>
                     <p class="small text-muted mb-3">Ficha para empezar tu jornada.</p>
-                    <button class="btn btn-success btn-lg w-100" @onclick="() => DoClockAsync(clockIn: true)" disabled="@busy">
+                    <button class="btn btn-success btn-lg w-100" @onclick="() => DoClockAsync(clockIn: true)"
+                            disabled="@(busy || pendingPunch is not null)">
                         @(busy ? "Fichando..." : "▶ Fichar Entrada")
                     </button>
                 }
@@ -37,16 +39,35 @@
                         <strong>@State.OpenEntry.ClockInUtc.ToLocalTime().ToString("HH:mm")</strong>
                     </p>
                     <p class="display-6 fw-bold mb-3">@ElapsedText()</p>
-                    <button class="btn btn-danger btn-lg w-100" @onclick="() => DoClockAsync(clockIn: false)" disabled="@busy">
+                    <button class="btn btn-danger btn-lg w-100" @onclick="() => DoClockAsync(clockIn: false)"
+                            disabled="@(busy || pendingPunch is not null)">
                         @(busy ? "Fichando..." : "⏹ Fichar Salida")
                     </button>
                 }
 
-                @if (actionError is not null)
+                @if (pendingPunch is not null)
+                {
+                    <div class="alert alert-info mt-3 py-2 mb-0">
+                        🕓 Fichaje pendiente de envío (pulsado a las
+                        @pendingPunch.CapturedAtUtc.ToLocalTime().ToString("HH:mm")).
+                        Se enviará solo al recuperar la conexión; la hora oficial la pondrá
+                        el servidor al recibirlo.
+                    </div>
+                }
+                @if (failedPunch is not null)
                 {
                     <div class="alert alert-warning mt-3 py-2 mb-0">
-                        @actionError — pulsa el botón para reintentar.
+                        ❌ @(failedPunch.Kind == OutboxKind.ClockIn ? "Entrada" : "Salida") no aceptada:
+                        @failedPunch.LastError
+                        <div class="mt-1">
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => Outbox.RetryAsync(failedPunch.Id)">Reintentar</button>
+                            <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => Outbox.DiscardAsync(failedPunch.Id)">Descartar</button>
+                        </div>
                     </div>
+                }
+                @if (actionError is not null)
+                {
+                    <div class="alert alert-warning mt-3 py-2 mb-0">@actionError</div>
                 }
                 @if (lastWithoutLocation)
                 {
@@ -105,6 +126,9 @@
     private List<TimeEntryDto> history = [];
     private UserSummaryDto? user;
     private System.Threading.Timer? timer;
+    private OutboxItem? pendingPunch;
+    private OutboxItem? failedPunch;
+    private bool subscribed;
 
     private bool DriverGated => UserRoles.IsDriverOnly(user) && State.OpenEntry is null;
 
@@ -122,10 +146,35 @@
             return;
         }
 
+        Outbox.Changed += OnOutboxChanged;
+        subscribed = true;
+
+        await RefreshQueueStateAsync();
         await LoadAsync();
         // Refresca el "tiempo transcurrido" cada 30 s
         timer = new System.Threading.Timer(_ => InvokeAsync(StateHasChanged), null,
             TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    // Cuando la cola entrega un fichaje, el estado del servidor cambia: recargar
+    private void OnOutboxChanged() => _ = InvokeAsync(async () =>
+    {
+        var hadPending = pendingPunch is not null;
+        await RefreshQueueStateAsync();
+        if (hadPending && pendingPunch is null)
+        {
+            await LoadAsync();
+        }
+        StateHasChanged();
+    });
+
+    private async Task RefreshQueueStateAsync()
+    {
+        var items = (await Outbox.GetAllAsync())
+            .Where(i => i.Kind is OutboxKind.ClockIn or OutboxKind.ClockOut)
+            .ToList();
+        pendingPunch = items.FirstOrDefault(i => i.Status != OutboxStatus.Failed);
+        failedPunch = items.FirstOrDefault(i => i.Status == OutboxStatus.Failed);
     }
 
     private async Task LoadAsync()
@@ -150,63 +199,28 @@
         loading = false;
     }
 
+    // El fichaje va SIEMPRE por la cola: online sale en <1 s; offline queda
+    // pendiente visible y se entrega al recuperar red (con la hora del dispositivo
+    // como metadato — la hora de nómina la sella el servidor al recibirlo)
     private async Task DoClockAsync(bool clockIn)
     {
-        if (busy) return;
+        if (busy || pendingPunch is not null) return;
         busy = true;
         actionError = null;
         lastWithoutLocation = false;
         StateHasChanged();
 
         // Ubicación opcional: si falla o se deniega, el fichaje sigue adelante
-        var location = await TryGetLocationAsync();
+        var location = await LocationHelper.TryGetLocationAsync();
+        lastWithoutLocation = location is null;
 
-        try
+        var (ok, error) = await Outbox.EnqueueClockAsync(clockIn, location?.Latitude, location?.Longitude);
+        if (!ok)
         {
-            var (entry, error) = clockIn
-                ? await Api.ClockInAsync(location?.Latitude, location?.Longitude)
-                : await Api.ClockOutAsync(location?.Latitude, location?.Longitude);
-
-            if (error is not null)
-            {
-                actionError = error;
-                await LoadAsync(); // re-sincronizar (doble toque, jornada abierta en otra sesión…)
-            }
-            else
-            {
-                State.Set(clockIn ? entry : null);
-                lastWithoutLocation = location is null;
-                history = await Api.GetTimeHistoryAsync(14);
-            }
+            actionError = error;
         }
-        catch (Exception)
-        {
-            actionError = "Sin conexión — no se pudo fichar. Comprueba la red";
-        }
+        await RefreshQueueStateAsync();
         busy = false;
-    }
-
-    private static async Task<Location?> TryGetLocationAsync()
-    {
-        try
-        {
-            return await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
-                if (status != PermissionStatus.Granted)
-                {
-                    status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-                }
-                if (status != PermissionStatus.Granted) return null;
-
-                return await Geolocation.Default.GetLocationAsync(
-                    new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5)));
-            });
-        }
-        catch (Exception)
-        {
-            return null; // GPS apagado, timeout, permiso denegado: nunca bloquea el fichaje
-        }
     }
 
     private string ElapsedText()
@@ -218,5 +232,9 @@
             : $"{elapsed.Minutes}m";
     }
 
-    public void Dispose() => timer?.Dispose();
+    public void Dispose()
+    {
+        timer?.Dispose();
+        if (subscribed) Outbox.Changed -= OnOutboxChanged;
+    }
 }

@@ -21,6 +21,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<TokenStore>();
 		builder.Services.AddSingleton<ClockState>();
 		builder.Services.AddSingleton<AuthService>();
+		builder.Services.AddSingleton<OutboxService>(); // cola offline compartida (mensajes/fotos/fichajes)
 		builder.Services.AddTransient<AuthMessageHandler>();
 
 		// Cliente sin auth para login/refresh/logout (BaseAddress se fija al usarlo,

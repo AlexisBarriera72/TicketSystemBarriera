@@ -35,10 +35,12 @@ public class ApiClient(HttpClient http)
             $"{ApiRoutes.Orders}/{orderId}/messages{query}", ApiJson.Options) ?? [];
     }
 
-    public async Task<(MessageDto? Message, string? Error)> SendMessageAsync(int orderId, string content)
+    public async Task<(MessageDto? Message, string? Error)> SendMessageAsync(int orderId, string content,
+        DateTime? capturedAtUtc = null, string? idempotencyKey = null)
     {
         var response = await http.PostAsJsonAsync(
-            $"{ApiRoutes.Orders}/{orderId}/messages", new CreateMessageRequest(content), ApiJson.Options);
+            $"{ApiRoutes.Orders}/{orderId}/messages",
+            new CreateMessageRequest(content, capturedAtUtc, idempotencyKey), ApiJson.Options);
 
         if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
         {
@@ -52,6 +54,44 @@ public class ApiClient(HttpClient http)
         return (await response.Content.ReadFromJsonAsync<MessageDto>(ApiJson.Options), null);
     }
 
+    // Foto al chat: multipart con el JPEG YA comprimido + GPS deliberado + metadatos de cola
+    public async Task<(MessageDto? Message, string? Error)> UploadPhotoAsync(int orderId, byte[] jpeg,
+        double? latitude, double? longitude, DateTime? capturedAtUtc = null, string? idempotencyKey = null)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(jpeg);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+        form.Add(file, "file", "photo.jpg");
+        if (latitude is not null)
+            form.Add(new StringContent(latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)), "latitude");
+        if (longitude is not null)
+            form.Add(new StringContent(longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)), "longitude");
+        if (capturedAtUtc is not null)
+            form.Add(new StringContent(capturedAtUtc.Value.ToString("O")), "capturedAtUtc");
+        if (!string.IsNullOrEmpty(idempotencyKey))
+            form.Add(new StringContent(idempotencyKey), "idempotencyKey");
+
+        var response = await http.PostAsync($"{ApiRoutes.Orders}/{orderId}/photos", form);
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            return (null, "No tienes acceso a esta orden.");
+        }
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            return (null, "El servidor rechazó la foto.");
+        }
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<MessageDto>(ApiJson.Options), null);
+    }
+
+    // Bytes de la foto (miniatura o completa) con el JWT — la WebView los muestra como data URI
+    public async Task<byte[]?> GetPhotoAsync(int messageId, bool thumb)
+    {
+        var response = await http.GetAsync($"{ApiRoutes.Photos}/{messageId}{(thumb ? "/thumb" : "")}");
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadAsByteArrayAsync();
+    }
+
     // --- FICHAJE (la hora la pone el servidor; aquí solo van coordenadas opcionales) ---
 
     public async Task<TimeEntryDto?> GetCurrentTimeEntryAsync()
@@ -62,16 +102,20 @@ public class ApiClient(HttpClient http)
         return await response.Content.ReadFromJsonAsync<TimeEntryDto>(ApiJson.Options);
     }
 
-    public Task<(TimeEntryDto? Entry, string? Error)> ClockInAsync(double? latitude, double? longitude) =>
-        ClockAsync("clock-in", latitude, longitude);
+    public Task<(TimeEntryDto? Entry, string? Error)> ClockInAsync(double? latitude, double? longitude,
+        DateTime? capturedAtUtc = null, string? idempotencyKey = null) =>
+        ClockAsync("clock-in", latitude, longitude, capturedAtUtc, idempotencyKey);
 
-    public Task<(TimeEntryDto? Entry, string? Error)> ClockOutAsync(double? latitude, double? longitude) =>
-        ClockAsync("clock-out", latitude, longitude);
+    public Task<(TimeEntryDto? Entry, string? Error)> ClockOutAsync(double? latitude, double? longitude,
+        DateTime? capturedAtUtc = null, string? idempotencyKey = null) =>
+        ClockAsync("clock-out", latitude, longitude, capturedAtUtc, idempotencyKey);
 
-    private async Task<(TimeEntryDto?, string?)> ClockAsync(string action, double? latitude, double? longitude)
+    private async Task<(TimeEntryDto?, string?)> ClockAsync(string action, double? latitude, double? longitude,
+        DateTime? capturedAtUtc = null, string? idempotencyKey = null)
     {
         var response = await http.PostAsJsonAsync(
-            $"{ApiRoutes.Time}/{action}", new ClockRequest(latitude, longitude), ApiJson.Options);
+            $"{ApiRoutes.Time}/{action}",
+            new ClockRequest(latitude, longitude, capturedAtUtc, idempotencyKey), ApiJson.Options);
 
         if (response.StatusCode == HttpStatusCode.Conflict)
         {

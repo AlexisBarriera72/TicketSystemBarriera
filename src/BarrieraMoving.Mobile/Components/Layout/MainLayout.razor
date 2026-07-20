@@ -1,5 +1,7 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject AuthService Auth
+@inject OutboxService Outbox
 @inject NavigationManager Nav
 
 <div class="app-shell">
@@ -9,6 +11,10 @@
         @if (isLoggedIn)
         {
             <div class="d-flex align-items-center">
+                @if (pendingCount > 0)
+                {
+                    <a class="btn btn-sm btn-outline-light me-2 px-2" href="/outbox" title="Envíos pendientes">📤 @pendingCount</a>
+                }
                 @if (isStaff)
                 {
                     <a class="btn btn-sm btn-outline-light me-2 px-2" href="/clock" title="Fichaje">⏱</a>
@@ -33,12 +39,29 @@
     private bool isManager;
     private double topInset;
     private double bottomInset;
+    private int pendingCount;
+    private bool subscribed;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         // Insets del sistema (barra de estado/cámara y barra de gestos): ver SafeInsets
         topInset = SafeInsets.TopCssPx();
         bottomInset = SafeInsets.BottomCssPx();
+
+        Outbox.Changed += OnOutboxChanged;
+        subscribed = true;
+        pendingCount = await Outbox.CountAsync();
+    }
+
+    private void OnOutboxChanged() => _ = InvokeAsync(async () =>
+    {
+        pendingCount = await Outbox.CountAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        if (subscribed) Outbox.Changed -= OnOutboxChanged;
     }
 
     // Se ejecuta en cada navegación; mantiene los botones del header sincronizados
