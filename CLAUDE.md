@@ -53,7 +53,14 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
    real; polling delta 5s (afterId) en ambos — SignalR descartado a propósito
    hasta la fase 7; paginado últimos 50 + beforeId; cliente participa desde
    su orden; sin lector de "leído" (llegará con las notificaciones push).)
-5. Photo + GPS + timestamp updates posted into the chat.
+5. ✅ Photo + GPS + timestamp updates into the chat + cola offline compartida.
+   (Done: toda foto se RE-CODIFICA en el servidor — SkiaSharp, EXIF eliminado
+   por construcción, 1600px/q75 + miniatura — disco local tras IPhotoStorage,
+   servida SOLO por endpoint con ACL de la orden (cookie o JWT). Cola SQLite
+   única (mensajes/fotos/fichajes): sobrevive reinicios, backoff 30s→10m,
+   idempotencia por GUID + índices únicos filtrados, nada se descarta solo.
+   Hora del dispositivo = CapturedAtUtc (metadato); la de nómina SIEMPRE la
+   pone el servidor — badge "Diferido" + columnas en Excel cuando difieren.)
 6. Embedded e-signature + completion gate + email copy to client.
 7. Live location / ETA — hardest; scope to active jobs only, not always-on.
 8. Boss dashboard, direct messages, Excel exports.
