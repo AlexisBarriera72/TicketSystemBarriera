@@ -73,7 +73,8 @@ public class ReportService(IDbContextFactory<ApplicationDbContext> dbFactory) : 
 
         var timeSheet = workbook.Worksheets.Add("Fichajes");
         var timeHeaders = new[] { "ID", "Empleado", "Entrada (UTC)", "Salida (UTC)", "Horas",
-            "Cierre automático", "Ubicación entrada", "Ubicación salida" };
+            "Cierre automático", "Ubicación entrada", "Ubicación salida",
+            "Pulsada entrada (dispositivo, UTC)", "Pulsada salida (dispositivo, UTC)" };
         for (int i = 0; i < timeHeaders.Length; i++)
         {
             timeSheet.Cell(1, i + 1).Value = timeHeaders[i];
@@ -97,6 +98,9 @@ public class ReportService(IDbContextFactory<ApplicationDbContext> dbFactory) : 
                 ? $"{t.ClockInLatitude}, {t.ClockInLongitude}" : "";
             timeSheet.Cell(timeRow, 8).Value = t.ClockOutLatitude.HasValue
                 ? $"{t.ClockOutLatitude}, {t.ClockOutLongitude}" : "";
+            // Hora del dispositivo (metadato no fiable) — solo si difiere de la del servidor
+            if (t.ClockInCapturedAtUtc.HasValue) timeSheet.Cell(timeRow, 9).Value = t.ClockInCapturedAtUtc.Value;
+            if (t.ClockOutCapturedAtUtc.HasValue) timeSheet.Cell(timeRow, 10).Value = t.ClockOutCapturedAtUtc.Value;
             timeRow++;
         }
         timeSheet.Columns().AdjustToContents();

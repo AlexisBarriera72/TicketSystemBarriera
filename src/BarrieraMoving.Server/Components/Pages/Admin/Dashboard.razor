@@ -108,7 +108,14 @@
                                 {
                                     <tr>
                                         <td class="ps-3">@(entry.User?.DisplayName ?? entry.User?.Email)</td>
-                                        <td>@entry.ClockInUtc.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                        <td>
+                                            @entry.ClockInUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                                            @if (IsDeferred(entry.ClockInUtc, entry.ClockInCapturedAtUtc))
+                                            {
+                                                <span class="badge bg-warning text-dark ms-1"
+                                                      title="Fichaje entregado con retraso (cola offline). Pulsado en el dispositivo a las @entry.ClockInCapturedAtUtc!.Value.ToLocalTime().ToString("HH:mm") — la hora de nómina es la de recepción; verificar.">Diferido</span>
+                                            }
+                                        </td>
                                         <td>
                                             @if (entry.ClockOutUtc is null)
                                             {
@@ -120,6 +127,11 @@
                                                 @if (entry.AutoClosed)
                                                 {
                                                     <span class="badge bg-danger ms-1" title="Cerrada automáticamente al tope máximo — verificar horas reales">Auto</span>
+                                                }
+                                                @if (IsDeferred(entry.ClockOutUtc.Value, entry.ClockOutCapturedAtUtc))
+                                                {
+                                                    <span class="badge bg-warning text-dark ms-1"
+                                                          title="Salida entregada con retraso (cola offline). Pulsada en el dispositivo a las @entry.ClockOutCapturedAtUtc!.Value.ToLocalTime().ToString("HH:mm") — verificar.">Diferido</span>
                                                 }
                                             }
                                         </td>
@@ -223,6 +235,11 @@
 
     private static string FormatElapsed(TimeSpan elapsed) =>
         elapsed.TotalHours >= 1 ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m" : $"{elapsed.Minutes}m";
+
+    // Fichaje de la cola offline entregado tarde: la hora del servidor (nómina) y la
+    // del dispositivo difieren — la oficina debe verlo y decidir
+    private static bool IsDeferred(DateTime serverUtc, DateTime? capturedUtc) =>
+        capturedUtc is not null && (serverUtc - capturedUtc.Value).Duration() > TimeSpan.FromMinutes(5);
 
     private string GetStatusBadgeClass(OrderStatus status) => status switch
     {

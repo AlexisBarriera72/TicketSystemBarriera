@@ -102,6 +102,29 @@
                                                 </small>
                                             </div>
                                             <div class="text-break">@m.Content</div>
+                                            @if (m.AttachmentPath is not null)
+                                            {
+                                                @* Miniatura inline → clic abre la foto completa (mismo ACL, cookie) *@
+                                                <a href="/api/v1/photos/@m.Id" target="_blank">
+                                                    <img src="/api/v1/photos/@m.Id/thumb" alt="Foto adjunta"
+                                                         class="rounded mt-2 d-block" style="max-width: 200px;" />
+                                                </a>
+                                            }
+                                            @if (m.Latitude is not null && m.Longitude is not null)
+                                            {
+                                                <a class="small @(isMe ? "text-white-50" : "text-muted")" target="_blank"
+                                                   href="https://maps.google.com/?q=@m.Latitude,@m.Longitude">
+                                                    📍 Ver ubicación
+                                                </a>
+                                            }
+                                            @if (m.CapturedAtUtc is not null &&
+                                                 (m.CreatedAt - m.CapturedAtUtc.Value) > TimeSpan.FromMinutes(5))
+                                            {
+                                                <div class="small @(isMe ? "text-white-50" : "text-muted")" style="font-size: 0.65rem;">
+                                                    ⏱ Capturado @m.CapturedAtUtc.Value.ToLocalTime().ToString("HH:mm"),
+                                                    entregado @m.CreatedAt.ToLocalTime().ToString("HH:mm") (estaba sin conexión)
+                                                </div>
+                                            }
                                         </div>
                                     </div>
                                 }
