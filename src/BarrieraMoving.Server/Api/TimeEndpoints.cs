@@ -23,7 +23,8 @@ public static class TimeEndpoints
 
         group.MapPost("/clock-in", async (ClockRequest request, ClaimsPrincipal user, ITimeService time) =>
         {
-            var (entry, error) = await time.ClockInAsync(UserId(user), request.Latitude, request.Longitude);
+            var (entry, error) = await time.ClockInAsync(UserId(user), request.Latitude, request.Longitude,
+                request.CapturedAtUtc, request.IdempotencyKey);
             return entry is null
                 ? Results.Conflict(error)
                 : Results.Created($"{ApiRoutes.Time}/current", entry.ToDto());
@@ -31,7 +32,8 @@ public static class TimeEndpoints
 
         group.MapPost("/clock-out", async (ClockRequest request, ClaimsPrincipal user, ITimeService time) =>
         {
-            var (entry, error) = await time.ClockOutAsync(UserId(user), request.Latitude, request.Longitude);
+            var (entry, error) = await time.ClockOutAsync(UserId(user), request.Latitude, request.Longitude,
+                request.CapturedAtUtc, request.IdempotencyKey);
             return entry is null ? Results.Conflict(error) : Results.Ok(entry.ToDto());
         });
 

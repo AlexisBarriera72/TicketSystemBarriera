@@ -19,4 +19,20 @@ public class Message
 
     // true = mensaje de sistema/auditoría (cambios de estado, asignaciones)
     public bool IsSystem { get; set; }
+
+    // Foto adjunta: claves relativas dentro de IPhotoStorage (nunca rutas absolutas).
+    // La imagen se sirve SOLO por el endpoint con el mismo ACL de la orden.
+    public string? AttachmentPath { get; set; }
+    public string? AttachmentThumbPath { get; set; }
+
+    // GPS capturado DELIBERADAMENTE al enviar (el EXIF original se elimina siempre)
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+
+    // Hora del dispositivo al capturar/escribir (metadato NO fiable; CreatedAt
+    // sigue siendo la hora del servidor al recibir)
+    public DateTime? CapturedAtUtc { get; set; }
+
+    // Clave de la cola offline: un reintento del mismo envío no duplica el mensaje
+    public string? IdempotencyKey { get; set; }
 }

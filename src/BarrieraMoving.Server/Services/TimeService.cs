@@ -21,9 +21,19 @@ public class TimeService(IDbContextFactory<ApplicationDbContext> dbFactory, ICon
             .FirstOrDefaultAsync(t => t.UserId == userId && t.ClockOutUtc == null);
     }
 
-    public async Task<(TimeEntry? Entry, string? Error)> ClockInAsync(string userId, double? latitude, double? longitude)
+    public async Task<(TimeEntry? Entry, string? Error)> ClockInAsync(string userId, double? latitude, double? longitude,
+        DateTime? capturedAtUtc = null, string? idempotencyKey = null)
     {
         using var context = dbFactory.CreateDbContext();
+
+        // Reintento de la cola offline que ya llegó: devolver el fichaje original
+        if (!string.IsNullOrEmpty(idempotencyKey))
+        {
+            var replay = await context.TimeEntries
+                .FirstOrDefaultAsync(t => t.ClockInIdempotencyKey == idempotencyKey);
+            if (replay is not null) return (replay, null);
+        }
+
         var now = DateTime.UtcNow;
         var maxShift = TimeSpan.FromHours(_maxShiftHours);
 
@@ -45,9 +55,11 @@ public class TimeService(IDbContextFactory<ApplicationDbContext> dbFactory, ICon
         var entry = new TimeEntry
         {
             UserId = userId,
-            ClockInUtc = now,
+            ClockInUtc = now, // hora del SERVIDOR: la de nómina, siempre
+            ClockInCapturedAtUtc = capturedAtUtc, // hora del dispositivo: metadato visible
             ClockInLatitude = latitude,
             ClockInLongitude = longitude,
+            ClockInIdempotencyKey = string.IsNullOrEmpty(idempotencyKey) ? null : idempotencyKey,
         };
         context.TimeEntries.Add(entry);
 
@@ -57,27 +69,46 @@ public class TimeService(IDbContextFactory<ApplicationDbContext> dbFactory, ICon
         }
         catch (DbUpdateException)
         {
-            // Carrera entre dos clock-in simultáneos: el índice único la corta
+            // Carrera entre dos clock-in simultáneos (o dos reintentos): los índices únicos la cortan
+            if (!string.IsNullOrEmpty(idempotencyKey))
+            {
+                var replay = await context.TimeEntries
+                    .FirstOrDefaultAsync(t => t.ClockInIdempotencyKey == idempotencyKey);
+                if (replay is not null) return (replay, null);
+            }
             return (null, "Ya tienes una jornada abierta.");
         }
         return (entry, null);
     }
 
-    public async Task<(TimeEntry? Entry, string? Error)> ClockOutAsync(string userId, double? latitude, double? longitude)
+    public async Task<(TimeEntry? Entry, string? Error)> ClockOutAsync(string userId, double? latitude, double? longitude,
+        DateTime? capturedAtUtc = null, string? idempotencyKey = null)
     {
         using var context = dbFactory.CreateDbContext();
+
+        // Reintento que ya llegó: devolver el fichaje ya cerrado
+        if (!string.IsNullOrEmpty(idempotencyKey))
+        {
+            var replay = await context.TimeEntries
+                .FirstOrDefaultAsync(t => t.ClockOutIdempotencyKey == idempotencyKey);
+            if (replay is not null) return (replay, null);
+        }
 
         var open = await context.TimeEntries
             .FirstOrDefaultAsync(t => t.UserId == userId && t.ClockOutUtc == null);
 
         if (open is null)
         {
+            // Caso honesto de la cola offline: si la jornada ya se auto-cerró (>12 h),
+            // el clock-out en cola falla VISIBLEMENTE y la oficina lo resuelve.
             return (null, "No tienes ninguna jornada abierta.");
         }
 
         open.ClockOutUtc = DateTime.UtcNow;
+        open.ClockOutCapturedAtUtc = capturedAtUtc;
         open.ClockOutLatitude = latitude;
         open.ClockOutLongitude = longitude;
+        open.ClockOutIdempotencyKey = string.IsNullOrEmpty(idempotencyKey) ? null : idempotencyKey;
         await context.SaveChangesAsync();
         return (open, null);
     }

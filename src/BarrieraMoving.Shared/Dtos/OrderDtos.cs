@@ -25,7 +25,11 @@ public record MessageDto(
     string UserId,
     string? UserName,
     bool IsSystem,
-    string? SenderRole);
+    string? SenderRole,
+    bool HasAttachment,
+    double? Latitude,
+    double? Longitude,
+    DateTime? CapturedAtUtc);
 
 public record CategoryDto(int Id, string Name, string? Description);
 
@@ -39,4 +43,10 @@ public record AssignDriverRequest(string DriverId);
 
 public record UpdateStatusRequest(OrderStatus NewStatus);
 
-public record CreateMessageRequest(string Content);
+// CapturedAtUtc = hora del dispositivo (metadato NO fiable, solo informativo);
+// IdempotencyKey evita duplicados cuando la cola offline reintenta un envío
+// que en realidad sí llegó (timeout tras commit).
+public record CreateMessageRequest(
+    string Content,
+    DateTime? CapturedAtUtc = null,
+    string? IdempotencyKey = null);

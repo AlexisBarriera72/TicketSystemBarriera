@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Fotos subidas en desarrollo (servidas solo por la API con ACL)
+src/BarrieraMoving.Server/App_Data/

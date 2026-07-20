@@ -20,4 +20,6 @@ public interface IOrderService
     Task<List<ApplicationUser>> GetAllUsersAsync();
     Task AddMessageAsync(Message message);
     Task<List<Message>> GetMessagesAsync(int orderId, int take = 50, int? beforeId = null, int? afterId = null);
+    Task<Message?> GetMessageWithOrderAsync(int messageId);
+    Task<Message?> FindMessageByIdempotencyKeyAsync(string idempotencyKey);
 }

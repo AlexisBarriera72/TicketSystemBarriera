@@ -52,5 +52,21 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<RefreshToken>()
             .HasIndex(t => t.TokenHash)
             .IsUnique();
+
+        // Idempotencia de la cola offline: el mismo envío reintentado no inserta dos veces
+        builder.Entity<Message>()
+            .HasIndex(m => m.IdempotencyKey)
+            .HasFilter("[IdempotencyKey] IS NOT NULL")
+            .IsUnique();
+
+        builder.Entity<TimeEntry>()
+            .HasIndex(t => t.ClockInIdempotencyKey)
+            .HasFilter("[ClockInIdempotencyKey] IS NOT NULL")
+            .IsUnique();
+
+        builder.Entity<TimeEntry>()
+            .HasIndex(t => t.ClockOutIdempotencyKey)
+            .HasFilter("[ClockOutIdempotencyKey] IS NOT NULL")
+            .IsUnique();
     }
 }

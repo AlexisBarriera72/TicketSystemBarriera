@@ -1,9 +1,11 @@
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using BarrieraMoving.Server.Data;
 using BarrieraMoving.Server.Models;
 using BarrieraMoving.Server.Services;
 using BarrieraMoving.Shared;
 using BarrieraMoving.Shared.Dtos;
+using static BarrieraMoving.Server.Api.OrderAccess;
 
 namespace BarrieraMoving.Server.Api;
 
@@ -111,35 +113,40 @@ public static class OrderEndpoints
             if (order is null) return Results.NotFound();
             if (!CanAccess(user, order)) return ApiForbid();
 
+            // Reenvío de la cola offline: si esta clave ya se insertó, devolver el original
+            if (!string.IsNullOrEmpty(request.IdempotencyKey))
+            {
+                var existing = await orders.FindMessageByIdempotencyKeyAsync(request.IdempotencyKey);
+                if (existing is not null) return Results.Ok(existing.ToDto());
+            }
+
             var message = new Message
             {
                 OrderId = id,
                 Content = request.Content.Trim(),
                 UserId = user.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow, // hora del servidor: la de verdad
+                CapturedAtUtc = request.CapturedAtUtc, // hora del dispositivo: metadato
                 // El rol se congela al enviar: un ascenso posterior no reetiqueta el historial
                 SenderRole = Roles.PrimaryRole(user),
                 IsSystem = false,
+                IdempotencyKey = string.IsNullOrEmpty(request.IdempotencyKey) ? null : request.IdempotencyKey,
             };
-            await orders.AddMessageAsync(message);
+            try
+            {
+                await orders.AddMessageAsync(message);
+            }
+            catch (DbUpdateException) when (!string.IsNullOrEmpty(request.IdempotencyKey))
+            {
+                // Carrera entre dos reintentos simultáneos: el índice único la corta
+                var existing = await orders.FindMessageByIdempotencyKeyAsync(request.IdempotencyKey);
+                if (existing is not null) return Results.Ok(existing.ToDto());
+                throw;
+            }
             return Results.Created($"{ApiRoutes.Orders}/{id}/messages", message.ToDto());
         });
 
         return app;
     }
 
-    // Forbid con el esquema JWT explícito: el Forbid por defecto usa la cookie de
-    // Identity y responde con un 302 al login web — la API debe devolver 403 limpio
-    private static IResult ApiForbid() =>
-        Results.Forbid(authenticationSchemes: [Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme]);
-
-    // Admin/Oficina ven todo; el conductor asignado y el autor ven su orden
-    private static bool CanAccess(ClaimsPrincipal user, Order order)
-    {
-        if (user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office)) return true;
-
-        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (user.IsInRole(Roles.Driver) && order.AssignedDriverId == userId) return true;
-        return order.AuthorId == userId;
-    }
 }

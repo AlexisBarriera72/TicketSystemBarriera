@@ -21,4 +21,14 @@ public class TimeEntry
     // true = el servidor cerró la jornada al tope máximo porque el empleado
     // olvidó fichar la salida; la oficina debe verificar las horas reales
     public bool AutoClosed { get; set; }
+
+    // Hora del DISPOSITIVO al pulsar el botón (metadato NO fiable). ClockInUtc /
+    // ClockOutUtc siguen siendo la hora del servidor y son las horas de nómina;
+    // si difieren mucho (fichaje en cola offline), la oficina lo ve y decide.
+    public DateTime? ClockInCapturedAtUtc { get; set; }
+    public DateTime? ClockOutCapturedAtUtc { get; set; }
+
+    // Claves de la cola offline (reintentos sin fichajes duplicados)
+    public string? ClockInIdempotencyKey { get; set; }
+    public string? ClockOutIdempotencyKey { get; set; }
 }

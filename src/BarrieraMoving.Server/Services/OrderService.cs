@@ -195,6 +195,23 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : I
         await context.Entry(message).Reference(m => m.User).LoadAsync();
     }
 
+    // Para servir la foto adjunta: el mensaje con su orden (el ACL se evalúa sobre la orden)
+    public async Task<Message?> GetMessageWithOrderAsync(int messageId)
+    {
+        using var context = dbFactory.CreateDbContext();
+        return await context.Messages
+            .Include(m => m.Order)
+            .FirstOrDefaultAsync(m => m.Id == messageId);
+    }
+
+    public async Task<Message?> FindMessageByIdempotencyKeyAsync(string idempotencyKey)
+    {
+        using var context = dbFactory.CreateDbContext();
+        return await context.Messages
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.IdempotencyKey == idempotencyKey);
+    }
+
     // Paginado: por defecto los últimos `take`; beforeId = página anterior
     // ("cargar mensajes antiguos"); afterId = solo los nuevos (polling delta).
     public async Task<List<Message>> GetMessagesAsync(int orderId, int take = 50, int? beforeId = null, int? afterId = null)

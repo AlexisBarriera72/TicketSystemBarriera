@@ -16,7 +16,9 @@ public static class MappingExtensions
     public static MessageDto ToDto(this Message m) => new(
         m.Id, m.OrderId, m.Content, m.CreatedAt, m.UserId,
         m.User?.DisplayName ?? m.User?.Email,
-        m.IsSystem, m.SenderRole);
+        m.IsSystem, m.SenderRole,
+        m.AttachmentPath is not null,
+        m.Latitude, m.Longitude, m.CapturedAtUtc);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Description);
 
@@ -28,5 +30,6 @@ public static class MappingExtensions
         t.ClockInUtc, t.ClockOutUtc,
         t.ClockInLatitude, t.ClockInLongitude,
         t.ClockOutLatitude, t.ClockOutLongitude,
-        t.AutoClosed);
+        t.AutoClosed,
+        t.ClockInCapturedAtUtc, t.ClockOutCapturedAtUtc);
 }

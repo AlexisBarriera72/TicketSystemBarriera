@@ -23,6 +23,7 @@ builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuth
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ITimeService, TimeService>();
+builder.Services.AddSingleton<IPhotoStorage, LocalPhotoStorage>();
 builder.Services.AddScoped<TokenService>();
 
 // Cookies para el dashboard web; JWT Bearer para la API (teléfonos MAUI).
@@ -63,7 +64,10 @@ builder.Services.AddAuthorizationBuilder()
         .RequireRole(Roles.Admin, Roles.Office))
     .AddPolicy(ApiAuth.EmployeePolicy, p => p
         .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-        .RequireRole(Roles.Admin, Roles.Office, Roles.Driver));
+        .RequireRole(Roles.Admin, Roles.Office, Roles.Driver))
+    .AddPolicy(ApiAuth.PhotoPolicy, p => p
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, IdentityConstants.ApplicationScheme)
+        .RequireAuthenticatedUser());
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
@@ -125,6 +129,7 @@ if (!string.IsNullOrEmpty(jwtKey))
     app.MapOrderApi();
     app.MapCatalogApi();
     app.MapTimeApi();
+    app.MapPhotoApi();
 }
 else
 {
