@@ -3,6 +3,7 @@
 @using System.Security.Claims
 @inject IOrderService OrderService
 @inject ISignatureService SignatureService
+@inject IPaperworkService PaperworkService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
 @attribute [Authorize]
@@ -141,8 +142,56 @@
                     </div>
                 </div>
 
-                @* --- DOCUMENTOS DE FIRMA (registros legales; sin borrado) --- *@
+                @* --- PAPELEO OBLIGATORIO (parte del paquete firmado; sin borrado) --- *@
                 <div class="mt-5">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-clipboard-check me-1"></i> Papeleo Obligatorio
+                    </h6>
+                    @foreach (var (slot, doc) in paperworkState)
+                    {
+                        <div class="border rounded-3 p-2 mb-2 bg-white shadow-sm d-flex justify-content-between align-items-center flex-wrap">
+                            <span class="small">
+                                <strong>@slot.Label</strong>
+                                @if (doc is null)
+                                {
+                                    <span class="badge bg-secondary ms-2">Pendiente</span>
+                                }
+                                else if (doc.Status == PaperworkStatus.Attached)
+                                {
+                                    <span class="badge bg-success ms-2">Adjunto</span>
+                                    <span class="text-muted ms-2">@doc.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                                }
+                                else if (doc.Status == PaperworkStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger ms-2">Rechazado</span>
+                                    <span class="text-danger ms-2">@doc.RejectReason</span>
+                                }
+                            </span>
+                            <span>
+                                @if (doc is not null)
+                                {
+                                    <a class="btn btn-sm btn-outline-primary me-1" target="_blank"
+                                       href="/api/v1/paperwork/@doc.Id/file">Ver</a>
+                                }
+                                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="pwCtx">
+                                    @if (doc?.Status == PaperworkStatus.Attached)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => RejectPaperworkAsync(doc.Id, slot.Label)">✖ Rechazar</button>
+                                    }
+                                </AuthorizeView>
+                            </span>
+                        </div>
+                    }
+                    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="pwReasonCtx">
+                        <input class="form-control form-control-sm mt-1" style="max-width: 420px;"
+                               placeholder="Motivo del rechazo de papeleo (obligatorio antes de pulsar Rechazar)"
+                               @bind="pwRejectReason" />
+                    </AuthorizeView>
+                </div>
+
+                @* --- DOCUMENTOS DE FIRMA (registros legales; sin borrado) --- *@
+                <div class="mt-4">
                     <h6 class="text-muted text-uppercase small fw-bold mb-3">
                         <i class="bi bi-pen-fill me-1"></i> Documentos de Firma
                     </h6>
@@ -341,7 +390,9 @@
     }
 
     private List<SignatureDocument> documents = [];
+    private List<(PaperworkSlot Slot, PaperworkDocument? Doc)> paperworkState = [];
     private string rejectReason = "";
+    private string pwRejectReason = "";
 
     private async Task LoadData()
     {
@@ -350,7 +401,21 @@
         messages = await OrderService.GetMessagesAsync(OrderId); // últimos 50
         canLoadOlder = messages.Count >= 50;
         documents = await SignatureService.GetForOrderAsync(OrderId);
+        var currentPw = await PaperworkService.GetCurrentBySlotAsync(OrderId);
+        paperworkState = PaperworkService.GetSlots()
+            .Select(s => (s, currentPw.GetValueOrDefault(s.Key)))
+            .ToList();
         if (order?.AssignedDriverId != null) selectedDriverId = order.AssignedDriverId;
+    }
+
+    private async Task RejectPaperworkAsync(int documentId, string label)
+    {
+        var (ok, error) = await PaperworkService.RejectAsync(documentId, currentUserId, pwRejectReason);
+        feedbackMessage = ok
+            ? $"'{label}' rechazado: el conductor verá el motivo. Si había firma, queda invalidada (habrá que re-firmar)."
+            : (error ?? "No se pudo rechazar.");
+        if (ok) pwRejectReason = "";
+        await LoadData();
     }
 
     private async Task ApproveDocAsync(int documentId)

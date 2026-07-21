@@ -27,6 +27,7 @@ else
     <a class="btn btn-primary w-100 mb-2" href="/orders/@Id/chat">💬 Abrir chat de la orden</a>
     @if (isStaffUser && order.Status != OrderStatus.Completed)
     {
+        <a class="btn btn-outline-secondary w-100 mb-2" href="/orders/@Id/paperwork">📋 Papeleo obligatorio</a>
         <a class="btn btn-outline-success w-100 mb-2" href="/orders/@Id/sign">✍ Solicitar firma del cliente</a>
     }
 

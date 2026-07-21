@@ -29,6 +29,21 @@ else if (loadError is not null)
     <div class="alert alert-warning">@loadError</div>
     <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
 }
+else if (missingPaperwork.Count > 0)
+{
+    <div class="alert alert-warning">
+        <strong>Falta papeleo obligatorio antes de firmar:</strong>
+        <ul class="mb-1">
+            @foreach (var label in missingPaperwork)
+            {
+                <li>@label</li>
+            }
+        </ul>
+        El cliente firma el paquete COMPLETO (papeleo incluido); no se puede
+        añadir nada después de firmar.
+    </div>
+    <a class="btn btn-primary w-100" href="/orders/@Id/paperwork">📋 Ir al papeleo</a>
+}
 else if (order is not null)
 {
     <div class="card shadow-sm mb-3">
@@ -73,6 +88,7 @@ else if (order is not null)
     [Parameter] public int Id { get; set; }
 
     private OrderDto? order;
+    private List<string> missingPaperwork = [];
     private string signerName = "";
     private bool loading = true;
     private bool busy;
@@ -123,6 +139,21 @@ else if (order is not null)
         {
             order = await Api.GetOrderAsync(Id);
             if (order is null) loadError = "Orden no encontrada o sin acceso.";
+
+            // Precondición del paquete: papeleo obligatorio antes de la firma.
+            // Los slots ya en cola (aún sin subir) cuentan como cubiertos: la cola
+            // es FIFO, así que llegan al servidor ANTES que la firma.
+            var slots = await Api.GetOrderPaperworkAsync(Id);
+            var queued = (await Outbox.GetAllAsync())
+                .Where(i => i.Kind == OutboxKind.Paperwork && i.OrderId == Id && i.Text is not null)
+                .Select(i => i.Text!)
+                .ToHashSet();
+            missingPaperwork = slots
+                .Where(s => s.Required &&
+                            (s.Current is null || s.Current.Status != PaperworkStatus.Attached) &&
+                            !queued.Contains(s.Key))
+                .Select(s => s.Label)
+                .ToList();
         }
         catch (Exception)
         {

@@ -79,6 +79,25 @@ public class OutboxService(IHttpClientFactory httpClientFactory, TokenStore toke
         return await EnqueueAsync(item);
     }
 
+    // Papeleo obligatorio: misma mecánica que las fotos (JPEG comprimido en disco)
+    public async Task<(bool Ok, string? Error)> EnqueuePaperworkAsync(int orderId, string slotKey,
+        byte[] jpeg, double? latitude, double? longitude)
+    {
+        var item = new OutboxItem
+        {
+            Kind = OutboxKind.Paperwork,
+            OrderId = orderId,
+            Text = slotKey,
+            Latitude = latitude,
+            Longitude = longitude,
+        };
+        var dir = Path.Combine(FileSystem.AppDataDirectory, "outbox");
+        Directory.CreateDirectory(dir);
+        item.FilePath = Path.Combine(dir, $"{item.Id}.jpg");
+        await File.WriteAllBytesAsync(item.FilePath, jpeg);
+        return await EnqueueAsync(item);
+    }
+
     public Task<(bool Ok, string? Error)> EnqueueClockAsync(bool clockIn, double? latitude, double? longitude) =>
         EnqueueAsync(new OutboxItem
         {
@@ -264,6 +283,16 @@ public class OutboxService(IHttpClientFactory httpClientFactory, TokenStore toke
                 var (_, sigError) = await api.SubmitOfflineSignatureAsync(item.OrderId, png,
                     item.Text ?? "", item.Latitude, item.Longitude, item.CapturedAtUtc, item.Id);
                 return sigError;
+
+            case OutboxKind.Paperwork:
+                if (item.FilePath is null || !File.Exists(item.FilePath))
+                {
+                    return "El archivo del documento ya no existe en el dispositivo.";
+                }
+                var pw = await File.ReadAllBytesAsync(item.FilePath);
+                var (_, pwError) = await api.UploadPaperworkAsync(item.OrderId, item.Text ?? "",
+                    pw, item.Latitude, item.Longitude, item.CapturedAtUtc, item.Id);
+                return pwError;
 
             case OutboxKind.ClockIn:
                 var (_, inError) = await api.ClockInAsync(item.Latitude, item.Longitude,

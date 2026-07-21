@@ -92,6 +92,50 @@ public class ApiClient(HttpClient http)
         return await response.Content.ReadAsByteArrayAsync();
     }
 
+    // --- PAPELEO OBLIGATORIO ---
+
+    public async Task<List<PaperworkSlotStateDto>> GetOrderPaperworkAsync(int orderId) =>
+        await http.GetFromJsonAsync<List<PaperworkSlotStateDto>>(
+            $"{ApiRoutes.Orders}/{orderId}/paperwork", ApiJson.Options) ?? [];
+
+    public async Task<(PaperworkDocumentDto? Doc, string? Error)> UploadPaperworkAsync(int orderId,
+        string slotKey, byte[] jpeg, double? latitude, double? longitude,
+        DateTime? capturedAtUtc = null, string? idempotencyKey = null)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(jpeg);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+        form.Add(file, "file", "paperwork.jpg");
+        form.Add(new StringContent(slotKey), "slotKey");
+        if (latitude is not null)
+            form.Add(new StringContent(latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)), "latitude");
+        if (longitude is not null)
+            form.Add(new StringContent(longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)), "longitude");
+        if (capturedAtUtc is not null)
+            form.Add(new StringContent(capturedAtUtc.Value.ToString("O")), "capturedAtUtc");
+        if (!string.IsNullOrEmpty(idempotencyKey))
+            form.Add(new StringContent(idempotencyKey), "idempotencyKey");
+
+        var response = await http.PostAsync($"{ApiRoutes.Orders}/{orderId}/paperwork", form);
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            return (null, "No tienes acceso a esta orden.");
+        }
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            return (null, "El servidor rechazó el documento.");
+        }
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<PaperworkDocumentDto>(ApiJson.Options), null);
+    }
+
+    public async Task<byte[]?> GetPaperworkFileAsync(int documentId)
+    {
+        var response = await http.GetAsync($"{ApiRoutes.Paperwork}/{documentId}/file");
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadAsByteArrayAsync();
+    }
+
     // --- DOCUMENTOS DE FIRMA ---
 
     // Ceremonia offline: PNG del lienzo + nombre + GPS + metadatos de cola

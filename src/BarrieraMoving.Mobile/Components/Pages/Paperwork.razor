@@ -1,0 +1,222 @@
+@page "/orders/{Id:int}/paperwork"
+@implements IDisposable
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ClockState Clock
+@inject OutboxService Outbox
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center mb-2">
+    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))">←</button>
+    <div class="fw-bold">📋 Papeleo de la orden #@Id</div>
+</div>
+
+@if (loading)
+{
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else if (loadError is not null)
+{
+    <div class="alert alert-warning">@loadError</div>
+    <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+}
+else
+{
+    <p class="text-muted small">
+        Todos los documentos obligatorios deben estar adjuntos ANTES de la firma
+        del cliente: lo que se firma es el paquete completo. Sin conexión también
+        funcionan: quedan en cola y se envían solos.
+    </p>
+
+    @if (captureError is not null)
+    {
+        <div class="alert alert-warning py-2">@captureError</div>
+    }
+
+    @foreach (var slot in slots)
+    {
+        var queued = queuedSlots.Contains(slot.Key);
+        <div class="card shadow-sm mb-2">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small">
+                        <strong>@slot.Label</strong>
+                        @if (slot.Required)
+                        {
+                            <span class="text-danger">*</span>
+                        }
+                        <br />
+                        @if (queued)
+                        {
+                            <span class="badge bg-secondary">🕓 Pendiente de envío</span>
+                        }
+                        else if (slot.Current is null)
+                        {
+                            <span class="badge bg-light text-dark border">Sin adjuntar</span>
+                        }
+                        else if (slot.Current.Status == PaperworkStatus.Attached)
+                        {
+                            <span class="badge bg-success">✔ Adjunto</span>
+                            <span class="text-muted" style="font-size: 0.65rem;">
+                                @slot.Current.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                            </span>
+                        }
+                        else if (slot.Current.Status == PaperworkStatus.Rejected)
+                        {
+                            <span class="badge bg-danger">✖ Rechazado</span>
+                        }
+                    </span>
+                    <span>
+                        @if (slot.Current is not null && !queued)
+                        {
+                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => ViewAsync(slot.Current!)"
+                                    disabled="@busy">Ver</button>
+                        }
+                        <button class="btn btn-sm btn-outline-secondary me-1" title="Cámara"
+                                @onclick="() => CaptureAsync(slot.Key, fromCamera: true)" disabled="@busy">📷</button>
+                        <button class="btn btn-sm btn-outline-secondary" title="Galería"
+                                @onclick="() => CaptureAsync(slot.Key, fromCamera: false)" disabled="@busy">🖼</button>
+                    </span>
+                </div>
+                @if (!queued && slot.Current?.Status == PaperworkStatus.Rejected)
+                {
+                    <div class="text-danger small mt-1">
+                        Oficina: <strong>@slot.Current.RejectReason</strong> — vuelve a capturar este documento.
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (viewerUri is not null)
+    {
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: flex; align-items: center; justify-content: center;"
+             @onclick="() => viewerUri = null">
+            <img src="@viewerUri" style="max-width: 96vw; max-height: 92vh; object-fit: contain;" />
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private List<PaperworkSlotStateDto> slots = [];
+    private HashSet<string> queuedSlots = [];
+    private bool loading = true;
+    private bool busy;
+    private string? loadError;
+    private string? captureError;
+    private string? viewerUri;
+    private bool subscribed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        var user = await Auth.GetCurrentUserAsync();
+        if (!UserRoles.IsStaff(user))
+        {
+            Nav.NavigateTo($"/orders/{Id}");
+            return;
+        }
+        if (UserRoles.IsDriverOnly(user))
+        {
+            try
+            {
+                await Clock.EnsureLoadedAsync(Api);
+            }
+            catch (Exception) { }
+            if (Clock.OpenEntry is null)
+            {
+                Nav.NavigateTo("/clock");
+                return;
+            }
+        }
+
+        Outbox.Changed += OnOutboxChanged;
+        subscribed = true;
+        await LoadAsync();
+    }
+
+    private void OnOutboxChanged() => _ = InvokeAsync(LoadAsync);
+
+    private async Task LoadAsync()
+    {
+        loading = slots.Count == 0;
+        loadError = null;
+        StateHasChanged();
+        try
+        {
+            slots = await Api.GetOrderPaperworkAsync(Id);
+        }
+        catch (Exception)
+        {
+            if (slots.Count == 0) loadError = "No se pudo cargar el papeleo. Revisa la conexión.";
+        }
+        var pending = await Outbox.GetAllAsync();
+        queuedSlots = pending
+            .Where(i => i.Kind == OutboxKind.Paperwork && i.OrderId == Id && i.Text is not null)
+            .Select(i => i.Text!)
+            .ToHashSet();
+        loading = false;
+        StateHasChanged();
+    }
+
+    private async Task CaptureAsync(string slotKey, bool fromCamera)
+    {
+        if (busy) return;
+        busy = true;
+        captureError = null;
+        StateHasChanged();
+
+        var result = fromCamera ? await PhotoCapture.FromCameraAsync() : await PhotoCapture.FromGalleryAsync();
+        if (result.Error is not null)
+        {
+            captureError = result.Error;
+        }
+        else if (result.Jpeg is not null)
+        {
+            var location = await LocationHelper.TryGetLocationAsync();
+            var (ok, error) = await Outbox.EnqueuePaperworkAsync(Id, slotKey, result.Jpeg,
+                location?.Latitude, location?.Longitude);
+            if (!ok) captureError = error;
+            await LoadAsync();
+        }
+        busy = false;
+    }
+
+    private async Task ViewAsync(PaperworkDocumentDto doc)
+    {
+        busy = true;
+        StateHasChanged();
+        try
+        {
+            var bytes = await Api.GetPaperworkFileAsync(doc.Id);
+            if (bytes is not null)
+            {
+                if (doc.IsPdf)
+                {
+                    var path = Path.Combine(FileSystem.CacheDirectory, $"papeleo_{doc.Id}.pdf");
+                    await File.WriteAllBytesAsync(path, bytes);
+                    await Launcher.Default.OpenAsync(new OpenFileRequest("Documento", new ReadOnlyFile(path)));
+                }
+                else
+                {
+                    viewerUri = $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}";
+                }
+            }
+        }
+        catch (Exception) { }
+        busy = false;
+    }
+
+    public void Dispose()
+    {
+        if (subscribed) Outbox.Changed -= OnOutboxChanged;
+    }
+}

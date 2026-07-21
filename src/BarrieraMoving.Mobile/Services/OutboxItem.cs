@@ -2,7 +2,7 @@ using SQLite;
 
 namespace BarrieraMoving.Mobile.Services;
 
-public enum OutboxKind { Message = 0, Photo = 1, ClockIn = 2, ClockOut = 3, Signature = 4 }
+public enum OutboxKind { Message = 0, Photo = 1, ClockIn = 2, ClockOut = 3, Signature = 4, Paperwork = 5 }
 
 // Pending → Sending → (Sent = fila borrada) | Failed (visible y reintentables — jamás se descarta solo)
 public enum OutboxStatus { Pending = 0, Sending = 1, Failed = 2 }
