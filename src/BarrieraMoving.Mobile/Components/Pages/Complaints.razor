@@ -1,0 +1,137 @@
+@page "/complaints"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center mb-3">
+    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo("/"))">←</button>
+    <h4 class="mb-0">🎧 Atención al Cliente</h4>
+</div>
+
+@if (feedback is not null)
+{
+    <div class="alert alert-success py-2">@feedback</div>
+}
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <div class="mb-2">
+            <label class="form-label small fw-bold">Asunto</label>
+            <input class="form-control" @bind="subject" placeholder="Resumen breve" disabled="@busy" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label small fw-bold">Descripción</label>
+            <textarea class="form-control" rows="3" @bind="description"
+                      placeholder="Cuéntanos qué ocurrió" disabled="@busy"></textarea>
+        </div>
+        @if (error is not null)
+        {
+            <div class="alert alert-warning py-2">@error</div>
+        }
+        <button class="btn btn-primary w-100" @onclick="SubmitAsync" disabled="@busy">
+            @(busy ? "Enviando..." : "Enviar reclamación")
+        </button>
+    </div>
+</div>
+
+<h6 class="text-muted">Mis reclamaciones</h6>
+@if (loading)
+{
+    <div class="text-center p-3"><div class="spinner-border text-primary" role="status"></div></div>
+}
+else if (!complaints.Any())
+{
+    <p class="text-muted small">Aún no has enviado reclamaciones.</p>
+}
+else
+{
+    @foreach (var c in complaints)
+    {
+        <div class="card shadow-sm mb-2">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span><span class="badge @StatusBadge(c.Status)">@StatusLabel(c.Status)</span>
+                        <strong class="ms-2">@c.Subject</strong></span>
+                    <small class="text-muted">@c.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</small>
+                </div>
+                <p class="small mb-1 mt-1" style="white-space: pre-wrap;">@c.Description</p>
+                @if (!string.IsNullOrEmpty(c.OfficeResponse))
+                {
+                    <div class="alert alert-info py-2 px-2 mb-0 small">
+                        <strong>Respuesta:</strong> @c.OfficeResponse
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<ComplaintDto> complaints = [];
+    private string subject = "";
+    private string description = "";
+    private bool loading = true;
+    private bool busy;
+    private string? error;
+    private string? feedback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync()) { Nav.NavigateTo("/login"); return; }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        try { complaints = await Api.GetMyComplaintsAsync(); }
+        catch (Exception) { }
+        loading = false;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (busy) return;
+        error = null;
+        if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(description))
+        {
+            error = "Escribe un asunto y una descripción.";
+            return;
+        }
+        busy = true;
+        StateHasChanged();
+        try
+        {
+            var (c, err) = await Api.CreateComplaintAsync(subject.Trim(), description.Trim());
+            if (err is not null) { error = err; }
+            else
+            {
+                subject = ""; description = "";
+                feedback = "Reclamación enviada. La oficina te responderá pronto.";
+                await LoadAsync();
+            }
+        }
+        catch (Exception)
+        {
+            error = "Sin conexión — no se pudo enviar. Inténtalo de nuevo con red.";
+        }
+        busy = false;
+    }
+
+    private static string StatusLabel(ComplaintStatus s) => s switch
+    {
+        ComplaintStatus.Open => "Abierta",
+        ComplaintStatus.InReview => "En revisión",
+        ComplaintStatus.Resolved => "Resuelta",
+        _ => s.ToString()
+    };
+
+    private static string StatusBadge(ComplaintStatus s) => s switch
+    {
+        ComplaintStatus.Open => "bg-warning text-dark",
+        ComplaintStatus.InReview => "bg-info text-dark",
+        ComplaintStatus.Resolved => "bg-success",
+        _ => "bg-secondary"
+    };
+}

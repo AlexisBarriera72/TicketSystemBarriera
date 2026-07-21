@@ -92,6 +92,23 @@ public class ApiClient(HttpClient http)
         return await response.Content.ReadAsByteArrayAsync();
     }
 
+    // --- ATENCIÓN AL CLIENTE / RECLAMACIONES ---
+
+    public async Task<List<ComplaintDto>> GetMyComplaintsAsync() =>
+        await http.GetFromJsonAsync<List<ComplaintDto>>($"{ApiRoutes.Complaints}/mine", ApiJson.Options) ?? [];
+
+    public async Task<(ComplaintDto? Complaint, string? Error)> CreateComplaintAsync(string subject, string description, int? orderId = null)
+    {
+        var response = await http.PostAsJsonAsync(ApiRoutes.Complaints,
+            new CreateComplaintRequest(subject, description, orderId), ApiJson.Options);
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            return (null, "Asunto y descripción son obligatorios.");
+        }
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<ComplaintDto>(ApiJson.Options), null);
+    }
+
     // --- MENSAJES DIRECTOS ---
 
     public async Task<List<DirectConversationDto>> GetConversationsAsync() =>
