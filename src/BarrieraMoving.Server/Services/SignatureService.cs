@@ -15,8 +15,42 @@ public class SignatureService(
     IPhotoStorage storage,
     IAppEmailSender email,
     ISignatureProvider provider,
+    IPaperworkService paperwork,
     ILogger<SignatureService> logger) : ISignatureService
 {
+    // SECUENCIA firma-papeleo (decisión aprobada): el papeleo obligatorio se
+    // adjunta ANTES; el cliente firma el paquete COMPLETO ya ensamblado; nada
+    // se añade después de firmar. Un rechazo de papeleo invalida la firma
+    // (cascada en PaperworkService.RejectAsync) y exige re-firmar.
+    private async Task<(List<SignaturePdfGenerator.PackageAttachment>? Items, string? Error)> LoadPackageAsync(int orderId)
+    {
+        var missing = await paperwork.GetMissingRequiredLabelsAsync(orderId);
+        if (missing.Count > 0)
+        {
+            return (null, $"Falta papeleo obligatorio antes de firmar: {string.Join(", ", missing)}.");
+        }
+
+        var current = await paperwork.GetCurrentBySlotAsync(orderId);
+        var items = new List<SignaturePdfGenerator.PackageAttachment>();
+        foreach (var slot in paperwork.GetSlots())
+        {
+            if (!current.TryGetValue(slot.Key, out var doc) ||
+                doc.Status != Shared.Enums.PaperworkStatus.Attached)
+            {
+                continue; // opcional sin adjuntar
+            }
+            using var stream = storage.Open(doc.FilePath);
+            if (stream is null)
+            {
+                return (null, $"No se encontró el archivo del documento '{slot.Label}'.");
+            }
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            items.Add(new SignaturePdfGenerator.PackageAttachment(slot.Label, doc, ms.ToArray()));
+        }
+        return (items, null);
+    }
+
     // --- Ruta ONLINE ---
 
     public async Task<(SignatureDocument?, string?, string?)> CreateProviderRequestAsync(
@@ -27,6 +61,10 @@ public class SignatureService(
             .Include(o => o.Author).Include(o => o.AssignedDriver).Include(o => o.Category)
             .FirstOrDefaultAsync(o => o.Id == orderId);
         if (order is null) return (null, null, "La orden no existe.");
+
+        // El sobre del proveedor debe contener el paquete COMPLETO: sin papeleo, no hay firma
+        var (_, packageError) = await LoadPackageAsync(orderId);
+        if (packageError is not null) return (null, null, packageError);
 
         var (envelopeId, signingUrl) = await provider.CreateEnvelopeAsync(order, signerName, order.Author?.Email);
 
@@ -97,15 +135,21 @@ public class SignatureService(
             .FirstOrDefaultAsync(o => o.Id == orderId);
         if (order is null) return (null, "La orden no existe.");
 
+        // Precondición de la ceremonia: paquete completo antes de firmar
+        var (attachments, packageError) = await LoadPackageAsync(orderId);
+        if (packageError is not null) return (null, packageError);
+
         var receivedAt = DateTime.UtcNow;
 
-        // Huella del contenido firmado (lo que el cliente aceptó): orden + firma
+        // Huella del contenido firmado (lo que el cliente aceptó):
+        // orden + hashes del papeleo + trazos de la firma
+        var paperworkHashes = string.Join(",", attachments!.Select(a => a.Doc.ContentHash));
         var inputHash = Sha256Hex(Encoding.UTF8.GetBytes(
-            $"{order.Id}|{order.Title}|{order.Description}|{signerName}|")
+            $"{order.Id}|{order.Title}|{order.Description}|{signerName}|{paperworkHashes}|")
             .Concat(signaturePng).ToArray());
 
         var pdf = SignaturePdfGenerator.Generate(order, signerName, signaturePng,
-            latitude, longitude, capturedAtUtc, receivedAt, inputHash);
+            latitude, longitude, capturedAtUtc, receivedAt, inputHash, attachments);
 
         var name = Guid.NewGuid().ToString("N");
         var doc = new SignatureDocument

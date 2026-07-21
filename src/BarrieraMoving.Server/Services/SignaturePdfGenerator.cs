@@ -5,16 +5,19 @@ using BarrieraMoving.Server.Models;
 
 namespace BarrieraMoving.Server.Services;
 
-// Genera el PDF de conformidad para la ceremonia de firma SIN conexión:
-// datos de la orden + declaración + imagen de la firma + metadatos de atribución
-// (nombre tecleado, GPS, hora del dispositivo, hora del servidor, hash).
-// En la ruta online el PDF lo genera el PROVEEDOR; este documento se marca
-// PROVISIONAL de forma bien visible para que la oficina lo sepa al revisar.
+// Genera el PAQUETE de conformidad para la ceremonia de firma SIN conexión:
+// página de conformidad (datos + declaración + firma + atribución + MANIFIESTO
+// del papeleo con sus hashes) seguida del papeleo completo (imágenes y PDFs).
+// SECUENCIA CRÍTICA: el paquete se ensambla COMPLETO y es ESO lo que el cliente
+// firma — jamás se añade nada después de firmar, así el artefacto firmado y su
+// hash siguen describiendo exactamente el archivo que conservamos.
 public static class SignaturePdfGenerator
 {
+    public record PackageAttachment(string Label, PaperworkDocument Doc, byte[] Content);
+
     public static byte[] Generate(Order order, string signerName, byte[] signaturePng,
         double? latitude, double? longitude, DateTime? capturedAtUtc, DateTime receivedAtUtc,
-        string contentHash)
+        string contentHash, IReadOnlyList<PackageAttachment>? paperwork = null)
     {
         using var document = new PdfDocument();
         var page = document.AddPage();
@@ -95,11 +98,74 @@ public static class SignaturePdfGenerator
         Meta(latitude is not null
             ? $"Ubicación GPS en la firma: {latitude}, {longitude}"
             : "Ubicación GPS: no disponible en el momento de la firma");
-        Meta($"Huella SHA-256 del contenido firmado (orden + firma): {contentHash}");
+        Meta($"Huella SHA-256 del contenido firmado (orden + papeleo + firma): {contentHash}");
         Meta("Documento generado automáticamente por Barriera Moving al recibir la firma.");
+
+        // Manifiesto del papeleo: ata cada documento adjunto (por hash) a ESTA firma
+        if (paperwork is { Count: > 0 })
+        {
+            y += 6;
+            gfx.DrawString("Documentación incluida en este paquete firmado:", heading, XBrushes.Black, new XPoint(left, y + 10));
+            y += 18;
+            foreach (var item in paperwork)
+            {
+                Meta($"— {item.Label}: SHA-256 {item.Doc.ContentHash}");
+            }
+        }
+
+        // Páginas del papeleo, en el orden de los slots
+        if (paperwork is not null)
+        {
+            foreach (var item in paperwork)
+            {
+                if (item.Doc.IsPdf)
+                {
+                    AppendPdf(document, item, heading, small);
+                }
+                else
+                {
+                    AppendImagePage(document, item, heading, small);
+                }
+            }
+        }
 
         using var output = new MemoryStream();
         document.Save(output);
         return output.ToArray();
+    }
+
+    private static void AppendImagePage(PdfDocument document, PackageAttachment item, XFont heading, XFont small)
+    {
+        var page = document.AddPage();
+        using var gfx = XGraphics.FromPdfPage(page);
+        double left = 50, top = 50, width = page.Width.Point - 100;
+
+        gfx.DrawString(item.Label, heading, XBrushes.Black, new XPoint(left, top + 10));
+        gfx.DrawString($"SHA-256: {item.Doc.ContentHash}", small, XBrushes.DarkSlateGray, new XPoint(left, top + 26));
+
+        using var stream = new MemoryStream(item.Content);
+        using var image = XImage.FromStream(stream);
+        double maxW = width, maxH = page.Height.Point - top - 90;
+        var scale = Math.Min(maxW / image.PixelWidth, maxH / image.PixelHeight);
+        double w = image.PixelWidth * scale, h = image.PixelHeight * scale;
+        gfx.DrawImage(image, left, top + 40, w, h);
+    }
+
+    private static void AppendPdf(PdfDocument document, PackageAttachment item, XFont heading, XFont small)
+    {
+        // Portada del adjunto + páginas importadas del PDF original
+        var cover = document.AddPage();
+        using (var gfx = XGraphics.FromPdfPage(cover))
+        {
+            gfx.DrawString(item.Label, heading, XBrushes.Black, new XPoint(50, 60));
+            gfx.DrawString($"Documento PDF adjunto — SHA-256: {item.Doc.ContentHash}", small,
+                XBrushes.DarkSlateGray, new XPoint(50, 78));
+        }
+        using var stream = new MemoryStream(item.Content);
+        using var imported = PdfSharp.Pdf.IO.PdfReader.Open(stream, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        foreach (var page in imported.Pages)
+        {
+            document.AddPage(page);
+        }
     }
 }

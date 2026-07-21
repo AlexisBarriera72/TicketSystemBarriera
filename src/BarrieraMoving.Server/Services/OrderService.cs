@@ -7,7 +7,9 @@ using BarrieraMoving.Shared.Enums;
 namespace BarrieraMoving.Server.Services;
 
 // Using Primary Constructor de C# 14
-public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : IOrderService
+public class OrderService(
+    IDbContextFactory<ApplicationDbContext> dbFactory,
+    IPaperworkService paperwork) : IOrderService
 {
     // Transiciones válidas del flujo de una mudanza. Admin/Oficina pueden saltárselas
     // (bypassValidation); el conductor no. En la Fase 6, PendingSignature → Completed
@@ -126,12 +128,18 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : I
                 return (false, $"Transición no permitida: {oldStatus} → {newStatus}.");
             }
 
-            // GATE LEGAL (fase 6): Completed exige un documento firmado por el
-            // cliente Y aprobado por la oficina. Este check NO se salta ni con
-            // bypassValidation — es la protección del cliente ante reclamaciones,
-            // no una simple validación de flujo.
+            // GATES LEGALES (fases 6 y 8A): Completed exige (a) TODO el papeleo
+            // obligatorio adjunto y (b) el paquete firmado por el cliente Y
+            // aprobado por la oficina. Ningún check se salta con bypassValidation —
+            // es la protección del cliente ante reclamaciones, no flujo.
             if (newStatus == OrderStatus.Completed)
             {
+                var missingPaperwork = await paperwork.GetMissingRequiredLabelsAsync(orderId);
+                if (missingPaperwork.Count > 0)
+                {
+                    return (false, $"No se puede completar la orden: falta papeleo obligatorio ({string.Join(", ", missingPaperwork)}).");
+                }
+
                 var hasApprovedDoc = await context.SignatureDocuments
                     .AnyAsync(d => d.OrderId == orderId && d.Status == SignatureDocStatus.Approved);
                 if (!hasApprovedDoc)

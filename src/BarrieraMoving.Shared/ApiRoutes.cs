@@ -12,5 +12,7 @@ public static class ApiRoutes
     public const string Time = $"{Base}/time";
     public const string Photos = $"{Base}/photos";
     public const string Documents = $"{Base}/documents";
+    public const string Paperwork = $"{Base}/paperwork";
+    public const string DirectMessages = $"{Base}/dm";
     public const string EsignWebhook = $"{Base}/webhooks/esign";
 }

@@ -12,6 +12,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<TimeEntry> TimeEntries { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<SignatureDocument> SignatureDocuments { get; set; }
+    public DbSet<PaperworkDocument> PaperworkDocuments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -92,5 +93,26 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasIndex(d => d.ProviderEnvelopeId)
             .HasFilter("[ProviderEnvelopeId] IS NOT NULL")
             .IsUnique();
+
+        // Papeleo obligatorio: mismo tratamiento de registro legal
+        builder.Entity<PaperworkDocument>()
+            .HasOne(p => p.UploadedBy)
+            .WithMany()
+            .HasForeignKey(p => p.UploadedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PaperworkDocument>()
+            .HasOne(p => p.ReviewedBy)
+            .WithMany()
+            .HasForeignKey(p => p.ReviewedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PaperworkDocument>()
+            .HasIndex(p => p.IdempotencyKey)
+            .HasFilter("[IdempotencyKey] IS NOT NULL")
+            .IsUnique();
+
+        builder.Entity<PaperworkDocument>()
+            .HasIndex(p => new { p.OrderId, p.SlotKey });
     }
 }

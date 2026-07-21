@@ -32,6 +32,12 @@ public static class MappingExtensions
         d.ReviewedBy?.DisplayName ?? d.ReviewedBy?.Email, d.ReviewedAtUtc,
         d.EmailStatus);
 
+    public static PaperworkDocumentDto ToDto(this PaperworkDocument p) => new(
+        p.Id, p.OrderId, p.SlotKey, p.Status, p.IsPdf,
+        p.CreatedAtUtc, p.CapturedAtUtc, p.Latitude, p.Longitude,
+        p.ContentHash, p.RejectReason,
+        p.ReviewedBy?.DisplayName ?? p.ReviewedBy?.Email, p.ReviewedAtUtc);
+
     public static TimeEntryDto ToDto(this TimeEntry t) => new(
         t.Id, t.UserId, t.User?.DisplayName ?? t.User?.Email,
         t.ClockInUtc, t.ClockOutUtc,
