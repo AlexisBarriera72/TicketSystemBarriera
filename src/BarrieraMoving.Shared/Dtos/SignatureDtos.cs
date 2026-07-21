@@ -20,3 +20,7 @@ public record SignatureDocumentDto(
     EmailDeliveryStatus EmailStatus);
 
 public record RejectDocumentRequest(string Reason);
+
+public record CreateSignatureRequest(string SignerName);
+
+public record CreateSignatureResponse(int DocumentId, string SigningUrl);

@@ -24,7 +24,23 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ITimeService, TimeService>();
 builder.Services.AddSingleton<IPhotoStorage, LocalPhotoStorage>();
+builder.Services.AddScoped<ISignatureService, SignatureService>();
 builder.Services.AddScoped<TokenService>();
+
+// Correo saliente: SMTP (MailKit) si hay Email:Host en user-secrets; si no, el
+// estado queda VISIBLE como NotConfigured — nunca un fallo silencioso
+if (!string.IsNullOrEmpty(builder.Configuration["Email:Host"]))
+{
+    builder.Services.AddSingleton<IAppEmailSender, SmtpEmailSender>();
+}
+else
+{
+    builder.Services.AddSingleton<IAppEmailSender, NullEmailSender>();
+}
+
+// TODO(proveedor de firma): cuando Alexis nombre el proveedor y ponga
+// ESign:ApiKey en user-secrets, registrar aquí el adaptador real en su lugar.
+builder.Services.AddSingleton<ISignatureProvider, FakeSignatureProvider>();
 
 // Cookies para el dashboard web; JWT Bearer para la API (teléfonos MAUI).
 // La clave de firma vive en user-secrets, nunca en appsettings.json.
@@ -130,6 +146,7 @@ if (!string.IsNullOrEmpty(jwtKey))
     app.MapCatalogApi();
     app.MapTimeApi();
     app.MapPhotoApi();
+    app.MapDocumentApi();
 }
 else
 {

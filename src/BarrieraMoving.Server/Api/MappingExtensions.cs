@@ -25,6 +25,13 @@ public static class MappingExtensions
     public static UserSummaryDto ToDto(this ApplicationUser u, IEnumerable<string>? roles = null) =>
         new(u.Id, u.DisplayName, u.Email, roles?.ToList() ?? []);
 
+    public static SignatureDocumentDto ToDto(this SignatureDocument d) => new(
+        d.Id, d.OrderId, d.Status, d.IsProvisional, d.SignerName,
+        d.CreatedAtUtc, d.SignedAtUtc, d.SignedCapturedAtUtc,
+        d.Latitude, d.Longitude, d.ContentHash, d.RejectReason,
+        d.ReviewedBy?.DisplayName ?? d.ReviewedBy?.Email, d.ReviewedAtUtc,
+        d.EmailStatus);
+
     public static TimeEntryDto ToDto(this TimeEntry t) => new(
         t.Id, t.UserId, t.User?.DisplayName ?? t.User?.Email,
         t.ClockInUtc, t.ClockOutUtc,
