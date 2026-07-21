@@ -3,6 +3,7 @@
 @inject IOrderService OrderService
 @inject IReportService ReportService
 @inject ITimeService TimeService
+@inject ISignatureService SignatureService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @attribute [Authorize(Roles = Roles.Admin + "," + Roles.Office)]
@@ -53,6 +54,43 @@
             </div>
         </div>
     </div>
+
+    @* ---- FIRMAS PENDIENTES DE REVISIÓN (bloquean el cierre de sus órdenes) ---- *@
+    @if (pendingDocs.Any())
+    {
+        <div class="card border-primary shadow-sm mb-4">
+            <div class="card-header bg-primary text-white py-2">
+                <strong>✍ @pendingDocs.Count documento(s) firmados esperando revisión</strong>
+                — sus órdenes no pueden completarse hasta aprobarlos
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm align-middle mb-0">
+                    <tbody>
+                        @foreach (var doc in pendingDocs)
+                        {
+                            <tr>
+                                <td class="ps-3">Orden #@doc.OrderId — @doc.Order?.Title</td>
+                                <td>@doc.SignerName</td>
+                                <td>@doc.SignedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                <td>
+                                    @if (doc.IsProvisional)
+                                    {
+                                        <span class="badge bg-warning text-dark">PROVISIONAL</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-sm btn-primary"
+                                            @onclick="@(() => Navigation.NavigateTo($"/orders/manage/{doc.OrderId}"))">
+                                        Revisar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 
     @* ---- FICHAJES: quién está trabajando ahora ---- *@
     <div class="row g-3 mb-4">
@@ -224,6 +262,7 @@
 
     private List<TimeEntry> activeEntries = [];
     private List<TimeEntry> recentEntries = [];
+    private List<SignatureDocument> pendingDocs = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -231,6 +270,7 @@
         stats = await ReportService.GetOrderStatsAsync();
         activeEntries = await TimeService.GetActiveEntriesAsync();
         recentEntries = await TimeService.GetRecentEntriesAsync(days: 7);
+        pendingDocs = await SignatureService.GetPendingReviewAsync();
     }
 
     private static string FormatElapsed(TimeSpan elapsed) =>

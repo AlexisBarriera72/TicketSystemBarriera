@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @inject IOrderService OrderService
+@inject ISignatureService SignatureService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
 @attribute [Authorize]
@@ -140,6 +141,93 @@
                     </div>
                 </div>
 
+                @* --- DOCUMENTOS DE FIRMA (registros legales; sin borrado) --- *@
+                <div class="mt-5">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-pen-fill me-1"></i> Documentos de Firma
+                    </h6>
+                    @if (!documents.Any())
+                    {
+                        <p class="text-muted small">Aún no hay documentos de firma en esta orden.</p>
+                    }
+                    else
+                    {
+                        @foreach (var doc in documents)
+                        {
+                            <div class="border rounded-3 p-3 mb-2 bg-white shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                    <span>
+                                        <span class="badge @DocBadgeClass(doc.Status)">@DocStatusLabel(doc.Status)</span>
+                                        @if (doc.IsProvisional)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-1"
+                                                  title="Firmado en el dispositivo sin conexión — evidencia provisional, verificar con especial cuidado">PROVISIONAL</span>
+                                        }
+                                        <span class="ms-2 small">@(doc.SignerName ?? "—")</span>
+                                        @if (doc.SignedAtUtc is not null)
+                                        {
+                                            <span class="text-muted small ms-2">firmado @doc.SignedAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                                        }
+                                    </span>
+                                    <span>
+                                        @if (doc.PdfPath is not null)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary me-1" target="_blank"
+                                               href="/api/v1/documents/@doc.Id/pdf">📄 Ver PDF</a>
+                                        }
+                                    </span>
+                                </div>
+                                @if (doc.Status == SignatureDocStatus.Rejected)
+                                {
+                                    <div class="alert alert-danger py-1 px-2 mt-2 mb-0 small">
+                                        Rechazado por @(doc.ReviewedBy?.DisplayName ?? doc.ReviewedBy?.Email):
+                                        <strong>@doc.RejectReason</strong> — el conductor debe repetir la firma.
+                                    </div>
+                                }
+                                @if (doc.Status == SignatureDocStatus.Approved)
+                                {
+                                    <div class="text-success small mt-1">
+                                        ✔ Aprobado por @(doc.ReviewedBy?.DisplayName ?? doc.ReviewedBy?.Email)
+                                        el @doc.ReviewedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm")
+                                    </div>
+                                }
+                                <div class="small text-muted mt-1">
+                                    Copia al cliente:
+                                    @(doc.EmailStatus switch
+                                    {
+                                        EmailDeliveryStatus.Sent => "✔ enviada",
+                                        EmailDeliveryStatus.Failed => $"❌ fallo: {doc.EmailError}",
+                                        EmailDeliveryStatus.NotConfigured => "⚠ sin servicio de correo configurado",
+                                        _ => "no enviada"
+                                    })
+                                    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="emailCtx">
+                                        @if (doc.EmailStatus != EmailDeliveryStatus.Sent && doc.PdfPath is not null)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary py-0 ms-2"
+                                                    @onclick="() => ResendEmailAsync(doc.Id)">Reenviar</button>
+                                        }
+                                    </AuthorizeView>
+                                </div>
+                                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="reviewCtx">
+                                    @if (doc.Status == SignatureDocStatus.Signed)
+                                    {
+                                        <div class="mt-2 d-flex gap-2 flex-wrap align-items-center">
+                                            <button class="btn btn-sm btn-success" @onclick="() => ApproveDocAsync(doc.Id)">
+                                                ✔ Aprobar
+                                            </button>
+                                            <input class="form-control form-control-sm" style="max-width: 320px;"
+                                                   placeholder="Motivo del rechazo (obligatorio)" @bind="rejectReason" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RejectDocAsync(doc.Id)">
+                                                ✖ Rechazar
+                                            </button>
+                                        </div>
+                                    }
+                                </AuthorizeView>
+                            </div>
+                        }
+                    }
+                </div>
+
                 @* --- ACCIONES DE STAFF (PROTEGIDAS) --- *@
                 <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office},{Roles.Driver}")">
                     <Authorized>
@@ -252,14 +340,58 @@
             TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
     }
 
+    private List<SignatureDocument> documents = [];
+    private string rejectReason = "";
+
     private async Task LoadData()
     {
         order = await OrderService.GetOrderByIdAsync(OrderId);
         drivers = await OrderService.GetDriversAsync();
         messages = await OrderService.GetMessagesAsync(OrderId); // últimos 50
         canLoadOlder = messages.Count >= 50;
+        documents = await SignatureService.GetForOrderAsync(OrderId);
         if (order?.AssignedDriverId != null) selectedDriverId = order.AssignedDriverId;
     }
+
+    private async Task ApproveDocAsync(int documentId)
+    {
+        var (ok, error) = await SignatureService.ApproveAsync(documentId, currentUserId);
+        feedbackMessage = ok ? "Documento aprobado: la orden ya puede completarse." : (error ?? "No se pudo aprobar.");
+        await LoadData();
+    }
+
+    private async Task RejectDocAsync(int documentId)
+    {
+        var (ok, error) = await SignatureService.RejectAsync(documentId, currentUserId, rejectReason);
+        feedbackMessage = ok ? "Documento rechazado: el conductor verá el motivo." : (error ?? "No se pudo rechazar.");
+        if (ok) rejectReason = "";
+        await LoadData();
+    }
+
+    private async Task ResendEmailAsync(int documentId)
+    {
+        var (ok, error) = await SignatureService.ResendEmailAsync(documentId);
+        feedbackMessage = ok ? "Copia enviada al cliente." : (error ?? "No se pudo enviar el correo.");
+        await LoadData();
+    }
+
+    private static string DocStatusLabel(SignatureDocStatus status) => status switch
+    {
+        SignatureDocStatus.AwaitingSignature => "Esperando firma",
+        SignatureDocStatus.Signed => "Firmado — por revisar",
+        SignatureDocStatus.Approved => "Aprobado",
+        SignatureDocStatus.Rejected => "Rechazado",
+        _ => status.ToString()
+    };
+
+    private static string DocBadgeClass(SignatureDocStatus status) => status switch
+    {
+        SignatureDocStatus.AwaitingSignature => "bg-secondary",
+        SignatureDocStatus.Signed => "bg-primary",
+        SignatureDocStatus.Approved => "bg-success",
+        SignatureDocStatus.Rejected => "bg-danger",
+        _ => "bg-light text-dark border"
+    };
 
     private async Task PollNewMessagesAsync()
     {
