@@ -1,9 +1,68 @@
 @page "/"
-<PageTitle>Home | Barriera Moving</PageTitle>
-<h1>Bienvenido a Barriera Moving</h1>
-<p role="status">Estado del sistema: En línea</p>
-<p>Hoy es: @DateTime.Now.ToString("dddd, dd MMMM yyyy")</p>
-<div class="alert alert-info">
-    Plataforma de gestión de mudanzas: solicita tu mudanza, comunícate con el equipo
-    y sigue el progreso de tu orden en tiempo real.
+@using Microsoft.AspNetCore.Authorization
+<PageTitle>Inicio | Barriera Moving</PageTitle>
+
+<div class="container mt-4">
+    <div class="p-4 mb-4 bg-primary text-white rounded-3 shadow-sm">
+        <h1 class="h3 mb-1">🚚 Barriera Moving</h1>
+        <p class="mb-0 opacity-75">Plataforma de gestión de mudanzas — oficina, conductores y clientes en un solo sitio.</p>
+    </div>
+
+    <AuthorizeView>
+        <Authorized>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <a href="/orders/my-list" class="text-decoration-none">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body">
+                                <h5><i class="bi bi-truck text-primary"></i> Mis Órdenes</h5>
+                                <p class="text-muted small mb-0">Consulta y sigue tus mudanzas.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="/dm" class="text-decoration-none">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body">
+                                <h5><i class="bi bi-chat-dots-fill text-primary"></i> Mensajes</h5>
+                                <p class="text-muted small mb-0">Habla directamente con el equipo.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="/complaints" class="text-decoration-none">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body">
+                                <h5><i class="bi bi-headset text-primary"></i> Atención al Cliente</h5>
+                                <p class="text-muted small mb-0">Envía una reclamación o consulta su estado.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staff">
+                    <div class="col-md-4">
+                        <a href="/admin/dashboard" class="text-decoration-none">
+                            <div class="card shadow-sm border-0 h-100 border-start border-4 border-primary">
+                                <div class="card-body">
+                                    <h5><i class="bi bi-speedometer2 text-primary"></i> Dashboard</h5>
+                                    <p class="text-muted small mb-0">Métricas, fichajes, documentos y export.</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </AuthorizeView>
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <div class="alert alert-info">
+                Inicia sesión para gestionar tus mudanzas.
+                <a href="Account/Login" class="alert-link">Entrar</a> ·
+                <a href="Account/Register" class="alert-link">Crear cuenta</a> ·
+                <a href="/terms" class="alert-link">Términos de Servicio</a>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
 </div>
