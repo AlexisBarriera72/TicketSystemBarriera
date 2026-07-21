@@ -92,6 +92,51 @@ public class ApiClient(HttpClient http)
         return await response.Content.ReadAsByteArrayAsync();
     }
 
+    // --- DOCUMENTOS DE FIRMA ---
+
+    // Ceremonia offline: PNG del lienzo + nombre + GPS + metadatos de cola
+    public async Task<(SignatureDocumentDto? Doc, string? Error)> SubmitOfflineSignatureAsync(int orderId,
+        byte[] signaturePng, string signerName, double? latitude, double? longitude,
+        DateTime? capturedAtUtc = null, string? idempotencyKey = null)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(signaturePng);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        form.Add(file, "signature", "signature.png");
+        form.Add(new StringContent(signerName), "signerName");
+        if (latitude is not null)
+            form.Add(new StringContent(latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)), "latitude");
+        if (longitude is not null)
+            form.Add(new StringContent(longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)), "longitude");
+        if (capturedAtUtc is not null)
+            form.Add(new StringContent(capturedAtUtc.Value.ToString("O")), "capturedAtUtc");
+        if (!string.IsNullOrEmpty(idempotencyKey))
+            form.Add(new StringContent(idempotencyKey), "idempotencyKey");
+
+        var response = await http.PostAsync($"{ApiRoutes.Orders}/{orderId}/signature/offline", form);
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            return (null, "No tienes acceso a esta orden.");
+        }
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            return (null, "El servidor rechazó la firma.");
+        }
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<SignatureDocumentDto>(ApiJson.Options), null);
+    }
+
+    public async Task<List<SignatureDocumentDto>> GetOrderDocumentsAsync(int orderId) =>
+        await http.GetFromJsonAsync<List<SignatureDocumentDto>>(
+            $"{ApiRoutes.Orders}/{orderId}/documents", ApiJson.Options) ?? [];
+
+    public async Task<byte[]?> GetDocumentPdfAsync(int documentId)
+    {
+        var response = await http.GetAsync($"{ApiRoutes.Documents}/{documentId}/pdf");
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadAsByteArrayAsync();
+    }
+
     // --- FICHAJE (la hora la pone el servidor; aquí solo van coordenadas opcionales) ---
 
     public async Task<TimeEntryDto?> GetCurrentTimeEntryAsync()

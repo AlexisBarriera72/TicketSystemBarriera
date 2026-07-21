@@ -59,6 +59,26 @@ public class OutboxService(IHttpClientFactory httpClientFactory, TokenStore toke
         return await EnqueueAsync(item);
     }
 
+    // Ceremonia de firma offline: el PNG del lienzo se guarda en disco y viaja
+    // por la misma cola FIFO — la firma de un cliente JAMÁS se pierde por falta de señal
+    public async Task<(bool Ok, string? Error)> EnqueueSignatureAsync(int orderId, string signerName,
+        byte[] signaturePng, double? latitude, double? longitude)
+    {
+        var item = new OutboxItem
+        {
+            Kind = OutboxKind.Signature,
+            OrderId = orderId,
+            Text = signerName,
+            Latitude = latitude,
+            Longitude = longitude,
+        };
+        var dir = Path.Combine(FileSystem.AppDataDirectory, "outbox");
+        Directory.CreateDirectory(dir);
+        item.FilePath = Path.Combine(dir, $"{item.Id}.png");
+        await File.WriteAllBytesAsync(item.FilePath, signaturePng);
+        return await EnqueueAsync(item);
+    }
+
     public Task<(bool Ok, string? Error)> EnqueueClockAsync(bool clockIn, double? latitude, double? longitude) =>
         EnqueueAsync(new OutboxItem
         {
@@ -234,6 +254,16 @@ public class OutboxService(IHttpClientFactory httpClientFactory, TokenStore toke
                 var (_, photoError) = await api.UploadPhotoAsync(item.OrderId, jpeg,
                     item.Latitude, item.Longitude, item.CapturedAtUtc, item.Id);
                 return photoError;
+
+            case OutboxKind.Signature:
+                if (item.FilePath is null || !File.Exists(item.FilePath))
+                {
+                    return "La imagen de la firma ya no existe en el dispositivo.";
+                }
+                var png = await File.ReadAllBytesAsync(item.FilePath);
+                var (_, sigError) = await api.SubmitOfflineSignatureAsync(item.OrderId, png,
+                    item.Text ?? "", item.Latitude, item.Longitude, item.CapturedAtUtc, item.Id);
+                return sigError;
 
             case OutboxKind.ClockIn:
                 var (_, inError) = await api.ClockInAsync(item.Latitude, item.Longitude,

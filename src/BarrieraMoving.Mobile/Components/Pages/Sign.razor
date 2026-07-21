@@ -1,0 +1,197 @@
+@page "/orders/{Id:int}/sign"
+@implements IDisposable
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ClockState Clock
+@inject OutboxService Outbox
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="d-flex align-items-center mb-2">
+    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))">←</button>
+    <div>
+        <div class="fw-bold">✍ Firma de conformidad</div>
+        @if (order is not null)
+        {
+            <div class="text-muted small">Orden #@Id — @order.Title</div>
+        }
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else if (loadError is not null)
+{
+    <div class="alert alert-warning">@loadError</div>
+    <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+}
+else if (order is not null)
+{
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-3">
+            <p class="small mb-1"><strong>Cliente:</strong> @(order.AuthorName ?? "—")</p>
+            <p class="small mb-1"><strong>Servicio:</strong> @order.CategoryName · @order.Title</p>
+            <p class="small mb-2" style="white-space: pre-wrap;">@order.Description</p>
+            <p class="small text-muted mb-0">
+                Al firmar, el cliente declara que el servicio fue realizado y los bienes
+                entregados en las condiciones acordadas, salvo observaciones registradas
+                en el chat de la orden.
+            </p>
+        </div>
+    </div>
+
+    <label class="form-label small fw-bold">Nombre completo del firmante</label>
+    <input class="form-control mb-3" placeholder="Nombre y apellidos del cliente"
+           @bind="signerName" @bind:event="oninput" disabled="@busy" />
+
+    <label class="form-label small fw-bold">Firma (con el dedo, sobre el recuadro)</label>
+    <canvas @ref="canvasRef" class="border rounded-3 bg-white d-block w-100 mb-2"
+            style="height: 200px; touch-action: none;"></canvas>
+    <button class="btn btn-sm btn-outline-secondary mb-3" @onclick="ClearAsync" disabled="@busy">
+        ↺ Borrar y repetir
+    </button>
+
+    @if (submitError is not null)
+    {
+        <div class="alert alert-warning py-2">@submitError</div>
+    }
+
+    <button class="btn btn-success btn-lg w-100" @onclick="ConfirmAsync" disabled="@busy">
+        @(busy ? "Registrando firma…" : "✔ Confirmar firma")
+    </button>
+    <p class="text-muted small mt-2">
+        Sin conexión no pasa nada: la firma queda guardada en el teléfono y se envía
+        sola al recuperar señal. La oficina la revisará antes de cerrar la orden.
+    </p>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private OrderDto? order;
+    private string signerName = "";
+    private bool loading = true;
+    private bool busy;
+    private string? loadError;
+    private string? submitError;
+    private ElementReference canvasRef;
+    private bool padReady;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        var user = await Auth.GetCurrentUserAsync();
+
+        // Solo personal inicia la ceremonia (el cliente firma en el aparato del conductor)
+        if (!UserRoles.IsStaff(user))
+        {
+            Nav.NavigateTo($"/orders/{Id}");
+            return;
+        }
+        if (UserRoles.IsDriverOnly(user))
+        {
+            try
+            {
+                await Clock.EnsureLoadedAsync(Api);
+            }
+            catch (Exception) { }
+            if (Clock.OpenEntry is null)
+            {
+                Nav.NavigateTo("/clock");
+                return;
+            }
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        loadError = null;
+        padReady = false;
+        StateHasChanged();
+        try
+        {
+            order = await Api.GetOrderAsync(Id);
+            if (order is null) loadError = "Orden no encontrada o sin acceso.";
+        }
+        catch (Exception)
+        {
+            // Sin red también se puede firmar: el resumen usa lo último conocido
+            // y el envío va por la cola. Solo fallamos si no hay NADA que mostrar.
+            loadError = order is null ? "No se pudo cargar la orden. Revisa la conexión." : null;
+        }
+        loading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!padReady && !loading && order is not null)
+        {
+            padReady = true;
+            try
+            {
+                await JS.InvokeVoidAsync("sigPad.init", canvasRef);
+            }
+            catch (Exception) { }
+        }
+    }
+
+    private async Task ClearAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("sigPad.clear");
+        }
+        catch (Exception) { }
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (busy) return;
+        submitError = null;
+
+        if (string.IsNullOrWhiteSpace(signerName))
+        {
+            submitError = "Escribe el nombre completo del firmante.";
+            return;
+        }
+        var base64 = await JS.InvokeAsync<string?>("sigPad.toPngBase64");
+        if (string.IsNullOrEmpty(base64))
+        {
+            submitError = "Falta la firma: pide al cliente que firme en el recuadro.";
+            return;
+        }
+
+        busy = true;
+        StateHasChanged();
+
+        var png = Convert.FromBase64String(base64);
+        // GPS deliberado y opcional: nunca bloquea la firma
+        var location = await LocationHelper.TryGetLocationAsync();
+
+        var (ok, error) = await Outbox.EnqueueSignatureAsync(Id, signerName.Trim(), png,
+            location?.Latitude, location?.Longitude);
+        busy = false;
+
+        if (ok)
+        {
+            Nav.NavigateTo($"/orders/{Id}");
+        }
+        else
+        {
+            submitError = error;
+        }
+    }
+
+    public void Dispose() { }
+}

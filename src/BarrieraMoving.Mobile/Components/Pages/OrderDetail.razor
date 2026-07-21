@@ -24,7 +24,44 @@ else if (order is null)
 }
 else
 {
-    <a class="btn btn-primary w-100 mb-3" href="/orders/@Id/chat">💬 Abrir chat de la orden</a>
+    <a class="btn btn-primary w-100 mb-2" href="/orders/@Id/chat">💬 Abrir chat de la orden</a>
+    @if (isStaffUser && order.Status != OrderStatus.Completed)
+    {
+        <a class="btn btn-outline-success w-100 mb-2" href="/orders/@Id/sign">✍ Solicitar firma del cliente</a>
+    }
+
+    @if (documents.Any())
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 small fw-bold">✍ Documentos de firma</div>
+            <ul class="list-group list-group-flush">
+                @foreach (var doc in documents)
+                {
+                    <li class="list-group-item py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small">
+                                <span class="badge @DocBadgeClass(doc.Status)">@DocStatusLabel(doc.Status)</span>
+                                @if (doc.IsProvisional)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;">PROVISIONAL</span>
+                                }
+                                <br />
+                                <span class="text-muted">@doc.SignerName · @doc.SignedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                            </span>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => OpenPdfAsync(doc.Id)"
+                                    disabled="@openingPdf">📄 Ver</button>
+                        </div>
+                        @if (doc.Status == SignatureDocStatus.Rejected)
+                        {
+                            <div class="text-danger small mt-1">
+                                ✖ Rechazado por la oficina: <strong>@doc.RejectReason</strong> — repite la firma.
+                            </div>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+    }
 
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -64,7 +101,10 @@ else
     [Parameter] public int Id { get; set; }
 
     private OrderDto? order;
+    private List<SignatureDocumentDto> documents = [];
     private bool loading = true;
+    private bool isStaffUser;
+    private bool openingPdf;
     private string? error;
 
     protected override async Task OnInitializedAsync()
@@ -77,6 +117,7 @@ else
 
         // Gating (solo conductores): mismo criterio que la lista de órdenes
         var user = await Auth.GetCurrentUserAsync();
+        isStaffUser = UserRoles.IsStaff(user);
         if (UserRoles.IsDriverOnly(user))
         {
             try
@@ -94,6 +135,7 @@ else
         try
         {
             order = await Api.GetOrderAsync(Id);
+            documents = await Api.GetOrderDocumentsAsync(Id);
         }
         catch (Exception)
         {
@@ -106,4 +148,43 @@ else
         }
         loading = false;
     }
+
+    // Descarga el PDF (con el JWT) y lo abre con el visor del sistema
+    private async Task OpenPdfAsync(int documentId)
+    {
+        openingPdf = true;
+        try
+        {
+            var bytes = await Api.GetDocumentPdfAsync(documentId);
+            if (bytes is not null)
+            {
+                var path = Path.Combine(FileSystem.CacheDirectory, $"documento_{documentId}.pdf");
+                await File.WriteAllBytesAsync(path, bytes);
+                await Launcher.Default.OpenAsync(new OpenFileRequest("Documento de conformidad", new ReadOnlyFile(path)));
+            }
+        }
+        catch (Exception)
+        {
+            // sin visor de PDF o sin red: silencioso aquí; el documento sigue en la orden
+        }
+        openingPdf = false;
+    }
+
+    private static string DocStatusLabel(SignatureDocStatus status) => status switch
+    {
+        SignatureDocStatus.AwaitingSignature => "Esperando firma",
+        SignatureDocStatus.Signed => "Firmado — en revisión",
+        SignatureDocStatus.Approved => "Aprobado",
+        SignatureDocStatus.Rejected => "Rechazado",
+        _ => status.ToString()
+    };
+
+    private static string DocBadgeClass(SignatureDocStatus status) => status switch
+    {
+        SignatureDocStatus.AwaitingSignature => "bg-secondary",
+        SignatureDocStatus.Signed => "bg-primary",
+        SignatureDocStatus.Approved => "bg-success",
+        SignatureDocStatus.Rejected => "bg-danger",
+        _ => "bg-light text-dark border"
+    };
 }
