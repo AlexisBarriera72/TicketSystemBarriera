@@ -13,6 +13,14 @@ using BarrieraMoving.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// PDFsharp en .NET moderno no resuelve fuentes por sí solo: en Windows usamos las
+// del sistema. (Si el servidor se despliega en Linux algún día, hará falta un
+// IFontResolver con una fuente embebida — anotado en docs.)
+if (OperatingSystem.IsWindows())
+{
+    PdfSharp.Fonts.GlobalFontSettings.UseWindowsFontsUnderWindows = true;
+}
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
