@@ -34,6 +34,7 @@ builder.Services.AddScoped<ITimeService, TimeService>();
 builder.Services.AddSingleton<IPhotoStorage, LocalPhotoStorage>();
 builder.Services.AddScoped<ISignatureService, SignatureService>();
 builder.Services.AddScoped<IPaperworkService, PaperworkService>();
+builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
 builder.Services.AddScoped<TokenService>();
 
 // Correo saliente: SMTP (MailKit) si hay Email:Host en user-secrets; si no, el
@@ -157,6 +158,7 @@ if (!string.IsNullOrEmpty(jwtKey))
     app.MapPhotoApi();
     app.MapDocumentApi();
     app.MapPaperworkApi();
+    app.MapDirectMessageApi();
 }
 else
 {

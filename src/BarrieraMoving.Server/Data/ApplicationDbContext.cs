@@ -13,6 +13,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<SignatureDocument> SignatureDocuments { get; set; }
     public DbSet<PaperworkDocument> PaperworkDocuments { get; set; }
+    public DbSet<DirectConversation> DirectConversations { get; set; }
+    public DbSet<DirectParticipant> DirectParticipants { get; set; }
+    public DbSet<DirectMessage> DirectMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -114,5 +117,36 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
         builder.Entity<PaperworkDocument>()
             .HasIndex(p => new { p.OrderId, p.SlotKey });
+
+        // Mensajería directa: ACL por pertenencia al conjunto de participantes
+        builder.Entity<DirectConversation>()
+            .HasOne(c => c.CreatedBy)
+            .WithMany()
+            .HasForeignKey(c => c.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<DirectParticipant>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<DirectParticipant>()
+            .HasIndex(p => new { p.ConversationId, p.UserId })
+            .IsUnique();
+
+        builder.Entity<DirectMessage>()
+            .HasOne(m => m.Sender)
+            .WithMany()
+            .HasForeignKey(m => m.SenderUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<DirectMessage>()
+            .HasIndex(m => m.ConversationId);
+
+        builder.Entity<DirectMessage>()
+            .HasIndex(m => m.IdempotencyKey)
+            .HasFilter("[IdempotencyKey] IS NOT NULL")
+            .IsUnique();
     }
 }

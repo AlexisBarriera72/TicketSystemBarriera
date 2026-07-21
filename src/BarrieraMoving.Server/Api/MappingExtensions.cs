@@ -32,6 +32,10 @@ public static class MappingExtensions
         d.ReviewedBy?.DisplayName ?? d.ReviewedBy?.Email, d.ReviewedAtUtc,
         d.EmailStatus);
 
+    public static DirectMessageDto ToDto(this DirectMessage m) => new(
+        m.Id, m.ConversationId, m.Content, m.CreatedAt, m.SenderUserId,
+        m.Sender?.DisplayName ?? m.Sender?.Email, m.SenderRole, m.CapturedAtUtc);
+
     public static PaperworkDocumentDto ToDto(this PaperworkDocument p) => new(
         p.Id, p.OrderId, p.SlotKey, p.Status, p.IsPdf,
         p.CreatedAtUtc, p.CapturedAtUtc, p.Latitude, p.Longitude,
