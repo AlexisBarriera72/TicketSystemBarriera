@@ -16,6 +16,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DirectConversation> DirectConversations { get; set; }
     public DbSet<DirectParticipant> DirectParticipants { get; set; }
     public DbSet<DirectMessage> DirectMessages { get; set; }
+    public DbSet<Complaint> Complaints { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -148,5 +149,24 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasIndex(m => m.IdempotencyKey)
             .HasFilter("[IdempotencyKey] IS NOT NULL")
             .IsUnique();
+
+        // Reclamaciones
+        builder.Entity<Complaint>()
+            .HasOne(c => c.Client)
+            .WithMany()
+            .HasForeignKey(c => c.ClientUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Complaint>()
+            .HasOne(c => c.RespondedBy)
+            .WithMany()
+            .HasForeignKey(c => c.RespondedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Complaint>()
+            .HasOne(c => c.Order)
+            .WithMany()
+            .HasForeignKey(c => c.OrderId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

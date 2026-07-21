@@ -14,5 +14,6 @@ public static class ApiRoutes
     public const string Documents = $"{Base}/documents";
     public const string Paperwork = $"{Base}/paperwork";
     public const string DirectMessages = $"{Base}/dm";
+    public const string Complaints = $"{Base}/complaints";
     public const string EsignWebhook = $"{Base}/webhooks/esign";
 }

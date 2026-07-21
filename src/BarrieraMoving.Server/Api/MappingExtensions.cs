@@ -32,6 +32,12 @@ public static class MappingExtensions
         d.ReviewedBy?.DisplayName ?? d.ReviewedBy?.Email, d.ReviewedAtUtc,
         d.EmailStatus);
 
+    public static ComplaintDto ToDto(this Complaint c) => new(
+        c.Id, c.Subject, c.Description, c.Status, c.OrderId,
+        c.ClientUserId, c.Client?.DisplayName ?? c.Client?.Email,
+        c.CreatedAtUtc, c.OfficeResponse,
+        c.RespondedBy?.DisplayName ?? c.RespondedBy?.Email, c.RespondedAtUtc);
+
     public static DirectMessageDto ToDto(this DirectMessage m) => new(
         m.Id, m.ConversationId, m.Content, m.CreatedAt, m.SenderUserId,
         m.Sender?.DisplayName ?? m.Sender?.Email, m.SenderRole, m.CapturedAtUtc);
