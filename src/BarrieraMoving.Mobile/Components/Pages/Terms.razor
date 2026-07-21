@@ -1,0 +1,15 @@
+@page "/terms"
+@using BarrieraMoving.Shared
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center mb-2">
+    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo("/"))">←</button>
+    <div class="fw-bold">📄 Términos de Servicio</div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 0.85rem;">@LegalText.TermsOfService</pre>
+    </div>
+</div>
+<p class="text-muted small mt-2">Versión: @LegalText.TermsVersion</p>
