@@ -71,8 +71,19 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
    PENDIENTE de Alexis: nombrar el proveedor real (adaptador = 1 clase +
    ESign:ApiKey) y credenciales SMTP (Email:Host…) — mientras tanto el correo
    queda en estado VISIBLE "NotConfigured", nunca falla en silencio.)
-7. Live location / ETA — hardest; scope to active jobs only, not always-on.
-8. Boss dashboard, direct messages, Excel exports.
+7. ⏭️ Live location / ETA — OMITIDO por decisión: el "avisar que estamos cerca"
+   ya lo cubren las fotos+GPS del chat (fase 5). No construir tracking.
+8A. ✅ Papeleo obligatorio + DMs + export Excel completo. (Done en
+   phase8a-paperwork-push-dm: papeleo = slots configurables (Paperwork:Slots)
+   PLEGADOS en el paquete de firma de la fase 6 — ensamblar-y-luego-firmar,
+   nada se añade tras firmar, rechazo de un papel invalida la firma en cascada,
+   gate doble en UpdateOrderStatusAsync; DMs = entidad NUEVA (no Message) con
+   ACL por pertenencia al conjunto — el cliente NUNCA alcanza un hilo del
+   personal; Excel = hojas Órdenes/Fichajes/Empleados/Documentos + estado de
+   documentos en el dashboard. Notificaciones push (FCM) APLAZADAS: falta que
+   Alexis cree el proyecto Firebase. APNs encajará luego sin reestructurar.)
+8B. Pendiente (cosas simples/estáticas): página de términos, sección de quejas,
+   pulido de UI.
 
 ## Reference material
 - `/docs/*.pdf`            → university module PDFs = reference implementation + spec
