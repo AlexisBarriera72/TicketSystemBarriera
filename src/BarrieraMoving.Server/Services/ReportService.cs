@@ -1,13 +1,49 @@
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using BarrieraMoving.Server.Data;
+using BarrieraMoving.Server.Models;
 using BarrieraMoving.Shared.Enums;
 
 namespace BarrieraMoving.Server.Services;
 
+// Resumen de documentos de una orden, para el dashboard y el Excel
+public record OrderDocSummary(int PaperworkAttached, int PaperworkRequired,
+    bool PaperworkComplete, SignatureDocStatus? SignatureStatus);
+
 // Estadísticas y reportes del jefe (KPIs del dashboard + export a Excel)
-public class ReportService(IDbContextFactory<ApplicationDbContext> dbFactory) : IReportService
+public class ReportService(
+    IDbContextFactory<ApplicationDbContext> dbFactory,
+    IPaperworkService paperwork) : IReportService
 {
+    // Estado de documentos por orden (papeleo obligatorio adjunto + firma)
+    public async Task<Dictionary<int, OrderDocSummary>> GetOrderDocSummariesAsync()
+    {
+        using var context = dbFactory.CreateDbContext();
+        var requiredKeys = paperwork.GetSlots().Where(s => s.Required).Select(s => s.Key).ToHashSet();
+        var requiredCount = requiredKeys.Count;
+
+        // Papeleo vigente (Attached) por orden y slot
+        var attached = await context.PaperworkDocuments
+            .Where(p => p.Status == PaperworkStatus.Attached)
+            .Select(p => new { p.OrderId, p.SlotKey })
+            .ToListAsync();
+
+        var latestSig = await context.SignatureDocuments
+            .GroupBy(s => s.OrderId)
+            .Select(g => new { OrderId = g.Key, Status = g.OrderByDescending(s => s.Id).First().Status })
+            .ToDictionaryAsync(x => x.OrderId, x => x.Status);
+
+        var result = new Dictionary<int, OrderDocSummary>();
+        foreach (var orderId in attached.Select(a => a.OrderId).Concat(latestSig.Keys).Distinct())
+        {
+            var have = attached.Where(a => a.OrderId == orderId && requiredKeys.Contains(a.SlotKey))
+                .Select(a => a.SlotKey).Distinct().Count();
+            result[orderId] = new OrderDocSummary(have, requiredCount, have >= requiredCount,
+                latestSig.TryGetValue(orderId, out var st) ? st : null);
+        }
+        return result;
+    }
+
     public async Task<Dictionary<string, int>> GetOrderStatsAsync()
     {
         using var context = dbFactory.CreateDbContext();
@@ -32,11 +68,13 @@ public class ReportService(IDbContextFactory<ApplicationDbContext> dbFactory) : 
             .Include(o => o.Category)
             .ToListAsync();
 
+        var docSummaries = await GetOrderDocSummariesAsync();
+
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Resumen de Órdenes");
 
         var headers = new[] { "ID", "Título", "Tipo", "Prioridad", "Estado", "Creado", "Completado",
-            "Tiempo (Días)", "Cliente", "Conductor" };
+            "Tiempo (Días)", "Cliente", "Conductor", "Papeleo", "Firma" };
         for (int i = 0; i < headers.Length; i++)
         {
             worksheet.Cell(1, i + 1).Value = headers[i];
@@ -61,6 +99,10 @@ public class ReportService(IDbContextFactory<ApplicationDbContext> dbFactory) : 
             }
             worksheet.Cell(row, 9).Value = o.Author?.Email;
             worksheet.Cell(row, 10).Value = o.AssignedDriver?.Email ?? "No asignado";
+            var summary = docSummaries.GetValueOrDefault(o.Id);
+            worksheet.Cell(row, 11).Value = summary is null ? "0/0"
+                : $"{summary.PaperworkAttached}/{summary.PaperworkRequired}";
+            worksheet.Cell(row, 12).Value = summary?.SignatureStatus?.ToString() ?? "—";
             row++;
         }
         worksheet.Columns().AdjustToContents();
@@ -104,6 +146,69 @@ public class ReportService(IDbContextFactory<ApplicationDbContext> dbFactory) : 
             timeRow++;
         }
         timeSheet.Columns().AdjustToContents();
+
+        // Hoja 3: empleados (rol + horas totales trabajadas)
+        var users = await context.Users.OrderBy(u => u.Email).ToListAsync();
+        var roleById = await (from ur in context.UserRoles
+                              join r in context.Roles on ur.RoleId equals r.Id
+                              select new { ur.UserId, r.Name })
+                             .ToDictionaryAsync(x => x.UserId, x => x.Name);
+        var hoursByUser = timeEntries
+            .Where(t => t.ClockOutUtc.HasValue)
+            .GroupBy(t => t.UserId)
+            .ToDictionary(g => g.Key, g => g.Sum(t => (t.ClockOutUtc!.Value - t.ClockInUtc).TotalHours));
+
+        var empSheet = workbook.Worksheets.Add("Empleados");
+        var empHeaders = new[] { "Nombre", "Email", "Rol", "Horas registradas", "Jornada abierta" };
+        for (int i = 0; i < empHeaders.Length; i++)
+        {
+            empSheet.Cell(1, i + 1).Value = empHeaders[i];
+            empSheet.Cell(1, i + 1).Style.Font.Bold = true;
+            empSheet.Cell(1, i + 1).Style.Fill.BackgroundColor = XLColor.LightGray;
+        }
+        int empRow = 2;
+        foreach (var u in users)
+        {
+            empSheet.Cell(empRow, 1).Value = u.DisplayName ?? "";
+            empSheet.Cell(empRow, 2).Value = u.Email;
+            empSheet.Cell(empRow, 3).Value = roleById.GetValueOrDefault(u.Id) ?? "—";
+            empSheet.Cell(empRow, 4).Value = Math.Round(hoursByUser.GetValueOrDefault(u.Id), 2);
+            empSheet.Cell(empRow, 5).Value = timeEntries.Any(t => t.UserId == u.Id && t.ClockOutUtc is null) ? "SÍ" : "";
+            empRow++;
+        }
+        empSheet.Columns().AdjustToContents();
+
+        // Hoja 4: documentos por orden (papeleo detallado + estado de firma)
+        var slots = paperwork.GetSlots().ToList();
+        var allPaperwork = await context.PaperworkDocuments
+            .Where(p => p.Status != PaperworkStatus.Replaced)
+            .ToListAsync();
+
+        var docSheet = workbook.Worksheets.Add("Documentos");
+        var docHeaders = new List<string> { "Orden" };
+        docHeaders.AddRange(slots.Select(s => s.Label));
+        docHeaders.Add("Firma");
+        for (int i = 0; i < docHeaders.Count; i++)
+        {
+            docSheet.Cell(1, i + 1).Value = docHeaders[i];
+            docSheet.Cell(1, i + 1).Style.Font.Bold = true;
+            docSheet.Cell(1, i + 1).Style.Fill.BackgroundColor = XLColor.LightGray;
+        }
+        int docRow = 2;
+        foreach (var o in orders)
+        {
+            docSheet.Cell(docRow, 1).Value = $"#{o.Id} {o.Title}";
+            for (int i = 0; i < slots.Count; i++)
+            {
+                var doc = allPaperwork
+                    .Where(p => p.OrderId == o.Id && p.SlotKey == slots[i].Key)
+                    .OrderByDescending(p => p.CreatedAtUtc).FirstOrDefault();
+                docSheet.Cell(docRow, i + 2).Value = doc?.Status.ToString() ?? "Pendiente";
+            }
+            docSheet.Cell(docRow, slots.Count + 2).Value = docSummaries.GetValueOrDefault(o.Id)?.SignatureStatus?.ToString() ?? "—";
+            docRow++;
+        }
+        docSheet.Columns().AdjustToContents();
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);

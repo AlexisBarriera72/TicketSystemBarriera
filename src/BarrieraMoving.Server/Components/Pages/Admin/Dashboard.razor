@@ -204,6 +204,8 @@
                             <th>Tipo</th>
                             <th>Estado</th>
                             <th>Conductor</th>
+                            <th>Papeleo</th>
+                            <th>Firma</th>
                             <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -236,6 +238,22 @@
                                         <span class="text-muted italic">Sin asignar</span>
                                     }
                                 </td>
+                                <td>
+                                    @{ var summary = docSummaries.GetValueOrDefault(order.Id); }
+                                    <span class="badge @(summary?.PaperworkComplete == true ? "bg-success" : "bg-secondary")">
+                                        @(summary?.PaperworkAttached ?? 0)/@(summary?.PaperworkRequired ?? requiredSlotCount)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (summary?.SignatureStatus is { } sig)
+                                    {
+                                        <span class="badge @SigBadge(sig)">@sig</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">—</span>
+                                    }
+                                </td>
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-primary shadow-sm"
                                             @onclick="@(() => Navigation.NavigateTo($"/orders/manage/{order.Id}"))">
@@ -263,6 +281,8 @@
     private List<TimeEntry> activeEntries = [];
     private List<TimeEntry> recentEntries = [];
     private List<SignatureDocument> pendingDocs = [];
+    private Dictionary<int, OrderDocSummary> docSummaries = [];
+    private int requiredSlotCount = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -271,7 +291,16 @@
         activeEntries = await TimeService.GetActiveEntriesAsync();
         recentEntries = await TimeService.GetRecentEntriesAsync(days: 7);
         pendingDocs = await SignatureService.GetPendingReviewAsync();
+        docSummaries = await ReportService.GetOrderDocSummariesAsync();
     }
+
+    private static string SigBadge(SignatureDocStatus s) => s switch
+    {
+        SignatureDocStatus.Approved => "bg-success",
+        SignatureDocStatus.Signed => "bg-primary",
+        SignatureDocStatus.Rejected => "bg-danger",
+        _ => "bg-secondary"
+    };
 
     private static string FormatElapsed(TimeSpan elapsed) =>
         elapsed.TotalHours >= 1 ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m" : $"{elapsed.Minutes}m";
