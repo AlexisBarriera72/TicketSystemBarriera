@@ -61,7 +61,16 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
    idempotencia por GUID + índices únicos filtrados, nada se descarta solo.
    Hora del dispositivo = CapturedAtUtc (metadato); la de nómina SIEMPRE la
    pone el servidor — badge "Diferido" + columnas en Excel cuando difieren.)
-6. Embedded e-signature + completion gate + email copy to client.
+6. ✅ E-firma HÍBRIDA + gate de cierre + copia por email. (Done: SignatureDocument
+   inmutable (sin endpoints de borrado), PDF SIEMPRE espejado en nuestro disco
+   con hash SHA-256; ceremonia OFFLINE (canvas + nombre + GPS, PDF PDFsharp
+   marcado PROVISIONAL) que viaja por la cola de la fase 5; gate en
+   UpdateOrderStatusAsync: Completed EXIGE doc aprobado por oficina y no se
+   salta ni con bypass; webhook HMAC-verificado (los forjados se rechazan);
+   revisión de oficina en web con motivo de rechazo accionable.
+   PENDIENTE de Alexis: nombrar el proveedor real (adaptador = 1 clase +
+   ESign:ApiKey) y credenciales SMTP (Email:Host…) — mientras tanto el correo
+   queda en estado VISIBLE "NotConfigured", nunca falla en silencio.)
 7. Live location / ETA — hardest; scope to active jobs only, not always-on.
 8. Boss dashboard, direct messages, Excel exports.
 
