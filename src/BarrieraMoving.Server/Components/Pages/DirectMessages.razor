@@ -1,0 +1,187 @@
+@page "/dm"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject IDirectMessageService Dm
+@inject IOrderService OrderService
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+@implements IDisposable
+
+<PageTitle>Mensajes directos</PageTitle>
+
+<div class="container mt-4">
+    <h3 class="mb-3"><i class="bi bi-chat-dots-fill text-primary"></i> Mensajes Directos</h3>
+
+    <div class="row">
+        @* --- Lista de conversaciones --- *@
+        <div class="col-md-4">
+            @if (canStart)
+            {
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body py-2">
+                        <label class="form-label small fw-bold mb-1">Nueva conversación</label>
+                        <div class="input-group input-group-sm">
+                            <select class="form-select" @bind="newTargetId">
+                                <option value="">-- Elegir persona --</option>
+                                @foreach (var u in allUsers.Where(u => u.Id != currentUserId))
+                                {
+                                    <option value="@u.Id">@(u.DisplayName ?? u.Email)</option>
+                                }
+                            </select>
+                            <button class="btn btn-primary" @onclick="StartAsync" disabled="@string.IsNullOrEmpty(newTargetId)">Abrir</button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="list-group shadow-sm">
+                @foreach (var conv in conversations)
+                {
+                    var other = conv.Participants.FirstOrDefault(p => p.Id != currentUserId);
+                    <button class="list-group-item list-group-item-action @(conv.Id == selectedId ? "active" : "")"
+                            @onclick="() => SelectAsync(conv.Id)">
+                        <div class="fw-bold">@(other?.DisplayName ?? other?.Email ?? "—")</div>
+                        <div class="small @(conv.Id == selectedId ? "text-white-50" : "text-muted")">
+                            @(conv.LastMessage?.Content is { } c ? (c.Length > 40 ? c[..40] + "…" : c) : "Sin mensajes")
+                        </div>
+                    </button>
+                }
+                @if (!conversations.Any())
+                {
+                    <div class="list-group-item text-muted small">No tienes conversaciones.</div>
+                }
+            </div>
+        </div>
+
+        @* --- Hilo seleccionado --- *@
+        <div class="col-md-8">
+            @if (selectedId is null)
+            {
+                <div class="alert alert-light border text-center py-5">Elige una conversación.</div>
+            }
+            else
+            {
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="bg-light p-3 rounded-3 mb-3" style="height: 400px; overflow-y: auto;">
+                            @foreach (var m in messages)
+                            {
+                                var isMe = m.SenderUserId == currentUserId;
+                                <div class="d-flex mb-2 @(isMe ? "justify-content-end" : "justify-content-start")">
+                                    <div class="shadow-sm rounded-3 @(isMe ? "bg-primary text-white" : "bg-white border")"
+                                         style="max-width: 75%; padding: 8px 12px;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold small">@(m.SenderName ?? "—")
+                                                @if (!string.IsNullOrEmpty(m.SenderRole))
+                                                {
+                                                    <span class="badge @(isMe ? "bg-light text-dark" : "bg-secondary") ms-1"
+                                                          style="font-size: 0.55rem;">@RoleNames.DisplayLabel(m.SenderRole)</span>
+                                                }
+                                            </span>
+                                            <small class="opacity-75 ms-2" style="font-size: 0.65rem;">@m.CreatedAt.ToLocalTime().ToString("t")</small>
+                                        </div>
+                                        <div class="text-break">@m.Content</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="input-group">
+                            <input class="form-control" placeholder="Escribir mensaje..." @bind="draft"
+                                   @onkeyup="@(e => e.Key == "Enter" ? SendAsync() : Task.CompletedTask)" />
+                            <button class="btn btn-primary px-4" @onclick="SendAsync">Enviar</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string currentUserId = "";
+    private string? currentRole;
+    private bool canStart;
+    private List<DirectConversationDto> conversations = [];
+    private List<ApplicationUser> allUsers = [];
+    private List<DirectMessageDto> messages = [];
+    private int? selectedId;
+    private string draft = "";
+    private string newTargetId = "";
+    private System.Threading.Timer? pollTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        currentRole = Roles.PrimaryRole(user);
+        canStart = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
+        if (canStart) allUsers = await OrderService.GetAllUsersAsync();
+
+        await LoadConversationsAsync();
+        pollTimer = new System.Threading.Timer(_ => _ = InvokeAsync(PollAsync), null,
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private async Task LoadConversationsAsync()
+    {
+        var convs = await Dm.GetMineAsync(currentUserId);
+        conversations = [];
+        foreach (var c in convs)
+        {
+            var last = await Dm.GetLastMessageAsync(c.Id);
+            conversations.Add(new DirectConversationDto(c.Id,
+                c.Participants.Select(p => new UserSummaryDto(p.UserId, p.User?.DisplayName, p.User?.Email, [])).ToList(),
+                last is null ? null : new DirectMessageDto(last.Id, last.ConversationId, last.Content, last.CreatedAt,
+                    last.SenderUserId, last.Sender?.DisplayName ?? last.Sender?.Email, last.SenderRole, last.CapturedAtUtc)));
+        }
+    }
+
+    private async Task SelectAsync(int conversationId)
+    {
+        selectedId = conversationId;
+        messages = (await Dm.GetMessagesAsync(conversationId))
+            .Select(ToDto).ToList();
+    }
+
+    private async Task PollAsync()
+    {
+        if (selectedId is null) return;
+        var lastId = messages.Count > 0 ? messages[^1].Id : 0;
+        var fresh = await Dm.GetMessagesAsync(selectedId.Value, take: 200, afterId: lastId);
+        if (fresh.Count > 0)
+        {
+            messages.AddRange(fresh.Select(ToDto));
+            await LoadConversationsAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task StartAsync()
+    {
+        if (string.IsNullOrEmpty(newTargetId)) return;
+        var (conv, _) = await Dm.GetOrCreateAsync(currentUserId, newTargetId);
+        newTargetId = "";
+        await LoadConversationsAsync();
+        if (conv is not null) await SelectAsync(conv.Id);
+    }
+
+    private async Task SendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(draft) || selectedId is null) return;
+        var (msg, _) = await Dm.SendAsync(selectedId.Value, currentUserId, currentRole, draft, null, null);
+        draft = "";
+        if (msg is not null)
+        {
+            messages.Add(ToDto(msg));
+            await LoadConversationsAsync();
+        }
+    }
+
+    private static DirectMessageDto ToDto(Models.DirectMessage m) => new(
+        m.Id, m.ConversationId, m.Content, m.CreatedAt, m.SenderUserId,
+        m.Sender?.DisplayName ?? m.Sender?.Email, m.SenderRole, m.CapturedAtUtc);
+
+    public void Dispose() => pollTimer?.Dispose();
+}

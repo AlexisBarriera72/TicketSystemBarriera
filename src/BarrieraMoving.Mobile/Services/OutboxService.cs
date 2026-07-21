@@ -49,6 +49,10 @@ public class OutboxService(IHttpClientFactory httpClientFactory, TokenStore toke
     public Task<(bool Ok, string? Error)> EnqueueMessageAsync(int orderId, string text) =>
         EnqueueAsync(new OutboxItem { Kind = OutboxKind.Message, OrderId = orderId, Text = text.Trim() });
 
+    // Mensaje directo: reutilizamos OrderId para llevar el conversationId
+    public Task<(bool Ok, string? Error)> EnqueueDirectMessageAsync(int conversationId, string text) =>
+        EnqueueAsync(new OutboxItem { Kind = OutboxKind.DirectMessage, OrderId = conversationId, Text = text.Trim() });
+
     public async Task<(bool Ok, string? Error)> EnqueuePhotoAsync(int orderId, byte[] jpeg, double? latitude, double? longitude)
     {
         var item = new OutboxItem { Kind = OutboxKind.Photo, OrderId = orderId, Latitude = latitude, Longitude = longitude };
@@ -283,6 +287,11 @@ public class OutboxService(IHttpClientFactory httpClientFactory, TokenStore toke
                 var (_, sigError) = await api.SubmitOfflineSignatureAsync(item.OrderId, png,
                     item.Text ?? "", item.Latitude, item.Longitude, item.CapturedAtUtc, item.Id);
                 return sigError;
+
+            case OutboxKind.DirectMessage:
+                var (_, dmError) = await api.SendDirectMessageAsync(item.OrderId, item.Text ?? "",
+                    item.CapturedAtUtc, item.Id);
+                return dmError;
 
             case OutboxKind.Paperwork:
                 if (item.FilePath is null || !File.Exists(item.FilePath))

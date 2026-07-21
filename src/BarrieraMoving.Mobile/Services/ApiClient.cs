@@ -92,6 +92,39 @@ public class ApiClient(HttpClient http)
         return await response.Content.ReadAsByteArrayAsync();
     }
 
+    // --- MENSAJES DIRECTOS ---
+
+    public async Task<List<DirectConversationDto>> GetConversationsAsync() =>
+        await http.GetFromJsonAsync<List<DirectConversationDto>>(ApiRoutes.DirectMessages, ApiJson.Options) ?? [];
+
+    public async Task<List<DirectMessageDto>> GetDirectMessagesAsync(int conversationId, int take = 50,
+        int? beforeId = null, int? afterId = null)
+    {
+        var query = $"?take={take}";
+        if (beforeId is not null) query += $"&beforeId={beforeId}";
+        if (afterId is not null) query += $"&afterId={afterId}";
+        return await http.GetFromJsonAsync<List<DirectMessageDto>>(
+            $"{ApiRoutes.DirectMessages}/{conversationId}/messages{query}", ApiJson.Options) ?? [];
+    }
+
+    public async Task<(DirectMessageDto? Message, string? Error)> SendDirectMessageAsync(int conversationId,
+        string content, DateTime? capturedAtUtc = null, string? idempotencyKey = null)
+    {
+        var response = await http.PostAsJsonAsync(
+            $"{ApiRoutes.DirectMessages}/{conversationId}/messages",
+            new SendDirectMessageRequest(content, capturedAtUtc, idempotencyKey), ApiJson.Options);
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            return (null, "No formas parte de esta conversación.");
+        }
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            return (null, "El mensaje no puede estar vacío.");
+        }
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<DirectMessageDto>(ApiJson.Options), null);
+    }
+
     // --- PAPELEO OBLIGATORIO ---
 
     public async Task<List<PaperworkSlotStateDto>> GetOrderPaperworkAsync(int orderId) =>
