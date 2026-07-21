@@ -82,8 +82,15 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
    personal; Excel = hojas Órdenes/Fichajes/Empleados/Documentos + estado de
    documentos en el dashboard. Notificaciones push (FCM) APLAZADAS: falta que
    Alexis cree el proyecto Firebase. APNs encajará luego sin reestructurar.)
-8B. Pendiente (cosas simples/estáticas): página de términos, sección de quejas,
-   pulido de UI.
+8B. ✅ Términos + reclamaciones + pulido. (Done en phase8b-terms-complaints-polish:
+   /terms público (texto placeholder en Shared/LegalText, web+móvil); Complaint
+   = registro del cliente (ve solo las suyas) + respuesta/resolución de oficina
+   (ACL verificado por curl); home rol-consciente con accesos directos. Las
+   pantallas de cuenta de Identity siguen en inglés a propósito — estándar.)
+9. Notificaciones push (FCM) — ÚNICO pendiente. Requiere de Alexis: proyecto
+   Firebase + service-account JSON (user-secrets) + google-services.json
+   (Android). App id = com.barrieramoving.app. IPushSender pensado para que
+   APNs (iOS) encaje sin reestructurar.
 
 ## Reference material
 - `/docs/*.pdf`            → university module PDFs = reference implementation + spec
