@@ -11,6 +11,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Message> Messages { get; set; }
     public DbSet<TimeEntry> TimeEntries { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<SignatureDocument> SignatureDocuments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -67,6 +68,29 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.Entity<TimeEntry>()
             .HasIndex(t => t.ClockOutIdempotencyKey)
             .HasFilter("[ClockOutIdempotencyKey] IS NOT NULL")
+            .IsUnique();
+
+        // Documentos de firma: registros legales — restrict en usuarios, idempotencia
+        builder.Entity<SignatureDocument>()
+            .HasOne(d => d.RequestedBy)
+            .WithMany()
+            .HasForeignKey(d => d.RequestedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SignatureDocument>()
+            .HasOne(d => d.ReviewedBy)
+            .WithMany()
+            .HasForeignKey(d => d.ReviewedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SignatureDocument>()
+            .HasIndex(d => d.IdempotencyKey)
+            .HasFilter("[IdempotencyKey] IS NOT NULL")
+            .IsUnique();
+
+        builder.Entity<SignatureDocument>()
+            .HasIndex(d => d.ProviderEnvelopeId)
+            .HasFilter("[ProviderEnvelopeId] IS NOT NULL")
             .IsUnique();
     }
 }

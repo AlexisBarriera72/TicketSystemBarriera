@@ -11,4 +11,6 @@ public static class ApiRoutes
     public const string Reports = $"{Base}/reports";
     public const string Time = $"{Base}/time";
     public const string Photos = $"{Base}/photos";
+    public const string Documents = $"{Base}/documents";
+    public const string EsignWebhook = $"{Base}/webhooks/esign";
 }

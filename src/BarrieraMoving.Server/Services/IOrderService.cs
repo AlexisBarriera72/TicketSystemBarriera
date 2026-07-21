@@ -12,7 +12,7 @@ public interface IOrderService
     Task CreateOrderAsync(Order order);
     Task<List<Order>> GetOrdersForUserAsync(ClaimsPrincipal user);
     Task<List<Order>> GetAllOrdersAsync();
-    Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string? newDriverId = null,
+    Task<(bool Ok, string? Error)> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string? newDriverId = null,
         string? performerId = null, bool bypassValidation = false);
     Task<List<ApplicationUser>> GetUsersByRoleAsync(string roleName);
     Task<Order?> GetOrderByIdAsync(int id);

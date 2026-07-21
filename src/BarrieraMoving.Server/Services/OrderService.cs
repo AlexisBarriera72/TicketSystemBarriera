@@ -89,8 +89,9 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : I
     }
 
     // Actualiza estado y/o conductor asignado, registrando el evento en el chat de la orden.
-    // Devuelve false si la orden no existe o la transición de estado no está permitida.
-    public async Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string? newDriverId = null,
+    // Devuelve (false, motivo) si la orden no existe, la transición no está permitida
+    // o falta el documento firmado+aprobado para completar.
+    public async Task<(bool Ok, string? Error)> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus, string? newDriverId = null,
         string? performerId = null, bool bypassValidation = false)
     {
         using var context = dbFactory.CreateDbContext();
@@ -99,7 +100,7 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : I
             .Include(o => o.AssignedDriver)
             .FirstOrDefaultAsync(o => o.Id == orderId);
 
-        if (order is null) return false;
+        if (order is null) return (false, "La orden no existe.");
 
         string systemLog = "";
         var oldStatus = order.Status;
@@ -122,8 +123,23 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : I
         {
             if (!bypassValidation && !IsValidTransition(oldStatus, newStatus))
             {
-                return false;
+                return (false, $"Transición no permitida: {oldStatus} → {newStatus}.");
             }
+
+            // GATE LEGAL (fase 6): Completed exige un documento firmado por el
+            // cliente Y aprobado por la oficina. Este check NO se salta ni con
+            // bypassValidation — es la protección del cliente ante reclamaciones,
+            // no una simple validación de flujo.
+            if (newStatus == OrderStatus.Completed)
+            {
+                var hasApprovedDoc = await context.SignatureDocuments
+                    .AnyAsync(d => d.OrderId == orderId && d.Status == SignatureDocStatus.Approved);
+                if (!hasApprovedDoc)
+                {
+                    return (false, "No se puede completar la orden: falta un documento firmado por el cliente y aprobado por la oficina.");
+                }
+            }
+
             order.Status = newStatus;
             systemLog = string.IsNullOrEmpty(systemLog)
                 ? $"[EVENTO] El estado cambió de {oldStatus} a {newStatus}."
@@ -145,7 +161,7 @@ public class OrderService(IDbContextFactory<ApplicationDbContext> dbFactory) : I
             order.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
         }
-        return true;
+        return (true, null);
     }
 
     public async Task<List<ApplicationUser>> GetUsersByRoleAsync(string roleName)

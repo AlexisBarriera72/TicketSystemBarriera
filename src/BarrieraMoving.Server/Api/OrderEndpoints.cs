@@ -69,8 +69,8 @@ public static class OrderEndpoints
             if (order is null) return Results.NotFound();
 
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            var ok = await orders.UpdateOrderStatusAsync(id, order.Status, request.DriverId, userId);
-            return ok ? Results.NoContent() : Results.BadRequest("No se pudo asignar el conductor.");
+            var (ok, error) = await orders.UpdateOrderStatusAsync(id, order.Status, request.DriverId, userId);
+            return ok ? Results.NoContent() : Results.BadRequest(error ?? "No se pudo asignar el conductor.");
         }).RequireAuthorization(ApiAuth.StaffPolicy);
 
         // Cambio de estado: el conductor asignado sigue el flujo; Admin/Oficina pueden saltárselo
@@ -85,9 +85,9 @@ public static class OrderEndpoints
             var isAssignedDriver = user.IsInRole(Roles.Driver) && order.AssignedDriverId == userId;
             if (!isStaff && !isAssignedDriver) return ApiForbid();
 
-            var ok = await orders.UpdateOrderStatusAsync(id, request.NewStatus, null, userId, bypassValidation: isStaff);
+            var (ok, error) = await orders.UpdateOrderStatusAsync(id, request.NewStatus, null, userId, bypassValidation: isStaff);
             return ok ? Results.NoContent() : Results.BadRequest(
-                $"Transición no permitida: {order.Status} → {request.NewStatus}.");
+                error ?? $"Transición no permitida: {order.Status} → {request.NewStatus}.");
         });
 
         // Chat de la orden. Paginado: ?take= (máx 200, def. 50) devuelve los últimos;

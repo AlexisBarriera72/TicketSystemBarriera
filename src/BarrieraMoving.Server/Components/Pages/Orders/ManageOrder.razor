@@ -322,17 +322,18 @@
         if (string.IsNullOrEmpty(selectedDriverId)) return;
 
         // El servicio avanza automáticamente Requested → Assigned al asignar conductor
-        var ok = await OrderService.UpdateOrderStatusAsync(OrderId, order!.Status, selectedDriverId, currentUserId);
+        var (ok, error) = await OrderService.UpdateOrderStatusAsync(OrderId, order!.Status, selectedDriverId, currentUserId);
 
-        feedbackMessage = ok ? "Conductor asignado a la orden." : "No se pudo asignar el conductor.";
+        feedbackMessage = ok ? "Conductor asignado a la orden." : (error ?? "No se pudo asignar el conductor.");
         await LoadData();
     }
 
     private async Task UpdateStatus(OrderStatus status)
     {
-        var ok = await OrderService.UpdateOrderStatusAsync(OrderId, status, null, currentUserId, canBypassFlow);
+        var (ok, error) = await OrderService.UpdateOrderStatusAsync(OrderId, status, null, currentUserId, canBypassFlow);
 
-        feedbackMessage = ok ? $"Estado actualizado a {status}." : "Transición de estado no permitida.";
+        // El error del gate de firma es accionable: dice exactamente qué falta
+        feedbackMessage = ok ? $"Estado actualizado a {status}." : (error ?? "Transición de estado no permitida.");
         await LoadData();
     }
 }
