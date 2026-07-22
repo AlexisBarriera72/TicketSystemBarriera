@@ -25,13 +25,13 @@
 }
 
 .bi {
-    display: inline-block;
-    position: relative;
-    width: 1.25rem;
-    height: 1.25rem;
-    margin-right: 0.75rem;
-    top: -1px;
-    background-size: cover;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    margin-right: 0.7rem;
+    font-size: 1.05rem;
+    line-height: 1;
 }
 
 .bi-house-door-fill-nav-menu {
@@ -83,22 +83,28 @@
         color: #d7d7d7;
         background: none;
         border: none;
-        border-radius: 4px;
-        height: 3rem;
+        border-radius: 10px;
+        height: 2.9rem;
         display: flex;
         align-items: center;
-        line-height: 3rem;
+        line-height: 2.9rem;
         width: 100%;
+        padding: 0 0.85rem;
     }
 
     .nav-item ::deep a.active {
-        background-color: rgba(255,255,255,0.37);
+        background-color: #2f6bff;
         color: white;
+        box-shadow: 0 4px 12px rgba(47, 107, 255, 0.35);
     }
 
     .nav-item ::deep .nav-link:hover {
-        background-color: rgba(255,255,255,0.1);
+        background-color: rgba(255,255,255,0.12);
         color: white;
+    }
+
+    .nav-item ::deep a.active:hover {
+        background-color: #2f6bff;
     }
 
     .nav-item form {

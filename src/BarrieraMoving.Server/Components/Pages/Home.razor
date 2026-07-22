@@ -3,13 +3,16 @@
 <PageTitle>Inicio | Barriera Moving</PageTitle>
 
 <div class="container mt-4">
-    <div class="p-4 mb-4 bg-primary text-white rounded-3 shadow-sm">
-        <h1 class="h3 mb-1">🚚 Barriera Moving</h1>
-        <p class="mb-0 opacity-75">Plataforma de gestión de mudanzas — oficina, conductores y clientes en un solo sitio.</p>
-    </div>
-
     <AuthorizeView>
-        <Authorized>
+        <Authorized Context="authCtx">
+            <div class="hero-banner mb-4">
+                <span class="hero-badge">🚚</span>
+                <div>
+                    <h1 class="hero-h1">Bienvenido, @Greeting(authCtx.User) <span class="hero-wave">👋</span></h1>
+                    <p class="hero-p">Gestiona tus mudanzas, conductores, oficina y clientes de forma rápida y eficiente.</p>
+                </div>
+            </div>
+
             @* Barra de métricas operativas en tiempo real (se refresca cada 30s) *@
             <QuickStatsBar />
 
@@ -79,6 +82,13 @@
             </div>
         </Authorized>
         <NotAuthorized>
+            <div class="hero-banner mb-4">
+                <span class="hero-badge">🚚</span>
+                <div>
+                    <h1 class="hero-h1">Barriera Moving</h1>
+                    <p class="hero-p">Plataforma de gestión de mudanzas — oficina, conductores y clientes en un solo sitio.</p>
+                </div>
+            </div>
             <div class="alert alert-info">
                 Inicia sesión para gestionar tus mudanzas.
                 <a href="Account/Login" class="alert-link">Entrar</a> ·
@@ -88,3 +98,14 @@
         </NotAuthorized>
     </AuthorizeView>
 </div>
+
+@code {
+    // Nombre amable para el saludo: la parte antes de la @ del email, capitalizada
+    // (admin@system.com → "Admin"). Cambia a DisplayName si prefieres el nombre real.
+    private static string Greeting(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var name = user.Identity?.Name ?? "";
+        var local = name.Contains('@') ? name[..name.IndexOf('@')] : name;
+        return string.IsNullOrWhiteSpace(local) ? "" : char.ToUpper(local[0]) + local[1..];
+    }
+}
