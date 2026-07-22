@@ -6,6 +6,9 @@
 
 main {
     flex: 1;
+    min-height: 100vh;
+    background: #f4f6fb url('/img/bg.png') no-repeat center center fixed;
+    background-size: cover;
 }
 
 .sidebar {

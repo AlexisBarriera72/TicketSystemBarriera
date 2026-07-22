@@ -6,16 +6,22 @@
 @if (stats is not null)
 {
     <div class="row g-3 mb-4">
-        @foreach (var tile in tiles)
+        @foreach (var t in tiles)
         {
             <div class="@colClass">
-                <div class="card border-0 shadow-sm h-100 quick-stat" style="border-left: 4px solid @tile.Accent;">
-                    <div class="card-body py-3">
-                        <div class="fs-2 fw-bold lh-1">@tile.Number</div>
-                        <div class="text-uppercase text-muted mt-1" style="font-size: 0.72rem; letter-spacing: 0.05em;">
-                            @tile.Label
+                <div class="stat-card sc-@t.Color">
+                    <div class="stat-top">
+                        <span class="stat-badge"><i class="bi @t.Icon"></i></span>
+                        <div>
+                            <div class="stat-number">@t.Number</div>
+                            <div class="stat-label">@t.Label</div>
                         </div>
                     </div>
+                    <a href="@t.Link" class="stat-link">Ver detalles <i class="bi bi-arrow-right"></i></a>
+                    <svg class="stat-spark" viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M0 34 Q 15 26 30 30 T 60 16 T 90 20 T 120 6" fill="none"
+                              stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
                 </div>
             </div>
         }
@@ -25,8 +31,8 @@
 @code {
     private QuickStatsDto? stats;
     private bool isStaff;
-    private string colClass = "col-6 col-lg-3";
-    private List<(int Number, string Label, string Accent)> tiles = [];
+    private string colClass = "col-12 col-sm-6 col-lg-3";
+    private List<(int Number, string Label, string Icon, string Color, string Link)> tiles = [];
     private System.Threading.Timer? timer;
 
     protected override async Task OnInitializedAsync()
@@ -54,27 +60,23 @@
 
         if (isStaff)
         {
-            // El personal ve las 4 métricas operativas
             tiles =
             [
-                (stats.ActiveStaff, "Personal en Activo", "#052767"),
-                (stats.ActiveMoves, "Mudanzas en Curso", "#1a3a8f"),
-                (stats.CompletedOrders, "Órdenes Completadas", "#17915c"),
-                // Rojo solo cuando hay algo que atender: señal accionable, no adorno
-                (stats.PendingComplaints, "Reclamaciones Pendientes",
-                    stats.PendingComplaints > 0 ? "#c0392b" : "#6c757d"),
+                (stats.ActiveStaff, "Personal en Activo", "bi-people-fill", "blue", "/admin/dashboard"),
+                (stats.ActiveMoves, "Mudanzas en Curso", "bi-truck", "green", "/admin/dashboard"),
+                (stats.CompletedOrders, "Órdenes Completadas", "bi-clipboard2-check-fill", "purple", "/admin/dashboard"),
+                (stats.PendingComplaints, "Reclamaciones Pendientes", "bi-exclamation-circle-fill", "orange", "/complaints"),
             ];
-            colClass = "col-6 col-lg-3";
+            colClass = "col-12 col-sm-6 col-lg-3";
         }
         else
         {
-            // El cliente ve solo métricas públicas (nada de fichajes ni cola de quejas)
             tiles =
             [
-                (stats.CompletedOrders, "Mudanzas Completadas", "#17915c"),
-                (stats.ClientsServed, "Clientes Atendidos", "#1a3a8f"),
+                (stats.CompletedOrders, "Mudanzas Completadas", "bi-check2-circle", "green", "/orders/my-list"),
+                (stats.ClientsServed, "Clientes Atendidos", "bi-people-fill", "blue", "/orders/my-list"),
             ];
-            colClass = "col-6 col-md-6";
+            colClass = "col-12 col-md-6";
         }
         StateHasChanged();
     }

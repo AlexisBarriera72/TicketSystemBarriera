@@ -1,0 +1,96 @@
+.stat-card {
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    background: #fff;
+    border: 1px solid #eef0f6;
+    border-radius: 16px;
+    padding: 1.1rem 1.25rem 0.9rem;
+    box-shadow: 0 4px 14px rgba(23, 33, 70, 0.05);
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 26px rgba(23, 33, 70, 0.10);
+}
+
+.stat-top {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.stat-badge {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+}
+
+.stat-number {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1;
+    color: #1e2340;
+}
+
+.stat-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #8890a6;
+    margin-top: 0.2rem;
+}
+
+.stat-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #6b7290;
+    position: relative;
+    z-index: 2;
+}
+
+.stat-link i {
+    transition: transform 0.16s ease;
+}
+
+.stat-card:hover .stat-link i {
+    transform: translateX(3px);
+}
+
+/* Mini gráfico decorativo (sparkline) en la esquina */
+.stat-spark {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 46%;
+    height: 42px;
+    opacity: 0.85;
+    pointer-events: none;
+}
+
+/* --- Paletas por métrica: círculo tenue + icono + línea del sparkline --- */
+.sc-blue .stat-badge   { background: #e9f0fd; color: #3b6fe0; }
+.sc-blue .stat-link    { color: #3b6fe0; }
+.sc-blue .stat-spark path { stroke: #3b6fe0; }
+
+.sc-green .stat-badge  { background: #e6f6ee; color: #2aa768; }
+.sc-green .stat-link   { color: #2aa768; }
+.sc-green .stat-spark path { stroke: #2aa768; }
+
+.sc-purple .stat-badge { background: #efeafe; color: #7b5cf0; }
+.sc-purple .stat-link  { color: #7b5cf0; }
+.sc-purple .stat-spark path { stroke: #7b5cf0; }
+
+.sc-orange .stat-badge { background: #fdeede; color: #ef8f2b; }
+.sc-orange .stat-link  { color: #ef8f2b; }
+.sc-orange .stat-spark path { stroke: #ef8f2b; }

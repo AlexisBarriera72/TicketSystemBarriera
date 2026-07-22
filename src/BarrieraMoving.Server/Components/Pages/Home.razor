@@ -13,47 +13,66 @@
             @* Barra de métricas operativas en tiempo real (se refresca cada 30s) *@
             <QuickStatsBar />
 
+            <div class="section-head">
+                <i class="bi bi-grid-1x2-fill"></i><span>Accesos Rápidos</span>
+            </div>
+
             <div class="row g-3">
-                <div class="col-md-4">
-                    <a href="/orders/my-list" class="text-decoration-none">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-body">
-                                <h5><i class="bi bi-truck text-primary"></i> Mis Órdenes</h5>
-                                <p class="text-muted small mb-0">Consulta y sigue tus mudanzas.</p>
-                            </div>
+                <div class="col-md-6 col-xl-4">
+                    <a href="/orders/my-list" class="access-card ac-blue">
+                        <span class="access-badge"><i class="bi bi-clipboard-check"></i></span>
+                        <div class="access-text">
+                            <div class="access-title">Mis Órdenes</div>
+                            <div class="access-desc">Consulta y sigue el estado de tus mudanzas.</div>
                         </div>
+                        <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                        <i class="bi bi-clipboard-check access-watermark"></i>
                     </a>
                 </div>
-                <div class="col-md-4">
-                    <a href="/dm" class="text-decoration-none">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-body">
-                                <h5><i class="bi bi-chat-dots-fill text-primary"></i> Mensajes</h5>
-                                <p class="text-muted small mb-0">Habla directamente con el equipo.</p>
-                            </div>
+                <div class="col-md-6 col-xl-4">
+                    <a href="/dm" class="access-card ac-purple">
+                        <span class="access-badge"><i class="bi bi-chat-dots-fill"></i></span>
+                        <div class="access-text">
+                            <div class="access-title">Mensajes</div>
+                            <div class="access-desc">Habla directamente con el equipo.</div>
                         </div>
+                        <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                        <i class="bi bi-chat-dots-fill access-watermark"></i>
                     </a>
                 </div>
-                <div class="col-md-4">
-                    <a href="/complaints" class="text-decoration-none">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-body">
-                                <h5><i class="bi bi-headset text-primary"></i> Atención al Cliente</h5>
-                                <p class="text-muted small mb-0">Envía una reclamación o consulta su estado.</p>
-                            </div>
+                <div class="col-md-6 col-xl-4">
+                    <a href="/complaints" class="access-card ac-orange">
+                        <span class="access-badge"><i class="bi bi-headset"></i></span>
+                        <div class="access-text">
+                            <div class="access-title">Atención al Cliente</div>
+                            <div class="access-desc">Envía una reclamación o consulta su estado.</div>
                         </div>
+                        <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                        <i class="bi bi-headset access-watermark"></i>
                     </a>
                 </div>
 
                 <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staff">
-                    <div class="col-md-4">
-                        <a href="/admin/dashboard" class="text-decoration-none">
-                            <div class="card shadow-sm border-0 h-100 border-start border-4 border-primary">
-                                <div class="card-body">
-                                    <h5><i class="bi bi-speedometer2 text-primary"></i> Dashboard</h5>
-                                    <p class="text-muted small mb-0">Métricas, fichajes, documentos y export.</p>
-                                </div>
+                    <div class="col-md-6 col-xl-4">
+                        <a href="/orders/create" class="access-card ac-green">
+                            <span class="access-badge"><i class="bi bi-box-seam"></i></span>
+                            <div class="access-text">
+                                <div class="access-title">Nueva Orden</div>
+                                <div class="access-desc">Registra una mudanza para un cliente.</div>
                             </div>
+                            <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                            <i class="bi bi-box-seam access-watermark"></i>
+                        </a>
+                    </div>
+                    <div class="col-md-6 col-xl-4">
+                        <a href="/admin/dashboard" class="access-card ac-blue">
+                            <span class="access-badge"><i class="bi bi-bar-chart-fill"></i></span>
+                            <div class="access-text">
+                                <div class="access-title">Dashboard</div>
+                                <div class="access-desc">Métricas, fichajes, documentos y export.</div>
+                            </div>
+                            <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                            <i class="bi bi-bar-chart-fill access-watermark"></i>
                         </a>
                     </div>
                 </AuthorizeView>
