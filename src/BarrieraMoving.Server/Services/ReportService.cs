@@ -15,6 +15,34 @@ public class ReportService(
     IDbContextFactory<ApplicationDbContext> dbFactory,
     IPaperworkService paperwork) : IReportService
 {
+    // Barra de métricas operativas (quick-stats). Un DTO, contadores agregados:
+    // los dos recuentos de órdenes se resuelven en UNA consulta; el resto son
+    // COUNT indexados (uno por tabla — tablas distintas no comparten roundtrip).
+    public async Task<Shared.Dtos.QuickStatsDto> GetQuickStatsAsync()
+    {
+        using var context = dbFactory.CreateDbContext();
+
+        var orders = await context.Orders
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Completed = g.Count(o => o.Status == OrderStatus.Completed),
+                Active = g.Count(o => o.Status == OrderStatus.InProgress || o.Status == OrderStatus.EnRoute),
+            })
+            .FirstOrDefaultAsync();
+
+        var activeStaff = await context.TimeEntries.CountAsync(t => t.ClockOutUtc == null);
+        var pending = await context.Complaints.CountAsync(c => c.Status != ComplaintStatus.Resolved);
+        var clientsServed = await context.Orders
+            .Where(o => o.Status == OrderStatus.Completed)
+            .Select(o => o.AuthorId)
+            .Distinct()
+            .CountAsync();
+
+        return new Shared.Dtos.QuickStatsDto(
+            activeStaff, orders?.Active ?? 0, orders?.Completed ?? 0, pending, clientsServed);
+    }
+
     // Estado de documentos por orden (papeleo obligatorio adjunto + firma)
     public async Task<Dictionary<int, OrderDocSummary>> GetOrderDocSummariesAsync()
     {

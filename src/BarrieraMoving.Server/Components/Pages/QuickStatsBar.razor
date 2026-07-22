@@ -1,0 +1,83 @@
+@rendermode InteractiveServer
+@implements IDisposable
+@inject IReportService Reports
+@inject AuthenticationStateProvider AuthProvider
+
+@if (stats is not null)
+{
+    <div class="row g-3 mb-4">
+        @foreach (var tile in tiles)
+        {
+            <div class="@colClass">
+                <div class="card border-0 shadow-sm h-100 quick-stat" style="border-left: 4px solid @tile.Accent;">
+                    <div class="card-body py-3">
+                        <div class="fs-2 fw-bold lh-1">@tile.Number</div>
+                        <div class="text-uppercase text-muted mt-1" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                            @tile.Label
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private QuickStatsDto? stats;
+    private bool isStaff;
+    private string colClass = "col-6 col-lg-3";
+    private List<(int Number, string Label, string Accent)> tiles = [];
+    private System.Threading.Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
+
+        await RefreshAsync();
+        // "Tiempo real": se re-consulta cada 30 s mientras la página está abierta
+        timer = new System.Threading.Timer(_ => _ = InvokeAsync(RefreshAsync), null,
+            TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            stats = await Reports.GetQuickStatsAsync();
+        }
+        catch (Exception)
+        {
+            return; // fallo transitorio: el siguiente tick lo reintenta
+        }
+
+        if (isStaff)
+        {
+            // El personal ve las 4 métricas operativas
+            tiles =
+            [
+                (stats.ActiveStaff, "Personal en Activo", "#052767"),
+                (stats.ActiveMoves, "Mudanzas en Curso", "#1a3a8f"),
+                (stats.CompletedOrders, "Órdenes Completadas", "#17915c"),
+                // Rojo solo cuando hay algo que atender: señal accionable, no adorno
+                (stats.PendingComplaints, "Reclamaciones Pendientes",
+                    stats.PendingComplaints > 0 ? "#c0392b" : "#6c757d"),
+            ];
+            colClass = "col-6 col-lg-3";
+        }
+        else
+        {
+            // El cliente ve solo métricas públicas (nada de fichajes ni cola de quejas)
+            tiles =
+            [
+                (stats.CompletedOrders, "Mudanzas Completadas", "#17915c"),
+                (stats.ClientsServed, "Clientes Atendidos", "#1a3a8f"),
+            ];
+            colClass = "col-6 col-md-6";
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose() => timer?.Dispose();
+}
