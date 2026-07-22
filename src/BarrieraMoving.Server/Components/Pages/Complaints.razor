@@ -74,7 +74,8 @@
                         <div class="mt-2">
                             <textarea class="form-control form-control-sm mb-1" rows="2"
                                       placeholder="Respuesta al cliente"
-                                      @bind="responseDrafts[c.Id]"></textarea>
+                                      @bind:get="responseDrafts.GetValueOrDefault(c.Id, string.Empty)"
+                                      @bind:set="v => responseDrafts[c.Id] = v"></textarea>
                             <button class="btn btn-sm btn-outline-secondary" @onclick="() => RespondAsync(c.Id, false)">Guardar (en revisión)</button>
                             <button class="btn btn-sm btn-success" @onclick="() => RespondAsync(c.Id, true)">Responder y resolver</button>
                         </div>
@@ -108,6 +109,14 @@
         complaints = isStaff
             ? await ComplaintService.GetAllAsync()
             : await ComplaintService.GetForClientAsync(currentUserId);
+
+        // El @bind del textarea de respuesta usa responseDrafts[c.Id]; el getter
+        // del indexador lanza KeyNotFoundException si la clave no existe todavía,
+        // así que la sembramos para cada reclamación antes de renderizar.
+        foreach (var c in complaints)
+        {
+            responseDrafts.TryAdd(c.Id, "");
+        }
     }
 
     private async Task SubmitAsync()
