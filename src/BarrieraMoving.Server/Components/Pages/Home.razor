@@ -2,66 +2,86 @@
 @using Microsoft.AspNetCore.Authorization
 <PageTitle>Inicio | Barriera Moving</PageTitle>
 
-<div class="container mt-4">
-    <div class="p-4 mb-4 bg-primary text-white rounded-3 shadow-sm">
-        <h1 class="h3 mb-1">🚚 Barriera Moving</h1>
-        <p class="mb-0 opacity-75">Plataforma de gestión de mudanzas — oficina, conductores y clientes en un solo sitio.</p>
+<div class="container-fluid py-4" style="max-width: 1200px;">
+    <div class="hero shadow mb-4">
+        <div class="hero-content">
+            <h1 class="hero-title">🚚 Barriera Moving</h1>
+            <p class="hero-sub">Plataforma de gestión de mudanzas — oficina, conductores y clientes en un solo sitio.</p>
+        </div>
     </div>
 
     <AuthorizeView>
         <Authorized>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <a href="/orders/my-list" class="text-decoration-none">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-body">
-                                <h5><i class="bi bi-truck text-primary"></i> Mis Órdenes</h5>
-                                <p class="text-muted small mb-0">Consulta y sigue tus mudanzas.</p>
-                            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <a href="/orders/my-list" class="feature-card accent-blue">
+                        <div class="feature-icon"><i class="bi bi-truck"></i></div>
+                        <div>
+                            <h5 class="feature-title">Mis Órdenes</h5>
+                            <p class="feature-desc">Consulta y sigue tus mudanzas.</p>
                         </div>
+                        <i class="bi bi-arrow-right-short feature-arrow"></i>
                     </a>
                 </div>
-                <div class="col-md-4">
-                    <a href="/dm" class="text-decoration-none">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-body">
-                                <h5><i class="bi bi-chat-dots-fill text-primary"></i> Mensajes</h5>
-                                <p class="text-muted small mb-0">Habla directamente con el equipo.</p>
-                            </div>
+
+                <div class="col-md-6 col-lg-4">
+                    <a href="/dm" class="feature-card accent-teal">
+                        <div class="feature-icon"><i class="bi bi-chat-dots-fill"></i></div>
+                        <div>
+                            <h5 class="feature-title">Mensajes</h5>
+                            <p class="feature-desc">Habla directamente con el equipo.</p>
                         </div>
+                        <i class="bi bi-arrow-right-short feature-arrow"></i>
                     </a>
                 </div>
-                <div class="col-md-4">
-                    <a href="/complaints" class="text-decoration-none">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-body">
-                                <h5><i class="bi bi-headset text-primary"></i> Atención al Cliente</h5>
-                                <p class="text-muted small mb-0">Envía una reclamación o consulta su estado.</p>
-                            </div>
+
+                <div class="col-md-6 col-lg-4">
+                    <a href="/complaints" class="feature-card accent-amber">
+                        <div class="feature-icon"><i class="bi bi-headset"></i></div>
+                        <div>
+                            <h5 class="feature-title">Atención al Cliente</h5>
+                            <p class="feature-desc">Envía una reclamación o consulta su estado.</p>
                         </div>
+                        <i class="bi bi-arrow-right-short feature-arrow"></i>
                     </a>
                 </div>
 
                 <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staff">
-                    <div class="col-md-4">
-                        <a href="/admin/dashboard" class="text-decoration-none">
-                            <div class="card shadow-sm border-0 h-100 border-start border-4 border-primary">
-                                <div class="card-body">
-                                    <h5><i class="bi bi-speedometer2 text-primary"></i> Dashboard</h5>
-                                    <p class="text-muted small mb-0">Métricas, fichajes, documentos y export.</p>
-                                </div>
+                    <div class="col-md-6 col-lg-4">
+                        <a href="/orders/create" class="feature-card accent-green">
+                            <div class="feature-icon"><i class="bi bi-plus-circle-fill"></i></div>
+                            <div>
+                                <h5 class="feature-title">Nueva Orden</h5>
+                                <p class="feature-desc">Registra una mudanza para un cliente.</p>
                             </div>
+                            <i class="bi bi-arrow-right-short feature-arrow"></i>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <a href="/admin/dashboard" class="feature-card accent-purple">
+                            <div class="feature-icon"><i class="bi bi-speedometer2"></i></div>
+                            <div>
+                                <h5 class="feature-title">Dashboard</h5>
+                                <p class="feature-desc">Métricas, fichajes, documentos y export.</p>
+                            </div>
+                            <i class="bi bi-arrow-right-short feature-arrow"></i>
                         </a>
                     </div>
                 </AuthorizeView>
             </div>
         </Authorized>
         <NotAuthorized>
-            <div class="alert alert-info">
-                Inicia sesión para gestionar tus mudanzas.
-                <a href="Account/Login" class="alert-link">Entrar</a> ·
-                <a href="Account/Register" class="alert-link">Crear cuenta</a> ·
-                <a href="/terms" class="alert-link">Términos de Servicio</a>
+            <div class="row g-4 align-items-center">
+                <div class="col-lg-7">
+                    <div class="guest-card shadow-sm">
+                        <h4 class="mb-2">Bienvenido</h4>
+                        <p class="text-muted">Inicia sesión para gestionar tus mudanzas, hablar con el equipo y firmar tus documentos.</p>
+                        <a href="Account/Login" class="btn btn-primary btn-lg me-2">Entrar</a>
+                        <a href="Account/Register" class="btn btn-outline-primary btn-lg">Crear cuenta</a>
+                        <div class="mt-3"><a href="/terms" class="text-muted small">Términos de Servicio</a></div>
+                    </div>
+                </div>
             </div>
         </NotAuthorized>
     </AuthorizeView>
