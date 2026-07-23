@@ -1,33 +1,121 @@
 .app-header {
-    min-height: 3.25rem;
+    min-height: 3.5rem;
     /* Respaldo por si la app vuelve a dibujar edge-to-edge (ver styles.xml Android):
        empuja el contenido del header por debajo de la barra de estado/cámara */
     padding-top: env(safe-area-inset-top, 0px);
-    background-color: #0d6efd;
+    background-image: linear-gradient(120deg, #1f6bff 0%, #2f5fe0 100%);
     color: white;
     position: sticky;
     top: 0;
     z-index: 10;
+    box-shadow: 0 2px 10px rgba(31, 107, 255, 0.25);
+}
+
+.brand {
+    font-size: 1.05rem;
+    letter-spacing: -0.2px;
+}
+
+.header-actions {
+    gap: 0.6rem;
+}
+
+/* Icono de acción del header (campana). Cuadrado redondeado con borde tenue,
+   como en el diseño de referencia. */
+.icon-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    color: #fff;
+    font-size: 1.15rem;
+    text-decoration: none;
+}
+
+.icon-btn:active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Contador rojo de notificaciones (envíos pendientes en la cola offline) */
+.badge-dot {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #e5484d;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 0 0 2px #2f5fe0;
+}
+
+/* Botón Salir: píldora con borde blanco, arriba a la derecha */
+.salir-btn {
+    height: 2.35rem;
+    padding: 0 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    background: transparent;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.salir-btn:active {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .app-content {
     padding-bottom: 2rem;
 }
 
-/* El WebView mantiene :focus tras el tap, dejando los botones outline "pegados"
-   en blanco sobre el header azul. Los fijamos siempre transparentes con texto blanco. */
-.app-header .btn,
-.app-header .btn:hover,
-.app-header .btn:focus,
-.app-header .btn:focus-visible,
-.app-header .btn:active {
-    color: #fff;
-    background-color: transparent;
-    border-color: rgba(255, 255, 255, 0.7);
-    box-shadow: none;
-    outline: none;
+/* --- Barra de navegación inferior (tabs) --- */
+.bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    background: #ffffff;
+    border-top: 1px solid #e9ecf3;
+    box-shadow: 0 -2px 14px rgba(23, 33, 70, 0.06);
 }
 
-.app-header .btn:active {
-    background-color: rgba(255, 255, 255, 0.2); /* feedback breve al pulsar */
+.bottom-nav ::deep .nav-tab {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 0.5rem 0.25rem;
+    color: #8a90a6;
+    text-decoration: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.bottom-nav ::deep .nav-tab i {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.bottom-nav ::deep .nav-tab.active {
+    color: #2f6bff;
+}
+
+.bottom-nav ::deep .nav-tab:active {
+    background-color: rgba(47, 107, 255, 0.06);
 }

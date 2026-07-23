@@ -7,7 +7,9 @@
 @inject NavigationManager Nav
 
 <div class="mx-auto" style="max-width: 480px;">
-    <h4 class="mb-3">⏱ Fichaje</h4>
+    <div class="section-head" style="margin-top:0;">
+        <i class="bi bi-clock-history"></i><span>Fichaje</span>
+    </div>
 
     @if (loading)
     {
@@ -22,26 +24,26 @@
     }
     else
     {
-        <div class="card shadow-sm mb-3 text-center">
-            <div class="card-body py-4">
+        <div class="fichaje-card mb-3 text-center">
+            <div class="p-4">
                 @if (State.OpenEntry is null)
                 {
-                    <p class="text-muted mb-1">No has fichado</p>
-                    <p class="small text-muted mb-3">Ficha para empezar tu jornada.</p>
-                    <button class="btn btn-success btn-lg w-100" @onclick="() => DoClockAsync(clockIn: true)"
+                    <h5 class="fw-bold mb-1">¡Aún no has fichado!</h5>
+                    <p class="text-muted mb-3">Ficha para empezar tu jornada.</p>
+                    <button class="btn btn-success btn-lg w-100 clock-btn" @onclick="() => DoClockAsync(clockIn: true)"
                             disabled="@(busy || pendingPunch is not null)">
-                        @(busy ? "Fichando..." : "▶ Fichar Entrada")
+                        <i class="bi bi-play-fill"></i> @(busy ? "Fichando..." : "Fichar Entrada")
                     </button>
                 }
                 else
                 {
-                    <p class="mb-1">Trabajando desde
+                    <p class="mb-1 text-muted">Trabajando desde
                         <strong>@State.OpenEntry.ClockInUtc.ToLocalTime().ToString("HH:mm")</strong>
                     </p>
                     <p class="display-6 fw-bold mb-3">@ElapsedText()</p>
-                    <button class="btn btn-danger btn-lg w-100" @onclick="() => DoClockAsync(clockIn: false)"
+                    <button class="btn btn-danger btn-lg w-100 clock-btn" @onclick="() => DoClockAsync(clockIn: false)"
                             disabled="@(busy || pendingPunch is not null)">
-                        @(busy ? "Fichando..." : "⏹ Fichar Salida")
+                        <i class="bi bi-stop-fill"></i> @(busy ? "Fichando..." : "Fichar Salida")
                     </button>
                 }
 
@@ -76,43 +78,50 @@
             </div>
         </div>
 
-        <p class="text-muted small">
-            La ubicación se registra solo al fichar y es opcional: si no das permiso,
-            el fichaje funciona igual.
-        </p>
+        <div class="info-callout mb-3">
+            <i class="bi bi-info-circle-fill"></i>
+            <span>La ubicación se registra solo al fichar y es opcional: si no das permiso,
+                el fichaje funciona igual.</span>
+        </div>
 
         @if (!DriverGated)
         {
-            <a href="/" class="btn btn-outline-primary w-100 mb-3">Ver mis órdenes</a>
+            <a href="/" class="pill-btn w-100 justify-content-center mb-3" style="height:2.9rem;">
+                <i class="bi bi-clipboard-check"></i> Ver mis órdenes
+            </a>
         }
 
         @if (history.Any())
         {
-            <h6 class="text-muted mt-2">Últimos fichajes</h6>
-            <ul class="list-group">
+            <div class="section-head">
+                <i class="bi bi-calendar-week"></i><span>Últimos fichajes</span>
+            </div>
+            <div class="fichaje-list">
                 @foreach (var entry in history)
                 {
-                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
-                        <span class="small">
-                            @entry.ClockInUtc.ToLocalTime().ToString("dd/MM") ·
+                    <div class="fichaje-row">
+                        <span class="fichaje-when">
+                            <i class="bi bi-calendar3"></i>
+                            @entry.ClockInUtc.ToLocalTime().ToString("dd/MM")
+                            <i class="bi bi-clock ms-2"></i>
                             @entry.ClockInUtc.ToLocalTime().ToString("HH:mm")
                             – @(entry.ClockOutUtc?.ToLocalTime().ToString("HH:mm") ?? "…")
                         </span>
-                        <span>
+                        <span class="d-flex align-items-center" style="gap:0.35rem;">
                             @if (entry.ClockOutUtc is not null)
                             {
-                                <span class="badge bg-light text-dark border">
-                                    @Math.Round((entry.ClockOutUtc.Value - entry.ClockInUtc).TotalHours, 1)h
+                                <span class="hour-pill">
+                                    @Math.Round((entry.ClockOutUtc.Value - entry.ClockInUtc).TotalHours, 1) h
                                 </span>
                             }
                             @if (entry.AutoClosed)
                             {
-                                <span class="badge bg-danger ms-1" title="Cerrado automáticamente">Auto</span>
+                                <span class="auto-pill" title="Cerrado automáticamente">Auto</span>
                             }
                         </span>
-                    </li>
+                    </div>
                 }
-            </ul>
+            </div>
         }
     }
 </div>

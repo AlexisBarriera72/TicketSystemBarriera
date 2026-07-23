@@ -7,32 +7,57 @@
 <div class="app-shell">
     <header class="app-header d-flex justify-content-between align-items-center px-3"
             style="padding-top: max(env(safe-area-inset-top, 0px), @(topInset)px)">
-        <span class="fw-bold">🚚 Barriera Moving</span>
+        <span class="brand fw-bold">🚚 Barriera Moving</span>
         @if (isLoggedIn)
         {
-            <div class="d-flex align-items-center">
-                @if (pendingCount > 0)
-                {
-                    <a class="btn btn-sm btn-outline-light me-2 px-2" href="/outbox" title="Envíos pendientes">📤 @pendingCount</a>
-                }
-                @if (isStaff)
-                {
-                    <a class="btn btn-sm btn-outline-light me-2 px-2" href="/clock" title="Fichaje">⏱</a>
-                }
-                @if (isManager)
-                {
-                    <a class="btn btn-sm btn-outline-light me-2 px-2" href="/team" title="Equipo">👥</a>
-                }
-                <a class="btn btn-sm btn-outline-light me-2 px-2" href="/dm" title="Mensajes">✉</a>
-                <a class="btn btn-sm btn-outline-light me-2 px-2" href="/complaints" title="Atención al Cliente">🎧</a>
-                <button class="btn btn-sm btn-outline-light" @onclick="LogoutAsync">Salir</button>
+            <div class="header-actions d-flex align-items-center">
+                <a class="icon-btn" href="/outbox" title="Notificaciones / envíos pendientes">
+                    <i class="bi bi-bell"></i>
+                    @if (pendingCount > 0)
+                    {
+                        <span class="badge-dot">@pendingCount</span>
+                    }
+                </a>
+                <button class="salir-btn" @onclick="LogoutAsync">Salir</button>
             </div>
         }
     </header>
 
-    <main class="app-content p-3" style="padding-bottom: max(2rem, @(bottomInset)px)">
+    <main class="app-content p-3"
+          style="padding-bottom: calc(@(hasTabs ? "4.75rem" : "2rem") + max(0px, @(bottomInset)px))">
         @Body
     </main>
+
+    @if (hasTabs)
+    {
+        <nav class="bottom-nav" style="padding-bottom: max(env(safe-area-inset-bottom, 0px), @(bottomInset)px)">
+            <NavLink class="nav-tab" href="/" Match="NavLinkMatch.All">
+                <i class="bi bi-clipboard-check"></i><span>Órdenes</span>
+            </NavLink>
+
+            @if (isStaff)
+            {
+                <NavLink class="nav-tab" href="/clock">
+                    <i class="bi bi-clock-history"></i><span>Fichaje</span>
+                </NavLink>
+            }
+
+            <NavLink class="nav-tab" href="/dm">
+                <i class="bi bi-chat-dots"></i><span>Mensajes</span>
+            </NavLink>
+
+            <NavLink class="nav-tab" href="/complaints">
+                <i class="bi bi-headset"></i><span>Atención</span>
+            </NavLink>
+
+            @if (isManager)
+            {
+                <NavLink class="nav-tab" href="/team">
+                    <i class="bi bi-people"></i><span>Equipo</span>
+                </NavLink>
+            }
+        </nav>
+    }
 </div>
 
 @code {
@@ -43,6 +68,10 @@
     private double bottomInset;
     private int pendingCount;
     private bool subscribed;
+
+    // La barra inferior solo tiene sentido cuando hay sesión (los tabs navegan a
+    // rutas autenticadas). En login/terms no se muestra.
+    private bool hasTabs => isLoggedIn;
 
     protected override async Task OnInitializedAsync()
     {
@@ -66,7 +95,7 @@
         if (subscribed) Outbox.Changed -= OnOutboxChanged;
     }
 
-    // Se ejecuta en cada navegación; mantiene los botones del header sincronizados
+    // Se ejecuta en cada navegación; mantiene el header y los tabs sincronizados
     protected override async Task OnParametersSetAsync()
     {
         isLoggedIn = await Auth.IsLoggedInAsync();

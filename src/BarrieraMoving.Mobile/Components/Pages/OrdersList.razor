@@ -4,16 +4,16 @@
 @inject ClockState Clock
 @inject NavigationManager Nav
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h4 class="mb-0">Mis Órdenes</h4>
-    <button class="btn btn-sm btn-outline-primary" @onclick="LoadAsync" disabled="@loading">
-        ↻ Actualizar
+<div class="page-head">
+    <h4>Mis Órdenes</h4>
+    <button class="pill-btn" @onclick="LoadAsync" disabled="@loading">
+        <i class="bi bi-arrow-clockwise"></i> Actualizar
     </button>
 </div>
 
 @if (user is not null)
 {
-    <p class="text-muted small mb-3">@(user.DisplayName ?? user.Email) · @string.Join(", ", user.Roles)</p>
+    <p class="page-sub">@(user.DisplayName ?? user.Email) · @string.Join(", ", user.Roles)</p>
 }
 
 @if (loading)
@@ -39,21 +39,26 @@ else
 {
     @foreach (var order in orders)
     {
-        <div class="card mb-2 shadow-sm" style="cursor: pointer;"
-             @onclick="@(() => Nav.NavigateTo($"/orders/{order.Id}"))">
-            <div class="card-body py-2">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="me-2">
-                        <div class="fw-bold">#@order.Id · @order.Title</div>
-                        <div class="text-muted small">
-                            @order.CategoryName · @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")
-                        </div>
-                    </div>
-                    <span class="badge @GetStatusClass(order.Status)">@order.Status</span>
+        var done = order.Status == OrderStatus.Completed;
+        <div class="list-card" @onclick="@(() => Nav.NavigateTo($"/orders/{order.Id}"))">
+            <span class="card-badge @(done ? "b-green" : "b-blue")">
+                <i class="bi @(done ? "bi-box-seam" : "bi-clipboard-check")"></i>
+            </span>
+            <div class="card-main">
+                <div class="card-title">#@order.Id · @order.Title</div>
+                <div class="card-sub">
+                    @order.CategoryName · @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")
                 </div>
             </div>
+            <span class="status-pill @GetStatusPill(order.Status)">@order.Status</span>
+            <i class="bi bi-chevron-right card-chevron"></i>
         </div>
     }
+
+    <div class="info-callout">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>Aquí puedes ver todas las órdenes asignadas y su estado actual.</span>
+    </div>
 }
 
 @code {
@@ -112,14 +117,14 @@ else
     }
 
     // Mismos colores de estado que el dashboard web
-    private static string GetStatusClass(OrderStatus status) => status switch
+    private static string GetStatusPill(OrderStatus status) => status switch
     {
-        OrderStatus.Requested => "bg-info text-dark",
-        OrderStatus.Assigned => "bg-secondary",
-        OrderStatus.EnRoute => "bg-warning text-dark",
-        OrderStatus.InProgress => "bg-warning text-dark",
-        OrderStatus.PendingSignature => "bg-primary",
-        OrderStatus.Completed => "bg-success",
-        _ => "bg-secondary"
+        OrderStatus.Requested => "s-info",
+        OrderStatus.Assigned => "s-gray",
+        OrderStatus.EnRoute => "s-amber",
+        OrderStatus.InProgress => "s-amber",
+        OrderStatus.PendingSignature => "s-blue",
+        OrderStatus.Completed => "s-green",
+        _ => "s-gray"
     };
 }
