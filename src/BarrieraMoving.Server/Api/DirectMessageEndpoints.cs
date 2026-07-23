@@ -62,16 +62,19 @@ public static class DirectMessageEndpoints
         });
 
         group.MapPost("/{id:int}/messages", async (int id, SendDirectMessageRequest request,
-            ClaimsPrincipal user, IDirectMessageService dm) =>
+            ClaimsPrincipal user, IDirectMessageService dm, INotificationService notify) =>
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
             if (!await dm.IsParticipantAsync(id, userId)) return ApiForbid();
 
             var (message, error) = await dm.SendAsync(id, userId, Roles.PrimaryRole(user),
                 request.Content, request.CapturedAtUtc, request.IdempotencyKey);
-            return message is null
-                ? Results.BadRequest(error)
-                : Results.Created($"{ApiRoutes.DirectMessages}/{id}/messages", message.ToDto());
+            if (message is null) return Results.BadRequest(error);
+
+            var senderName = message.Sender?.DisplayName ?? message.Sender?.Email ?? "";
+            await notify.NotifyDirectMessageAsync(id, userId, senderName, message.Content);
+
+            return Results.Created($"{ApiRoutes.DirectMessages}/{id}/messages", message.ToDto());
         });
 
         return app;

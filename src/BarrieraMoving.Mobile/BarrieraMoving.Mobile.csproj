@@ -76,6 +76,14 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
         <PackageReference Include="sqlite-net-pcl" Version="1.11.285" />
+        <PackageReference Include="Xamarin.Firebase.Messaging" Version="125.1.1" />
+    </ItemGroup>
+
+    <!-- Config de Firebase (FCM). El build lo transforma en recursos Android para
+         que FirebaseApp se auto-inicialice. Es config de cliente (va dentro del APK),
+         no la clave de servidor — esa vive en user-secrets del backend. -->
+    <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+        <GoogleServicesJson Include="Platforms\Android\google-services.json" />
     </ItemGroup>
 
 </Project>

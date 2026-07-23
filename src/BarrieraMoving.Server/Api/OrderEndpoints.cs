@@ -104,7 +104,7 @@ public static class OrderEndpoints
         });
 
         group.MapPost("/{id:int}/messages", async (int id, CreateMessageRequest request,
-            ClaimsPrincipal user, IOrderService orders) =>
+            ClaimsPrincipal user, IOrderService orders, INotificationService notify) =>
         {
             if (string.IsNullOrWhiteSpace(request.Content))
                 return Results.BadRequest("Content es obligatorio.");
@@ -143,6 +143,11 @@ public static class OrderEndpoints
                 if (existing is not null) return Results.Ok(existing.ToDto());
                 throw;
             }
+
+            // Push a las partes de la orden (best-effort; nunca rompe el envío)
+            var senderName = message.User?.DisplayName ?? message.User?.Email ?? "";
+            await notify.NotifyOrderMessageAsync(id, message.UserId, senderName, message.Content);
+
             return Results.Created($"{ApiRoutes.Orders}/{id}/messages", message.ToDto());
         });
 

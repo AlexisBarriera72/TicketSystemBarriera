@@ -9,7 +9,8 @@ namespace BarrieraMoving.Server.Services;
 // Using Primary Constructor de C# 14
 public class OrderService(
     IDbContextFactory<ApplicationDbContext> dbFactory,
-    IPaperworkService paperwork) : IOrderService
+    IPaperworkService paperwork,
+    INotificationService notify) : IOrderService
 {
     // Transiciones válidas del flujo de una mudanza. Admin/Oficina pueden saltárselas
     // (bypassValidation); el conductor no. En la Fase 6, PendingSignature → Completed
@@ -168,6 +169,13 @@ public class OrderService(
             context.Messages.Add(systemMessage);
             order.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
+        }
+
+        // Push al conductor/cliente cuando el estado cambia (cubre API y dashboard web;
+        // best-effort — no rompe la operación si falla)
+        if (newStatus != oldStatus)
+        {
+            await notify.NotifyOrderStatusAsync(orderId, performerId ?? newDriverId, newStatus);
         }
         return (true, null);
     }

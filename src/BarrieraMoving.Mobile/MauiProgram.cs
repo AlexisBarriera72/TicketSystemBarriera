@@ -24,6 +24,13 @@ public static class MauiProgram
 		builder.Services.AddSingleton<OutboxService>(); // cola offline compartida (mensajes/fotos/fichajes)
 		builder.Services.AddTransient<AuthMessageHandler>();
 
+		// Registro de push por plataforma (Android = FCM; iOS = APNs en el futuro)
+#if ANDROID
+		builder.Services.AddSingleton<IPushRegistrar, AndroidPushRegistrar>();
+#else
+		builder.Services.AddSingleton<IPushRegistrar, NoOpPushRegistrar>();
+#endif
+
 		// Cliente sin auth para login/refresh/logout (BaseAddress se fija al usarlo,
 		// así el cambio de "Servidor" en el login aplica al instante)
 		builder.Services.AddHttpClient("plain");

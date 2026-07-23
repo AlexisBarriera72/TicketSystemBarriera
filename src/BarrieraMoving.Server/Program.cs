@@ -53,6 +53,19 @@ else
 // ESign:ApiKey en user-secrets, registrar aquí el adaptador real en su lugar.
 builder.Services.AddSingleton<ISignatureProvider, FakeSignatureProvider>();
 
+// Push (FCM): si hay credencial de Firebase en user-secrets → sender real; si no,
+// NullPushSender (estado NotConfigured VISIBLE, nunca un fallo silencioso).
+if (!string.IsNullOrEmpty(builder.Configuration["Push:ServiceAccountJson"]) ||
+    !string.IsNullOrEmpty(builder.Configuration["Push:ServiceAccountFile"]))
+{
+    builder.Services.AddSingleton<IPushSender, FirebasePushSender>();
+}
+else
+{
+    builder.Services.AddSingleton<IPushSender, NullPushSender>();
+}
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
 // Cookies para el dashboard web; JWT Bearer para la API (teléfonos MAUI).
 // La clave de firma vive en user-secrets, nunca en appsettings.json.
 var jwtKey = builder.Configuration["Jwt:SigningKey"];
@@ -161,6 +174,7 @@ if (!string.IsNullOrEmpty(jwtKey))
     app.MapPaperworkApi();
     app.MapDirectMessageApi();
     app.MapComplaintApi();
+    app.MapPushApi();
 }
 else
 {

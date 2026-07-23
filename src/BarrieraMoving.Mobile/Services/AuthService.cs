@@ -5,7 +5,8 @@ using BarrieraMoving.Shared.Dtos;
 namespace BarrieraMoving.Mobile.Services;
 
 // Login / logout y estado de sesión. El refresh automático vive en AuthMessageHandler.
-public class AuthService(TokenStore tokenStore, IHttpClientFactory httpClientFactory, ClockState clockState)
+public class AuthService(TokenStore tokenStore, IHttpClientFactory httpClientFactory,
+    ClockState clockState, IPushRegistrar pushRegistrar)
 {
     public async Task<bool> IsLoggedInAsync() =>
         await tokenStore.GetRefreshTokenAsync() is not null;
@@ -33,6 +34,10 @@ public class AuthService(TokenStore tokenStore, IHttpClientFactory httpClientFac
 
             await tokenStore.SaveAsync(tokens);
             clockState.Reset(); // el estado de fichaje es del usuario anterior
+
+            // Registrar el dispositivo para push (best-effort, en segundo plano:
+            // no retrasa la navegación tras el login)
+            _ = pushRegistrar.RegisterAsync();
             return (true, null);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or UriFormatException)
@@ -43,6 +48,9 @@ public class AuthService(TokenStore tokenStore, IHttpClientFactory httpClientFac
 
     public async Task LogoutAsync()
     {
+        // Dar de baja el token push ANTES de limpiar la sesión (la llamada va con JWT)
+        await pushRegistrar.UnregisterAsync();
+
         var refreshToken = await tokenStore.GetRefreshTokenAsync();
         if (refreshToken is not null)
         {

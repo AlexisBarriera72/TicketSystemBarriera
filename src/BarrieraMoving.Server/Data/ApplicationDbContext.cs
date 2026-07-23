@@ -17,6 +17,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DirectParticipant> DirectParticipants { get; set; }
     public DbSet<DirectMessage> DirectMessages { get; set; }
     public DbSet<Complaint> Complaints { get; set; }
+    public DbSet<DeviceToken> DeviceTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -168,5 +169,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(c => c.OrderId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Tokens push: el token FCM es global-único (un aparato = una fila);
+        // se busca por usuario al notificar.
+        builder.Entity<DeviceToken>()
+            .HasIndex(d => d.Token)
+            .IsUnique();
+
+        builder.Entity<DeviceToken>()
+            .HasIndex(d => d.UserId);
     }
 }
