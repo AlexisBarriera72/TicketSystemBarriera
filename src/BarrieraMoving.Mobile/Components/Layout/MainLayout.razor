@@ -3,6 +3,7 @@
 @inject AuthService Auth
 @inject OutboxService Outbox
 @inject NavigationManager Nav
+@inject IPushRegistrar Push
 
 <div class="app-shell">
     <header class="app-header d-flex justify-content-between align-items-center px-3"
@@ -82,6 +83,13 @@
         Outbox.Changed += OnOutboxChanged;
         subscribed = true;
         pendingCount = await Outbox.CountAsync();
+
+        // Sesión ya iniciada de arranques anteriores: re-registrar el token push
+        // (el login solo lo hace en el momento de entrar; esto cubre el resto).
+        if (await Auth.IsLoggedInAsync())
+        {
+            _ = Push.RegisterAsync();
+        }
     }
 
     private void OnOutboxChanged() => _ = InvokeAsync(async () =>

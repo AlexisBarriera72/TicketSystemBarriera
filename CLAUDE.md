@@ -87,10 +87,19 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
    = registro del cliente (ve solo las suyas) + respuesta/resolución de oficina
    (ACL verificado por curl); home rol-consciente con accesos directos. Las
    pantallas de cuenta de Identity siguen en inglés a propósito — estándar.)
-9. Notificaciones push (FCM) — ÚNICO pendiente. Requiere de Alexis: proyecto
-   Firebase + service-account JSON (user-secrets) + google-services.json
-   (Android). App id = com.barrieramoving.app. IPushSender pensado para que
-   APNs (iOS) encaje sin reestructurar.
+9. ✅ Notificaciones push (FCM) — CÓDIGO COMPLETO (proyecto Firebase
+   "barrieramoving", google-services.json en Platforms/Android ya en git — es
+   config de cliente, va en el APK). DeviceToken + IPushSender/FirebasePushSender
+   (estado NotConfigured VISIBLE como el email) + INotificationService que
+   dispara en 4 eventos (chat de orden, DM, respuesta a reclamación, cambio de
+   estado — este desde OrderService, cubre API y dashboard). Móvil: permiso
+   Android 13+, token FCM registrado en /api/v1/push (VERIFICADO: fila en
+   DeviceTokens tras login en el emulador). Tokens muertos se purgan solos.
+   PENDIENTE de Alexis para que EMITA de verdad: cargar la clave de cuenta de
+   servicio en user-secrets del server →
+   `dotnet user-secrets set "Push:ServiceAccountJson" "$(cat clave.json)"`
+   (la clave NUNCA en git; el .gitignore ya bloquea *firebase-adminsdk*.json).
+   iOS/APNs aplazado: encaja en IPushSender/IPushRegistrar sin reestructurar.
 
 ## Reference material
 - `/docs/*.pdf`            → university module PDFs = reference implementation + spec
