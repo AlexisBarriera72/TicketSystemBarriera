@@ -7,7 +7,7 @@
 <div class="app-shell">
     <header class="app-header d-flex justify-content-between align-items-center px-3"
             style="padding-top: max(env(safe-area-inset-top, 0px), @(topInset)px)">
-        <span class="brand fw-bold">🚚 Barriera Moving</span>
+        <span class="brand fw-bold"><i class="bi bi-truck me-1"></i> Barriera Moving</span>
         @if (isLoggedIn)
         {
             <div class="header-actions d-flex align-items-center">
@@ -38,7 +38,7 @@
             @if (isStaff)
             {
                 <NavLink class="nav-tab" href="/clock">
-                    <i class="bi bi-clock-history"></i><span>Fichaje</span>
+                    <i class="bi bi-clock-history"></i><span>Horas</span>
                 </NavLink>
             }
 

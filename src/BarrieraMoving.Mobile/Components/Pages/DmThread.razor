@@ -6,9 +6,9 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<div class="d-flex align-items-center mb-2">
-    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo("/dm"))">←</button>
-    <div class="fw-bold">✉ Conversación</div>
+<div class="detail-head">
+    <button class="back-btn" @onclick="@(() => Nav.NavigateTo("/dm"))"><i class="bi bi-arrow-left"></i></button>
+    <div class="detail-title"><i class="bi bi-chat-dots"></i> Conversación</div>
 </div>
 
 @if (loading)
@@ -48,7 +48,7 @@ else
             <div class="d-flex mb-2 justify-content-end">
                 <div class="rounded-3 border border-secondary bg-white" style="max-width: 85%; padding: 8px 12px; opacity: 0.75;">
                     <div class="text-break">@p.Text</div>
-                    <div class="text-muted" style="font-size: 0.65rem;">🕓 Pendiente de envío</div>
+                    <div class="text-muted" style="font-size: 0.65rem;">Pendiente de envío</div>
                 </div>
             </div>
         }
@@ -56,7 +56,7 @@ else
     <div class="input-group">
         <input class="form-control" placeholder="Escribir mensaje..." @bind="draft" @bind:event="oninput"
                @onkeyup="@(e => e.Key == "Enter" ? SendAsync() : Task.CompletedTask)" disabled="@sending" />
-        <button class="btn btn-primary px-3" @onclick="SendAsync" disabled="@sending">➤</button>
+        <button class="btn btn-primary px-3" @onclick="SendAsync" disabled="@sending"><i class="bi bi-send"></i></button>
     </div>
 }
 

@@ -3,9 +3,14 @@
 @inject AuthService Auth
 @inject NavigationManager Nav
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">✉ Mensajes</h4>
-    <button class="btn btn-sm btn-outline-primary" @onclick="LoadAsync" disabled="@loading">↻</button>
+<div class="page-head mb-3">
+    <span class="page-title-icon">
+        <i class="bi bi-chat-dots"></i>
+        <h4>Mensajes</h4>
+    </span>
+    <button class="pill-btn" @onclick="LoadAsync" disabled="@loading">
+        <i class="bi bi-arrow-clockwise"></i>
+    </button>
 </div>
 
 @if (loading)

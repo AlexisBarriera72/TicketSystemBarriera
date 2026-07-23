@@ -8,7 +8,7 @@
 
 <div class="mx-auto" style="max-width: 480px;">
     <div class="section-head" style="margin-top:0;">
-        <i class="bi bi-clock-history"></i><span>Fichaje</span>
+        <i class="bi bi-clock-history"></i><span>Registro de Horas</span>
     </div>
 
     @if (loading)
@@ -28,11 +28,11 @@
             <div class="p-4">
                 @if (State.OpenEntry is null)
                 {
-                    <h5 class="fw-bold mb-1">¡Aún no has fichado!</h5>
-                    <p class="text-muted mb-3">Ficha para empezar tu jornada.</p>
+                    <h5 class="fw-bold mb-1">¡Aún no has registrado tu entrada!</h5>
+                    <p class="text-muted mb-3">Registra la entrada para empezar tu jornada.</p>
                     <button class="btn btn-success btn-lg w-100 clock-btn" @onclick="() => DoClockAsync(clockIn: true)"
                             disabled="@(busy || pendingPunch is not null)">
-                        <i class="bi bi-play-fill"></i> @(busy ? "Fichando..." : "Fichar Entrada")
+                        <i class="bi bi-play-fill"></i> @(busy ? "Registrando..." : "Registrar Entrada")
                     </button>
                 }
                 else
@@ -43,14 +43,14 @@
                     <p class="display-6 fw-bold mb-3">@ElapsedText()</p>
                     <button class="btn btn-danger btn-lg w-100 clock-btn" @onclick="() => DoClockAsync(clockIn: false)"
                             disabled="@(busy || pendingPunch is not null)">
-                        <i class="bi bi-stop-fill"></i> @(busy ? "Fichando..." : "Fichar Salida")
+                        <i class="bi bi-stop-fill"></i> @(busy ? "Registrando..." : "Registrar Salida")
                     </button>
                 }
 
                 @if (pendingPunch is not null)
                 {
                     <div class="alert alert-info mt-3 py-2 mb-0">
-                        🕓 Fichaje pendiente de envío (pulsado a las
+                        Registro pendiente de envío (pulsado a las
                         @pendingPunch.CapturedAtUtc.ToLocalTime().ToString("HH:mm")).
                         Se enviará solo al recuperar la conexión; la hora oficial la pondrá
                         el servidor al recibirlo.
@@ -59,7 +59,7 @@
                 @if (failedPunch is not null)
                 {
                     <div class="alert alert-warning mt-3 py-2 mb-0">
-                        ❌ @(failedPunch.Kind == OutboxKind.ClockIn ? "Entrada" : "Salida") no aceptada:
+                        @(failedPunch.Kind == OutboxKind.ClockIn ? "Entrada" : "Salida") no aceptada:
                         @failedPunch.LastError
                         <div class="mt-1">
                             <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => Outbox.RetryAsync(failedPunch.Id)">Reintentar</button>
@@ -80,8 +80,8 @@
 
         <div class="info-callout mb-3">
             <i class="bi bi-info-circle-fill"></i>
-            <span>La ubicación se registra solo al fichar y es opcional: si no das permiso,
-                el fichaje funciona igual.</span>
+            <span>La ubicación se registra solo al marcar entrada/salida y es opcional: si no das
+                permiso, el registro funciona igual.</span>
         </div>
 
         @if (!DriverGated)
@@ -94,7 +94,7 @@
         @if (history.Any())
         {
             <div class="section-head">
-                <i class="bi bi-calendar-week"></i><span>Últimos fichajes</span>
+                <i class="bi bi-calendar-week"></i><span>Últimos registros</span>
             </div>
             <div class="fichaje-list">
                 @foreach (var entry in history)

@@ -8,9 +8,9 @@
 @inject IJSRuntime JS
 
 <div class="d-flex align-items-center mb-2">
-    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))">←</button>
+    <button class="back-btn me-2" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))"><i class="bi bi-arrow-left"></i></button>
     <div>
-        <div class="fw-bold">💬 Orden #@Id</div>
+        <div class="detail-title"><i class="bi bi-chat-text"></i> Orden #@Id</div>
         @if (order is not null)
         {
             <div class="text-muted small">@order.Title</div>
@@ -88,19 +88,19 @@ else
                                 }
                                 else
                                 {
-                                    <div class="text-muted small mt-1">📷 Cargando foto…</div>
+                                    <div class="text-muted small mt-1"><i class="bi bi-camera"></i> Cargando foto…</div>
                                 }
                             }
                             @if (m.Latitude is not null && m.Longitude is not null)
                             {
                                 <a class="small @(isMe ? "text-white-50" : "text-muted")" target="_blank"
-                                   href="https://maps.google.com/?q=@m.Latitude,@m.Longitude">📍 Ver ubicación</a>
+                                   href="https://maps.google.com/?q=@m.Latitude,@m.Longitude"><i class="bi bi-geo-alt"></i> Ver ubicación</a>
                             }
                             @if (m.CapturedAtUtc is not null &&
                                  (m.CreatedAt - m.CapturedAtUtc.Value) > TimeSpan.FromMinutes(5))
                             {
                                 <div class="@(isMe ? "text-white-50" : "text-muted")" style="font-size: 0.6rem;">
-                                    ⏱ Capturado @m.CapturedAtUtc.Value.ToLocalTime().ToString("HH:mm"),
+                                    Capturado @m.CapturedAtUtc.Value.ToLocalTime().ToString("HH:mm"),
                                     entregado @m.CreatedAt.ToLocalTime().ToString("HH:mm")
                                 </div>
                             }
@@ -123,7 +123,7 @@ else
                             }
                             else
                             {
-                                <div class="text-muted small">📷 Foto</div>
+                                <div class="text-muted small"><i class="bi bi-camera"></i> Foto</div>
                             }
                         }
                         else
@@ -132,7 +132,7 @@ else
                         }
                         @if (p.Status == OutboxStatus.Failed)
                         {
-                            <div class="text-danger" style="font-size: 0.65rem;">❌ @p.LastError</div>
+                            <div class="text-danger" style="font-size: 0.65rem;">@p.LastError</div>
                             <button class="btn btn-sm btn-outline-primary py-0 me-1" style="font-size: 0.65rem;"
                                     @onclick="() => Outbox.RetryAsync(p.Id)">Reintentar</button>
                             <button class="btn btn-sm btn-outline-danger py-0" style="font-size: 0.65rem;"
@@ -141,7 +141,7 @@ else
                         else
                         {
                             <div class="text-muted" style="font-size: 0.65rem;">
-                                🕓 Pendiente de envío (@p.CapturedAtUtc.ToLocalTime().ToString("HH:mm"))
+                                Pendiente de envío (@p.CapturedAtUtc.ToLocalTime().ToString("HH:mm"))
                             </div>
                         }
                     </div>
@@ -155,16 +155,16 @@ else
         <div class="alert alert-warning py-2 mb-2">@sendError</div>
     }
 
-    <div class="input-group">
-        <button class="btn btn-outline-secondary px-2" @onclick="() => SendPhotoAsync(fromCamera: true)"
-                disabled="@sending" title="Cámara">📷</button>
-        <button class="btn btn-outline-secondary px-2" @onclick="() => SendPhotoAsync(fromCamera: false)"
-                disabled="@sending" title="Galería">🖼</button>
+    <div class="input-group chat-compose">
+        <button class="btn btn-outline-secondary px-3" @onclick="() => SendPhotoAsync(fromCamera: true)"
+                disabled="@sending" title="Cámara"><i class="bi bi-camera"></i></button>
+        <button class="btn btn-outline-secondary px-3" @onclick="() => SendPhotoAsync(fromCamera: false)"
+                disabled="@sending" title="Galería"><i class="bi bi-image"></i></button>
         <input class="form-control" placeholder="Escribir mensaje..."
                @bind="draft" @bind:event="oninput" disabled="@sending"
                @onkeyup="@(e => e.Key == "Enter" ? SendAsync() : Task.CompletedTask)" />
         <button class="btn btn-primary px-3" @onclick="SendAsync" disabled="@sending">
-            @(sending ? "…" : "➤")
+            @if (sending) { <span>…</span> } else { <i class="bi bi-send"></i> }
         </button>
     </div>
 }

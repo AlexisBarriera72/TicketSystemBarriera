@@ -7,10 +7,10 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<div class="d-flex align-items-center mb-2">
-    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))">←</button>
+<div class="detail-head">
+    <button class="back-btn" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))"><i class="bi bi-arrow-left"></i></button>
     <div>
-        <div class="fw-bold">✍ Firma de conformidad</div>
+        <div class="detail-title"><i class="bi bi-pen"></i> Firma de conformidad</div>
         @if (order is not null)
         {
             <div class="text-muted small">Orden #@Id — @order.Title</div>
@@ -42,7 +42,7 @@ else if (missingPaperwork.Count > 0)
         El cliente firma el paquete COMPLETO (papeleo incluido); no se puede
         añadir nada después de firmar.
     </div>
-    <a class="btn btn-primary w-100" href="/orders/@Id/paperwork">📋 Ir al papeleo</a>
+    <a class="btn btn-primary w-100" href="/orders/@Id/paperwork"><i class="bi bi-folder2-open me-1"></i> Ir al papeleo</a>
 }
 else if (order is not null)
 {
@@ -76,7 +76,7 @@ else if (order is not null)
     }
 
     <button class="btn btn-success btn-lg w-100" @onclick="ConfirmAsync" disabled="@busy">
-        @(busy ? "Registrando firma…" : "✔ Confirmar firma")
+        @if (busy) { <span>Registrando firma…</span> } else { <span><i class="bi bi-check-lg me-1"></i> Confirmar firma</span> }
     </button>
     <p class="text-muted small mt-2">
         Sin conexión no pasa nada: la firma queda guardada en el teléfono y se envía

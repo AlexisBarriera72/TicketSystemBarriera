@@ -4,9 +4,10 @@
 @inject ClockState Clock
 @inject NavigationManager Nav
 
-<button class="btn btn-sm btn-outline-secondary mb-3" @onclick="@(() => Nav.NavigateTo("/"))">
-    ← Volver
-</button>
+<div class="detail-head">
+    <button class="back-btn" @onclick="@(() => Nav.NavigateTo("/"))"><i class="bi bi-arrow-left"></i></button>
+    <div class="detail-title"><i class="bi bi-clipboard-check"></i> Orden #@Id</div>
+</div>
 
 @if (loading)
 {
@@ -24,17 +25,17 @@ else if (order is null)
 }
 else
 {
-    <a class="btn btn-primary w-100 mb-2" href="/orders/@Id/chat">💬 Abrir chat de la orden</a>
+    <a class="btn btn-primary w-100 mb-2" href="/orders/@Id/chat"><i class="bi bi-chat-text me-1"></i> Abrir chat de la orden</a>
     @if (isStaffUser && order.Status != OrderStatus.Completed)
     {
-        <a class="btn btn-outline-secondary w-100 mb-2" href="/orders/@Id/paperwork">📋 Papeleo obligatorio</a>
-        <a class="btn btn-outline-success w-100 mb-2" href="/orders/@Id/sign">✍ Solicitar firma del cliente</a>
+        <a class="btn btn-outline-secondary w-100 mb-2" href="/orders/@Id/paperwork"><i class="bi bi-folder2-open me-1"></i> Papeleo obligatorio</a>
+        <a class="btn btn-outline-success w-100 mb-2" href="/orders/@Id/sign"><i class="bi bi-pen me-1"></i> Solicitar firma del cliente</a>
     }
 
     @if (documents.Any())
     {
         <div class="card shadow-sm mb-3">
-            <div class="card-header py-2 small fw-bold">✍ Documentos de firma</div>
+            <div class="card-header py-2 small fw-bold"><i class="bi bi-pen me-1"></i> Documentos de firma</div>
             <ul class="list-group list-group-flush">
                 @foreach (var doc in documents)
                 {
@@ -50,12 +51,12 @@ else
                                 <span class="text-muted">@doc.SignerName · @doc.SignedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm")</span>
                             </span>
                             <button class="btn btn-sm btn-outline-primary" @onclick="() => OpenPdfAsync(doc.Id)"
-                                    disabled="@openingPdf">📄 Ver</button>
+                                    disabled="@openingPdf"><i class="bi bi-file-earmark-text"></i> Ver</button>
                         </div>
                         @if (doc.Status == SignatureDocStatus.Rejected)
                         {
                             <div class="text-danger small mt-1">
-                                ✖ Rechazado por la oficina: <strong>@doc.RejectReason</strong> — repite la firma.
+                                Rechazado por la oficina: <strong>@doc.RejectReason</strong> — repite la firma.
                             </div>
                         }
                     </li>

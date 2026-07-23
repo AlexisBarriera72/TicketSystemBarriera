@@ -6,9 +6,9 @@
 @inject OutboxService Outbox
 @inject NavigationManager Nav
 
-<div class="d-flex align-items-center mb-2">
-    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))">←</button>
-    <div class="fw-bold">📋 Papeleo de la orden #@Id</div>
+<div class="detail-head">
+    <button class="back-btn" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))"><i class="bi bi-arrow-left"></i></button>
+    <div class="detail-title"><i class="bi bi-folder2-open"></i> Papeleo de la orden #@Id</div>
 </div>
 
 @if (loading)
@@ -50,7 +50,7 @@ else
                         <br />
                         @if (queued)
                         {
-                            <span class="badge bg-secondary">🕓 Pendiente de envío</span>
+                            <span class="badge bg-secondary">Pendiente de envío</span>
                         }
                         else if (slot.Current is null)
                         {
@@ -58,14 +58,14 @@ else
                         }
                         else if (slot.Current.Status == PaperworkStatus.Attached)
                         {
-                            <span class="badge bg-success">✔ Adjunto</span>
+                            <span class="badge bg-success"><i class="bi bi-check-lg"></i> Adjunto</span>
                             <span class="text-muted" style="font-size: 0.65rem;">
                                 @slot.Current.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")
                             </span>
                         }
                         else if (slot.Current.Status == PaperworkStatus.Rejected)
                         {
-                            <span class="badge bg-danger">✖ Rechazado</span>
+                            <span class="badge bg-danger"><i class="bi bi-x-lg"></i> Rechazado</span>
                         }
                     </span>
                     <span>
@@ -75,9 +75,9 @@ else
                                     disabled="@busy">Ver</button>
                         }
                         <button class="btn btn-sm btn-outline-secondary me-1" title="Cámara"
-                                @onclick="() => CaptureAsync(slot.Key, fromCamera: true)" disabled="@busy">📷</button>
+                                @onclick="() => CaptureAsync(slot.Key, fromCamera: true)" disabled="@busy"><i class="bi bi-camera"></i></button>
                         <button class="btn btn-sm btn-outline-secondary" title="Galería"
-                                @onclick="() => CaptureAsync(slot.Key, fromCamera: false)" disabled="@busy">🖼</button>
+                                @onclick="() => CaptureAsync(slot.Key, fromCamera: false)" disabled="@busy"><i class="bi bi-image"></i></button>
                     </span>
                 </div>
                 @if (!queued && slot.Current?.Status == PaperworkStatus.Rejected)

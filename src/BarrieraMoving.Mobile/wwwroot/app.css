@@ -112,6 +112,42 @@ h1:focus {
     margin: 0 0 1rem;
 }
 
+/* Barra superior de páginas de detalle: botón atrás + título con icono */
+.detail-head {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0.9rem;
+}
+
+.back-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 12px;
+    border: 1px solid #dbe1ef;
+    background: #fff;
+    color: #40507a;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.back-btn:active { background: #eef3ff; }
+
+.detail-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 800;
+    font-size: 1.15rem;
+    color: #1e2340;
+}
+
+.detail-title i { color: #2f6bff; }
+
 /* Botón de recarga tipo píldora con borde azul */
 .pill-btn {
     display: inline-flex;

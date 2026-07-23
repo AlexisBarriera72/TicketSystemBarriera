@@ -2,9 +2,9 @@
 @using BarrieraMoving.Shared
 @inject NavigationManager Nav
 
-<div class="d-flex align-items-center mb-2">
-    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="@(() => Nav.NavigateTo("/"))">←</button>
-    <div class="fw-bold">📄 Términos de Servicio</div>
+<div class="detail-head">
+    <button class="back-btn" @onclick="@(() => Nav.NavigateTo("/"))"><i class="bi bi-arrow-left"></i></button>
+    <div class="detail-title"><i class="bi bi-file-earmark-text"></i> Términos de Servicio</div>
 </div>
 
 <div class="card shadow-sm">
