@@ -122,6 +122,10 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
 - Platform note: iOS builds require macOS + Xcode. Android + the Web API build on Windows.
 
 ## Environment gotchas
+- Source files are UTF-8 WITHOUT a BOM; csc then decodes them as Windows-1252 and
+  corrupts accented / ·  / — string literals (mojibake). Fixed once via
+  `<CodePage>65001</CodePage>` in every csproj — keep it. New tools that write .cs
+  without a BOM rely on it; don't remove it.
 - No official Claude Code plugin for classic Visual Studio 2026; this repo is edited
   from VS Code / terminal. Visual Studio can still be used to build/debug in parallel.
 - VS Code's C# Dev Kit build host can lock project folders on Windows (renames fail
