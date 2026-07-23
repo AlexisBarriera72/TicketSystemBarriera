@@ -4,7 +4,9 @@ using BarrieraMoving.Server.Models;
 
 namespace BarrieraMoving.Server.Services;
 
-public class DirectMessageService(IDbContextFactory<ApplicationDbContext> dbFactory) : IDirectMessageService
+public class DirectMessageService(
+    IDbContextFactory<ApplicationDbContext> dbFactory,
+    INotificationService notify) : IDirectMessageService
 {
     public async Task<bool> IsParticipantAsync(int conversationId, string userId)
     {
@@ -136,6 +138,13 @@ public class DirectMessageService(IDbContextFactory<ApplicationDbContext> dbFact
             throw;
         }
         await context.Entry(message).Reference(m => m.Sender).LoadAsync();
+
+        // Push al otro participante. EN CAPA DE SERVICIO: dispara igual desde el
+        // móvil (API) que desde el dashboard web. Solo en inserciones reales — los
+        // reenvíos idempotentes ya han vuelto antes de llegar aquí.
+        var senderName = message.Sender?.DisplayName ?? message.Sender?.Email ?? "";
+        await notify.NotifyDirectMessageAsync(conversationId, senderUserId, senderName, message.Content);
+
         return (message, null);
     }
 }

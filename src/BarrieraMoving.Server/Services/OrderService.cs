@@ -225,6 +225,16 @@ public class OrderService(
         await context.SaveChangesAsync();
         // Cargar el remitente para que la respuesta de la API traiga el nombre
         await context.Entry(message).Reference(m => m.User).LoadAsync();
+
+        // Push a las partes de la orden. EN CAPA DE SERVICIO a propósito: así dispara
+        // venga de donde venga — API móvil, subida de foto o el chat del dashboard web
+        // (los mensajes de sistema no notifican).
+        if (!message.IsSystem)
+        {
+            var senderName = message.User?.DisplayName ?? message.User?.Email ?? "";
+            var preview = string.IsNullOrWhiteSpace(message.Content) ? "Envió una foto" : message.Content;
+            await notify.NotifyOrderMessageAsync(message.OrderId, message.UserId, senderName, preview);
+        }
     }
 
     // Para servir la foto adjunta: el mensaje con su orden (el ACL se evalúa sobre la orden)

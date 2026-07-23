@@ -56,14 +56,12 @@ public static class ComplaintEndpoints
 
         // Responder / resolver (solo Admin/Oficina)
         group.MapPost("/{id:int}/respond", async (int id, RespondComplaintRequest request,
-            ClaimsPrincipal user, IComplaintService complaints, INotificationService notify) =>
+            ClaimsPrincipal user, IComplaintService complaints) =>
         {
+            // El push al cliente lo dispara ComplaintService.RespondAsync (capa de servicio).
             var (ok, error) = await complaints.RespondAsync(id,
                 user.FindFirstValue(ClaimTypes.NameIdentifier)!, request.Response, request.Resolve);
-            if (!ok) return Results.BadRequest(error);
-
-            await notify.NotifyComplaintResponseAsync(id);
-            return Results.NoContent();
+            return ok ? Results.NoContent() : Results.BadRequest(error);
         }).RequireAuthorization(ApiAuth.StaffPolicy);
 
         return app;

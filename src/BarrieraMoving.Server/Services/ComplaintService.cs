@@ -5,7 +5,9 @@ using BarrieraMoving.Shared.Enums;
 
 namespace BarrieraMoving.Server.Services;
 
-public class ComplaintService(IDbContextFactory<ApplicationDbContext> dbFactory) : IComplaintService
+public class ComplaintService(
+    IDbContextFactory<ApplicationDbContext> dbFactory,
+    INotificationService notify) : IComplaintService
 {
     public async Task<Complaint> CreateAsync(string clientUserId, string subject, string description, int? orderId)
     {
@@ -65,6 +67,10 @@ public class ComplaintService(IDbContextFactory<ApplicationDbContext> dbFactory)
         complaint.RespondedAtUtc = DateTime.UtcNow;
         complaint.Status = resolve ? ComplaintStatus.Resolved : ComplaintStatus.InReview;
         await context.SaveChangesAsync();
+
+        // Push al cliente. En capa de servicio → dispara también desde el dashboard
+        // web (donde la oficina responde habitualmente).
+        await notify.NotifyComplaintResponseAsync(id);
         return (true, null);
     }
 }
