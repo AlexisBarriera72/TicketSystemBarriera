@@ -14,7 +14,7 @@ public static class LegalText
         revisados por el cliente antes de usar la app en producción.
 
         1. Objeto
-        Barriera Moving presta servicios de mudanza y transporte de bienes. Al usar
+        Transporte Caribe presta servicios de mudanza y transporte de bienes. Al usar
         esta aplicación, el cliente acepta los presentes términos.
 
         2. Reservas y presupuestos
@@ -35,7 +35,7 @@ public static class LegalText
         aplicación y se responden en un plazo razonable.
 
         6. Modificaciones
-        Barriera Moving puede actualizar estos términos; la versión vigente se muestra
+        Transporte Caribe puede actualizar estos términos; la versión vigente se muestra
         siempre en la aplicación.
         """;
 }

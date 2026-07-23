@@ -31,7 +31,7 @@
         <MauiXamlInflator>SourceGen</MauiXamlInflator>
 
         <!-- Display name -->
-        <ApplicationTitle>Barriera Moving</ApplicationTitle>
+        <ApplicationTitle>Transporte Caribe</ApplicationTitle>
 
         <!-- App Identifier -->
         <ApplicationId>com.barrieramoving.app</ApplicationId>

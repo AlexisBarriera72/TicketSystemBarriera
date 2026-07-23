@@ -35,7 +35,7 @@ public sealed class BarrieraFirebaseMessagingService : FirebaseMessagingService
     {
         base.OnMessageReceived(message);
         var notification = message.GetNotification();
-        var title = notification?.Title ?? "Barriera Moving";
+        var title = notification?.Title ?? "Transporte Caribe";
         var body = notification?.Body ?? "";
         ShowNotification(title, body);
     }

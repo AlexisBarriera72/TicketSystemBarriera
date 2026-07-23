@@ -24,6 +24,17 @@
     font-size: 1.1rem;
 }
 
+/* Logo de Transporte Caribe en la barra lateral (círculo blanco sobre el degradado) */
+.brand-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #fff;
+    object-fit: contain;
+    padding: 2px;
+    flex: 0 0 auto;
+}
+
 .bi {
     display: inline-flex;
     align-items: center;
@@ -93,9 +104,9 @@
     }
 
     .nav-item ::deep a.active {
-        background-color: #2f6bff;
+        background-color: #1f8ba0;
         color: white;
-        box-shadow: 0 4px 12px rgba(47, 107, 255, 0.35);
+        box-shadow: 0 4px 12px rgba(31, 139, 160, 0.35);
     }
 
     .nav-item ::deep .nav-link:hover {
@@ -104,7 +115,7 @@
     }
 
     .nav-item ::deep a.active:hover {
-        background-color: #2f6bff;
+        background-color: #1f8ba0;
     }
 
     .nav-item form {

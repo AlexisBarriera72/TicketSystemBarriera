@@ -15,7 +15,7 @@ public class SmtpEmailSender(IConfiguration config) : IAppEmailSender
     {
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(
-            config["Email:FromName"] ?? "Barriera Moving",
+            config["Email:FromName"] ?? "Transporte Caribe",
             config["Email:From"] ?? config["Email:User"]));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;

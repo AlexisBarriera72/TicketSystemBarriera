@@ -79,9 +79,9 @@
 }
 
 /* --- Paletas por métrica: círculo tenue + icono + línea del sparkline --- */
-.sc-blue .stat-badge   { background: #e9f0fd; color: #3b6fe0; }
-.sc-blue .stat-link    { color: #3b6fe0; }
-.sc-blue .stat-spark path { stroke: #3b6fe0; }
+.sc-blue .stat-badge   { background: #e3f2f5; color: #1f8ba0; }
+.sc-blue .stat-link    { color: #1f8ba0; }
+.sc-blue .stat-spark path { stroke: #1f8ba0; }
 
 .sc-green .stat-badge  { background: #e6f6ee; color: #2aa768; }
 .sc-green .stat-link   { color: #2aa768; }

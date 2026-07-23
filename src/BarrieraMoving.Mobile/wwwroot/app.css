@@ -2,18 +2,31 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+/* Paleta de marca Transporte Caribe (del logo): navy + teal + amarillo + verde */
+:root {
+    --bs-primary: #1f8ba0;
+    --bs-primary-rgb: 31, 139, 160;
+    --bs-link-color: #14395a;
+    --bs-link-color-rgb: 20, 57, 90;
+    --bs-link-hover-color: #1f8ba0;
+}
+
 a, .btn-link {
-    color: #006bb7;
+    color: #14395a;
 }
 
 .btn-primary {
+    --bs-btn-bg: #14395a;
+    --bs-btn-border-color: #14395a;
+    --bs-btn-hover-bg: #1f8ba0;
+    --bs-btn-hover-border-color: #1f8ba0;
+    --bs-btn-active-bg: #0f2c46;
+    --bs-btn-active-border-color: #0f2c46;
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #1f8ba0;
 }
 
 .content {
@@ -104,7 +117,7 @@ h1:focus {
     gap: 0.5rem;
 }
 
-.page-title-icon i { color: #2f6bff; }
+.page-title-icon i { color: #1f8ba0; }
 
 .page-sub {
     color: #8a90a6;
@@ -146,7 +159,7 @@ h1:focus {
     color: #1e2340;
 }
 
-.detail-title i { color: #2f6bff; }
+.detail-title i { color: #1f8ba0; }
 
 /* Botón de recarga tipo píldora con borde azul */
 .pill-btn {
@@ -156,9 +169,9 @@ h1:focus {
     height: 2.5rem;
     padding: 0 1rem;
     border-radius: 12px;
-    border: 1px solid #cdd8f5;
+    border: 1px solid #bcdfe6;
     background: #fff;
-    color: #2f6bff;
+    color: #1f8ba0;
     font-weight: 600;
     font-size: 0.9rem;
     font-family: inherit;
@@ -196,7 +209,7 @@ h1:focus {
     font-size: 1.25rem;
 }
 
-.card-badge.b-blue   { background: #e9f0fd; color: #3b6fe0; }
+.card-badge.b-blue   { background: #e3f2f5; color: #1f8ba0; }
 .card-badge.b-green  { background: #e6f6ee; color: #2aa768; }
 .card-badge.b-orange { background: #fdeede; color: #ef8f2b; }
 .card-badge.b-purple { background: #efeafe; color: #7b5cf0; }
@@ -230,7 +243,7 @@ h1:focus {
 
 .status-pill.s-gray   { background: #6b7280; }
 .status-pill.s-green  { background: #2aa768; }
-.status-pill.s-blue   { background: #2f6bff; }
+.status-pill.s-blue   { background: #1f8ba0; }
 .status-pill.s-amber  { background: #f0ad2e; color: #3a2e00; }
 .status-pill.s-info   { background: #3aa8c1; }
 
@@ -248,7 +261,7 @@ h1:focus {
     line-height: 1.35;
 }
 
-.info-callout i { color: #2f6bff; font-size: 1.15rem; margin-top: 1px; flex: 0 0 auto; }
+.info-callout i { color: #1f8ba0; font-size: 1.15rem; margin-top: 1px; flex: 0 0 auto; }
 
 /* Tarjeta de formulario (p.ej. nueva reclamación) */
 .form-card {
@@ -304,7 +317,7 @@ h1:focus {
     color: #1e2340;
 }
 
-.section-head i { color: #2f6bff; }
+.section-head i { color: #1f8ba0; }
 
 /* Respuesta de la oficina dentro de una reclamación */
 .office-reply {

@@ -3,17 +3,32 @@
     /* Respaldo por si la app vuelve a dibujar edge-to-edge (ver styles.xml Android):
        empuja el contenido del header por debajo de la barra de estado/cámara */
     padding-top: env(safe-area-inset-top, 0px);
-    background-image: linear-gradient(120deg, #1f6bff 0%, #2f5fe0 100%);
+    background-image: linear-gradient(120deg, #14395a 0%, #1f8ba0 100%);
     color: white;
     position: sticky;
     top: 0;
     z-index: 10;
-    box-shadow: 0 2px 10px rgba(31, 107, 255, 0.25);
+    box-shadow: 0 2px 10px rgba(31, 139, 160, 0.25);
 }
 
 .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 1.05rem;
     letter-spacing: -0.2px;
+}
+
+/* Logo de Transporte Caribe, siempre arriba a la izquierda. En un círculo
+   blanco para que se lea bien sobre el degradado navy/teal del header. */
+.brand-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #fff;
+    object-fit: contain;
+    padding: 2px;
+    flex: 0 0 auto;
 }
 
 .header-actions {
@@ -55,7 +70,7 @@
     font-weight: 700;
     line-height: 18px;
     text-align: center;
-    box-shadow: 0 0 0 2px #2f5fe0;
+    box-shadow: 0 0 0 2px #1f8ba0;
 }
 
 /* Botón Salir: píldora con borde blanco, arriba a la derecha */
@@ -113,9 +128,9 @@
 }
 
 .bottom-nav ::deep .nav-tab.active {
-    color: #2f6bff;
+    color: #1f8ba0;
 }
 
 .bottom-nav ::deep .nav-tab:active {
-    background-color: rgba(47, 107, 255, 0.06);
+    background-color: rgba(31, 139, 160, 0.06);
 }

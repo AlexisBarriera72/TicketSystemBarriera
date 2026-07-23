@@ -14,7 +14,7 @@ public partial class App : Application
 
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
-		var window = new Window(new MainPage()) { Title = "Barriera Moving" };
+		var window = new Window(new MainPage()) { Title = "Transporte Caribe" };
 		// Al volver a primer plano, intentar vaciar la cola offline
 		window.Resumed += (_, _) => _ = _outbox.FlushAsync();
 		return window;

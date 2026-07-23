@@ -2,18 +2,39 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+/* Paleta de marca Transporte Caribe (del logo): navy + teal + amarillo + verde */
+:root {
+    --bs-primary: #1f8ba0;
+    --bs-primary-rgb: 31, 139, 160;
+    --bs-link-color: #14395a;
+    --bs-link-color-rgb: 20, 57, 90;
+    --bs-link-hover-color: #1f8ba0;
+}
+
 a, .btn-link {
-    color: #006bb7;
+    color: #14395a;
 }
 
 .btn-primary {
+    --bs-btn-bg: #14395a;
+    --bs-btn-border-color: #14395a;
+    --bs-btn-hover-bg: #1f8ba0;
+    --bs-btn-hover-border-color: #1f8ba0;
+    --bs-btn-active-bg: #0f2c46;
+    --bs-btn-active-border-color: #0f2c46;
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: #1f8ba0;
+    --bs-btn-border-color: #1f8ba0;
+    --bs-btn-hover-bg: #1f8ba0;
+    --bs-btn-hover-border-color: #1f8ba0;
+    --bs-btn-active-bg: #1f8ba0;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #1f8ba0;
 }
 
 .content {

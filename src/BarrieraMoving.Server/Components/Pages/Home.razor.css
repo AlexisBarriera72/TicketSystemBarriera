@@ -6,8 +6,8 @@
     padding: 1.5rem 1.75rem;
     border-radius: 18px;
     color: #fff;
-    background: linear-gradient(120deg, #1f6bff 0%, #2f5fe0 60%, #3a3fd0 100%);
-    box-shadow: 0 10px 26px rgba(31, 107, 255, 0.28);
+    background: linear-gradient(120deg, #14395a 0%, #1f8ba0 60%, #1f8ba0 100%);
+    box-shadow: 0 10px 26px rgba(31, 139, 160, 0.28);
 }
 
 .hero-badge {
@@ -45,7 +45,7 @@
     align-items: center;
     gap: 0.5rem;
     margin: 0.25rem 0 1rem;
-    color: #3b6fe0;
+    color: #1f8ba0;
     font-weight: 700;
 }
 
@@ -137,8 +137,8 @@
 }
 
 /* --- Paletas por tarjeta --- */
-.ac-blue .access-badge   { background: #e9f0fd; color: #3b6fe0; }
-.ac-blue:hover .access-chevron   { background: #3b6fe0; color: #fff; }
+.ac-blue .access-badge   { background: #e3f2f5; color: #1f8ba0; }
+.ac-blue:hover .access-chevron   { background: #1f8ba0; color: #fff; }
 
 .ac-purple .access-badge { background: #efeafe; color: #7b5cf0; }
 .ac-purple:hover .access-chevron { background: #7b5cf0; color: #fff; }

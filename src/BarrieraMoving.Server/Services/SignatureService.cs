@@ -291,8 +291,8 @@ public class SignatureService(
                 await email.SendAsync(doc.SignerEmail,
                     $"Copia de tu documento firmado — Orden #{doc.OrderId}",
                     "Adjuntamos la copia del documento de conformidad que firmaste " +
-                    "para tu mudanza con Barriera Moving. Consérvala para tus registros.\n\n" +
-                    "— Barriera Moving",
+                    "para tu mudanza con Transporte Caribe. Consérvala para tus registros.\n\n" +
+                    "— Transporte Caribe",
                     pdf, $"Conformidad_Orden_{doc.OrderId}.pdf");
                 doc.EmailStatus = EmailDeliveryStatus.Sent;
                 doc.EmailError = null;

@@ -30,7 +30,7 @@ public static class SignaturePdfGenerator
 
         double left = 50, y = 50, width = page.Width.Point - 100;
 
-        gfx.DrawString("Barriera Moving — Conformidad de Servicio", title, XBrushes.Black,
+        gfx.DrawString("Transporte Caribe — Conformidad de Servicio", title, XBrushes.Black,
             new XRect(left, y, width, 26), XStringFormats.TopLeft);
         y += 34;
 
@@ -99,7 +99,7 @@ public static class SignaturePdfGenerator
             ? $"Ubicación GPS en la firma: {latitude}, {longitude}"
             : "Ubicación GPS: no disponible en el momento de la firma");
         Meta($"Huella SHA-256 del contenido firmado (orden + papeleo + firma): {contentHash}");
-        Meta("Documento generado automáticamente por Barriera Moving al recibir la firma.");
+        Meta("Documento generado automáticamente por Transporte Caribe al recibir la firma.");
 
         // Manifiesto del papeleo: ata cada documento adjunto (por hash) a ESTA firma
         if (paperwork is { Count: > 0 })
