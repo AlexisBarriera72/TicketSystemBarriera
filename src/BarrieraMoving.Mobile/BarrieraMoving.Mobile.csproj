@@ -19,6 +19,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableDefaultCssItems>false</EnableDefaultCssItems>
         <Nullable>enable</Nullable>
+        <!-- Lee los .cs sin BOM como UTF-8 (evita mojibake en literales con acentos) -->
+        <CodePage>65001</CodePage>
 
         <!-- Enable XAML source generation for faster build times and improved performance.
              This generates C# code from XAML at compile time instead of runtime inflation.

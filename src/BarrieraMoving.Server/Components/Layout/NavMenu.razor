@@ -1,3 +1,7 @@
+@inject IApprovalService Approvals
+@inject AuthenticationStateProvider AuthProvider
+@implements IDisposable
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Barriera Moving</a>
@@ -37,11 +41,26 @@
                     </NavLink>
                 </div>
 
-                @* ---- SECCIÓN 3: Dashboard para Admin y Oficina ---- *@
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="notifications">
+                        <span class="bi bi-bell" aria-hidden="true"></span> Notificaciones
+                    </NavLink>
+                </div>
+
+                @* ---- SECCIÓN 3: Dashboard + Aprobaciones para Admin y Oficina ---- *@
                 <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staffContext">
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="admin/dashboard">
                             <span class="bi bi-bar-chart-line-fill" aria-hidden="true"></span> Dashboard
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/approvals">
+                            <span class="bi bi-patch-check-fill" aria-hidden="true"></span> Aprobaciones
+                            @if (approvalCount > 0)
+                            {
+                                <span class="badge bg-danger rounded-pill ms-2">@approvalCount</span>
+                            }
                         </NavLink>
                     </div>
                 </AuthorizeView>
@@ -98,3 +117,35 @@
 
     </nav>
 </div>
+
+@code {
+    // Badge de "Aprobaciones": time-sensitive, así que además de cargar al entrar
+    // se refresca en segundo plano (solo para Oficina/Admin, en circuitos interactivos).
+    private int approvalCount;
+    private bool isStaff;
+    private System.Threading.Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthProvider.GetAuthenticationStateAsync();
+        isStaff = auth.User.IsInRole(Roles.Admin) || auth.User.IsInRole(Roles.Office);
+        if (isStaff)
+        {
+            await RefreshAsync();
+            timer = new System.Threading.Timer(_ => _ = InvokeAsync(RefreshAsync), null,
+                TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            approvalCount = await Approvals.GetPendingCountAsync();
+            StateHasChanged();
+        }
+        catch { /* el badge nunca debe romper la navegación */ }
+    }
+
+    public void Dispose() => timer?.Dispose();
+}

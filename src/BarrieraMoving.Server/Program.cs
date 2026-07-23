@@ -36,6 +36,8 @@ builder.Services.AddScoped<ISignatureService, SignatureService>();
 builder.Services.AddScoped<IPaperworkService, PaperworkService>();
 builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
 builder.Services.AddScoped<IComplaintService, ComplaintService>();
+builder.Services.AddScoped<INotificationFeedService, NotificationFeedService>();
+builder.Services.AddScoped<IApprovalService, ApprovalService>();
 builder.Services.AddScoped<TokenService>();
 
 // Correo saliente: SMTP (MailKit) si hay Email:Host en user-secrets; si no, el
@@ -175,6 +177,7 @@ if (!string.IsNullOrEmpty(jwtKey))
     app.MapDirectMessageApi();
     app.MapComplaintApi();
     app.MapPushApi();
+    app.MapNotificationApi();
 }
 else
 {

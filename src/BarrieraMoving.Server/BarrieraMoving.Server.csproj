@@ -4,6 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Lee TODO el código fuente como UTF-8 aunque no tenga BOM. Sin esto, csc
+         decodifica los .cs sin BOM con la codepage ANSI (Windows-1252) y los
+         literales con acentos/·/— se corrompen (mojibake) en tiempo de compilación. -->
+    <CodePage>65001</CodePage>
     <UserSecretsId>aspnet-TicketSystemBarriera-b331807f-60cd-4c67-8f7b-c127b5ffb96b</UserSecretsId>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>

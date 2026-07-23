@@ -1,0 +1,94 @@
+@page "/notifications"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject NotificationState Notif
+@inject OutboxService Outbox
+@inject NavigationManager Nav
+
+<div class="page-head">
+    <span class="page-title-icon">
+        <i class="bi bi-bell-fill"></i>
+        <h4>Notificaciones</h4>
+    </span>
+    <button class="pill-btn" @onclick="LoadAsync" disabled="@loading">
+        <i class="bi bi-arrow-clockwise"></i>
+    </button>
+</div>
+
+@if (pending > 0)
+{
+    <a class="info-callout mb-2" href="/outbox" style="text-decoration:none;">
+        <i class="bi bi-cloud-arrow-up"></i>
+        <span>Tienes @pending envío(s) pendiente(s) de sincronizar. Toca para verlos.</span>
+    </a>
+}
+
+@if (loading)
+{
+    <div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div></div>
+}
+else if (!Notif.Items.Any())
+{
+    <div class="alert alert-light border text-center p-4">
+        <div style="font-size: 2.2rem; color:#c2c8db;"><i class="bi bi-bell-slash"></i></div>
+        <p class="mb-0 mt-2">No tienes notificaciones recientes.</p>
+    </div>
+}
+else
+{
+    @foreach (var n in Notif.Items)
+    {
+        <div class="list-card" @onclick="() => Open(n)">
+            <span class="card-badge @BadgeClass(n.Type)"><i class="bi @IconFor(n.Type)"></i></span>
+            <div class="card-main">
+                <div class="card-title">@n.Title</div>
+                <div class="card-sub">@n.Body</div>
+            </div>
+            <span class="card-sub text-nowrap">@n.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
+            <i class="bi bi-chevron-right card-chevron"></i>
+        </div>
+    }
+}
+
+@code {
+    private bool loading = true;
+    private int pending;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync()) { Nav.NavigateTo("/login"); return; }
+        await LoadAsync();
+        Notif.MarkAllSeen(); // al abrir la pantalla, todo queda "visto"
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        pending = await Outbox.CountAsync();
+        await Notif.RefreshAsync(Api);
+        loading = false;
+    }
+
+    private void Open(NotificationItemDto n)
+    {
+        if (n.Type == "dm" && n.ConversationId is not null)
+            Nav.NavigateTo($"/dm/{n.ConversationId}");
+        else if (n.OrderId is not null)
+            Nav.NavigateTo($"/orders/{n.OrderId}");
+    }
+
+    private static string IconFor(string type) => type switch
+    {
+        "assignment" => "bi-clipboard-check",
+        "dm" => "bi-chat-dots-fill",
+        _ => "bi-chat-text-fill"
+    };
+
+    private static string BadgeClass(string type) => type switch
+    {
+        "assignment" => "b-blue",
+        "dm" => "b-purple",
+        _ => "b-green"
+    };
+}

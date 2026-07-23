@@ -1,0 +1,78 @@
+@page "/notifications"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using BarrieraMoving.Shared.Dtos
+@inject INotificationFeedService Feed
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Notificaciones | Barriera Moving</PageTitle>
+
+<div class="container mt-4" style="max-width: 720px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0"><i class="bi bi-bell-fill text-primary"></i> Notificaciones</h3>
+        <button class="btn btn-outline-primary btn-sm" @onclick="LoadAsync" disabled="@loading">
+            <i class="bi bi-arrow-clockwise"></i> Actualizar
+        </button>
+    </div>
+
+    @if (loading)
+    {
+        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else if (items.Count == 0)
+    {
+        <div class="alert alert-light border text-center p-4">
+            <i class="bi bi-inbox fs-3 text-muted"></i>
+            <p class="mb-0 mt-2">No tienes notificaciones recientes.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var n in items)
+        {
+            <a class="card mb-2 shadow-sm text-decoration-none" href="@LinkFor(n)">
+                <div class="card-body py-2 d-flex align-items-center gap-3">
+                    <i class="bi @IconFor(n.Type) fs-4 text-primary"></i>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-bold text-dark">@n.Title</div>
+                        <div class="text-muted small text-truncate">@n.Body</div>
+                    </div>
+                    <div class="text-muted small text-nowrap">@n.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                </div>
+            </a>
+        }
+    }
+</div>
+
+@code {
+    private List<NotificationItemDto> items = [];
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        var auth = await AuthProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
+        items = await Feed.GetFeedAsync(userId, isStaff);
+        loading = false;
+    }
+
+    private static string IconFor(string type) => type switch
+    {
+        "assignment" => "bi-clipboard-check",
+        "dm" => "bi-chat-dots-fill",
+        _ => "bi-chat-text-fill"
+    };
+
+    private static string LinkFor(NotificationItemDto n) =>
+        n.Type == "dm" ? "/dm"
+        : n.OrderId is not null ? $"/orders/manage/{n.OrderId}"
+        : "/";
+}

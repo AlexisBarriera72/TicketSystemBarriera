@@ -275,6 +275,10 @@ public class ApiClient(HttpClient http)
     public async Task<List<TimeEntryDto>> GetTeamEntriesAsync(int days = 7) =>
         await http.GetFromJsonAsync<List<TimeEntryDto>>($"{ApiRoutes.Time}/entries?days={days}", ApiJson.Options) ?? [];
 
+    // --- NOTIFICACIONES --- feed derivado (órdenes asignadas + mensajes + DMs)
+    public async Task<List<NotificationItemDto>> GetNotificationsAsync() =>
+        await http.GetFromJsonAsync<List<NotificationItemDto>>(ApiRoutes.Notifications, ApiJson.Options) ?? [];
+
     // --- PUSH (FCM) --- best-effort: nunca rompe login/logout si falla
     public async Task RegisterPushTokenAsync(string token, string platform)
     {

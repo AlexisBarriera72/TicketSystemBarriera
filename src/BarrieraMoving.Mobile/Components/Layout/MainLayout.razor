@@ -1,7 +1,8 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject AuthService Auth
-@inject OutboxService Outbox
+@inject ApiClient Api
+@inject NotificationState Notif
 @inject NavigationManager Nav
 @inject IPushRegistrar Push
 
@@ -12,11 +13,11 @@
         @if (isLoggedIn)
         {
             <div class="header-actions d-flex align-items-center">
-                <a class="icon-btn" href="/outbox" title="Notificaciones / envíos pendientes">
+                <a class="icon-btn" href="/notifications" title="Notificaciones">
                     <i class="bi bi-bell"></i>
-                    @if (pendingCount > 0)
+                    @if (Notif.Unread > 0)
                     {
-                        <span class="badge-dot">@pendingCount</span>
+                        <span class="badge-dot">@Notif.Unread</span>
                     }
                 </a>
                 <button class="salir-btn" @onclick="LogoutAsync">Salir</button>
@@ -67,7 +68,6 @@
     private bool isManager;
     private double topInset;
     private double bottomInset;
-    private int pendingCount;
     private bool subscribed;
 
     // La barra inferior solo tiene sentido cuando hay sesión (los tabs navegan a
@@ -80,27 +80,23 @@
         topInset = SafeInsets.TopCssPx();
         bottomInset = SafeInsets.BottomCssPx();
 
-        Outbox.Changed += OnOutboxChanged;
+        Notif.Changed += OnNotifChanged;
         subscribed = true;
-        pendingCount = await Outbox.CountAsync();
 
         // Sesión ya iniciada de arranques anteriores: re-registrar el token push
-        // (el login solo lo hace en el momento de entrar; esto cubre el resto).
+        // y cargar el contador de notificaciones sin leer.
         if (await Auth.IsLoggedInAsync())
         {
             _ = Push.RegisterAsync();
+            _ = Notif.RefreshAsync(Api);
         }
     }
 
-    private void OnOutboxChanged() => _ = InvokeAsync(async () =>
-    {
-        pendingCount = await Outbox.CountAsync();
-        StateHasChanged();
-    });
+    private void OnNotifChanged() => _ = InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        if (subscribed) Outbox.Changed -= OnOutboxChanged;
+        if (subscribed) Notif.Changed -= OnNotifChanged;
     }
 
     // Se ejecuta en cada navegación; mantiene el header y los tabs sincronizados

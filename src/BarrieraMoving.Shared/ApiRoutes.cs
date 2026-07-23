@@ -16,5 +16,6 @@ public static class ApiRoutes
     public const string DirectMessages = $"{Base}/dm";
     public const string Complaints = $"{Base}/complaints";
     public const string Push = $"{Base}/push";
+    public const string Notifications = $"{Base}/notifications";
     public const string EsignWebhook = $"{Base}/webhooks/esign";
 }
