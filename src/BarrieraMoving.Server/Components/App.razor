@@ -1,11 +1,15 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <ResourcePreloader />
+    @if (!IsPublicSite)
+    {
+        @* Precarga recursos del framework Blazor: inútil en el sitio público *@
+        <ResourcePreloader />
+    }
     @if (IsPublicSite)
     {
         @* Sitio público de marketing: CSS propio y ligero, sin Bootstrap *@
@@ -19,17 +23,27 @@
         <link rel="stylesheet" href="@Assets["app.css"]" />
         <link rel="stylesheet" href="@Assets["BarrieraMoving.Server.styles.css"]" />
     }
-    <ImportMap />
+    @if (!IsPublicSite)
+    {
+        @* El import map solo sirve a los módulos JS de la app interna *@
+        <ImportMap />
+    }
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet @rendermode="PageRenderMode" />
 </head>
 
 <body>
     <Routes @rendermode="PageRenderMode" />
-    <ReconnectModal />
-    <script src="@Assets["_framework/blazor.web.js"]"></script>
-    <script src="@Assets["Components/Account/Shared/PasskeySubmit.razor.js"]" type="module"></script>
-    <script src="js/downloadHelper.js"></script>
+    @if (!IsPublicSite)
+    {
+        @* El runtime de Blazor (~196 KB) y el modal de reconexión SOLO en la app
+           interna. El sitio público es SSR estático puro: sus formularios son POST
+           HTML normales, así que funciona entero sin JavaScript. *@
+        <ReconnectModal />
+        <script src="@Assets["_framework/blazor.web.js"]"></script>
+        <script src="@Assets["Components/Account/Shared/PasskeySubmit.razor.js"]" type="module"></script>
+        <script src="js/downloadHelper.js"></script>
+    }
 </body>
 
 </html>

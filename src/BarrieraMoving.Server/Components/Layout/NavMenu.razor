@@ -1,11 +1,12 @@
 @inject IApprovalService Approvals
 @inject AuthenticationStateProvider AuthProvider
+@inject Microsoft.EntityFrameworkCore.IDbContextFactory<BarrieraMoving.Server.Data.ApplicationDbContext> DbFactory
 @implements IDisposable
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center gap-2" href="portal">
-            <img src="img/logo.png" class="brand-logo" alt="" />
+            <img src="img/logo-96.png" class="brand-logo" alt="" />
             <span>Transporte Caribe</span>
         </a>
     </div>
@@ -63,6 +64,15 @@
                             @if (approvalCount > 0)
                             {
                                 <span class="badge bg-danger rounded-pill ms-2">@approvalCount</span>
+                            }
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/cotizaciones">
+                            <span class="bi bi-envelope-paper" aria-hidden="true"></span> Cotizaciones
+                            @if (quoteCount > 0)
+                            {
+                                <span class="badge bg-warning text-dark rounded-pill ms-2">@quoteCount</span>
                             }
                         </NavLink>
                     </div>
@@ -125,6 +135,7 @@
     // Badge de "Aprobaciones": time-sensitive, así que además de cargar al entrar
     // se refresca en segundo plano (solo para Oficina/Admin, en circuitos interactivos).
     private int approvalCount;
+    private int quoteCount;
     private bool isStaff;
     private System.Threading.Timer? timer;
 
@@ -145,6 +156,9 @@
         try
         {
             approvalCount = await Approvals.GetPendingCountAsync();
+            using var db = DbFactory.CreateDbContext();
+            quoteCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .CountAsync(db.QuoteRequests.Where(q => !q.Handled));
             StateHasChanged();
         }
         catch { /* el badge nunca debe romper la navegación */ }

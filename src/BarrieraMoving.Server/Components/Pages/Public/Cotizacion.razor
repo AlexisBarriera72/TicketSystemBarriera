@@ -1,0 +1,155 @@
+@page "/cotizacion"
+@layout PublicLayout
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.EntityFrameworkCore
+@using BarrieraMoving.Server.Components.Public
+@using BarrieraMoving.Server.Components.Layout
+@using BarrieraMoving.Server.Data
+@using BarrieraMoving.Server.Models
+@using BarrieraMoving.Server.Services
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject IAppEmailSender Email
+@inject ILogger<Cotizacion> Logger
+
+<HeadContent>
+    <meta name="description" content="Solicita tu cotización GRATIS para mudanzas en todo Puerto Rico con PR Transporte Caribe. Sin compromiso." />
+    <meta name="robots" content="index,follow" />
+</HeadContent>
+<PageTitle>Cotización GRATIS | PR Transporte Caribe</PageTitle>
+
+<section class="section">
+    <div class="wrap form-wrap">
+        <p class="eyebrow">Cotizaciones GRATIS · Sin compromiso</p>
+        <h1 style="font-size:clamp(2.2rem,6vw,3.4rem);margin-bottom:.8rem">Solicita tu cotización</h1>
+
+        @if (sent)
+        {
+            <div class="form-ok">
+                <h3 style="font-family:var(--sans);font-weight:700;color:var(--navy);margin:0 0 .4rem">¡Gracias! Recibimos tu solicitud.</h3>
+                <p style="margin:0">Te contactaremos pronto para darte el precio. Si es urgente, llámanos o escríbenos por WhatsApp ahora mismo.</p>
+                <div class="contact-cta" style="margin-top:1.2rem">
+                    <a class="btn btn-navy" href="@SiteInfo.TelHref"><Icon Name="phone" Size="18" />@SiteInfo.PhoneDisplay</a>
+                    <a class="btn btn-wa" href="@SiteInfo.WaHref" target="_blank" rel="noopener"><Icon Name="chat" Size="18" />WhatsApp</a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="lead" style="margin-bottom:1.8rem">Cuéntanos de tu mudanza y te damos precio sin compromiso. También puedes <a href="@SiteInfo.TelHref">llamar</a> o escribir por <a href="@SiteInfo.WaHref" target="_blank" rel="noopener">WhatsApp</a>.</p>
+
+            <EditForm Model="Model" FormName="quote" OnValidSubmit="SubmitAsync">
+                <DataAnnotationsValidator />
+
+                <div class="field">
+                    <label for="q-name">Nombre *</label>
+                    <InputText id="q-name" class="input" @bind-Value="Model.Name" autocomplete="name" />
+                    <ValidationMessage For="() => Model.Name" />
+                </div>
+                <div class="field">
+                    <label for="q-phone">Teléfono *</label>
+                    <InputText id="q-phone" type="tel" @bind-Value="Model.Phone" autocomplete="tel" />
+                    <ValidationMessage For="() => Model.Phone" />
+                </div>
+                <div class="field">
+                    <label for="q-email">Email (opcional)</label>
+                    <InputText id="q-email" type="email" @bind-Value="Model.Email" autocomplete="email" />
+                </div>
+                <div class="field">
+                    <label for="q-service">Tipo de servicio</label>
+                    <InputSelect id="q-service" @bind-Value="Model.ServiceType">
+                        <option value="">Selecciona…</option>
+                        <option>Mudanza residencial</option>
+                        <option>Mudanza comercial</option>
+                        <option>Alquiler de camión con chofer</option>
+                        <option>Entrega y recogido</option>
+                        <option>Transportación de mercancía</option>
+                        <option>Otro</option>
+                    </InputSelect>
+                </div>
+                <div class="field">
+                    <label for="q-from">¿Desde qué pueblo/zona?</label>
+                    <InputText id="q-from" @bind-Value="Model.OriginZone" />
+                </div>
+                <div class="field">
+                    <label for="q-to">¿Hasta qué pueblo/zona?</label>
+                    <InputText id="q-to" @bind-Value="Model.DestinationZone" />
+                </div>
+                <div class="field">
+                    <label for="q-date">Fecha aproximada</label>
+                    <InputText id="q-date" @bind-Value="Model.PreferredDate" placeholder="Ej. 15 de agosto, o «lo antes posible»" />
+                </div>
+                <div class="field">
+                    <label for="q-details">Detalles (piso, ascensor, artículos grandes…)</label>
+                    <InputTextArea id="q-details" rows="4" @bind-Value="Model.Details" />
+                </div>
+
+                <button class="btn btn-primary" type="submit">Enviar solicitud<Icon Name="arrow" Size="18" /></button>
+            </EditForm>
+
+            <p class="form-note" style="margin-top:1.5rem"><Icon Name="shield" Size="18" /> Tus datos solo se usan para contactarte sobre tu cotización.</p>
+        }
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromForm] private QuoteForm Model { get; set; } = new();
+    private bool sent;
+
+    private async Task SubmitAsync()
+    {
+        // 1) SIEMPRE se guarda en la BD — nunca se pierde un cliente aunque falle el correo
+        var request = new QuoteRequest
+        {
+            Name = Model.Name!.Trim(),
+            Phone = Model.Phone!.Trim(),
+            Email = string.IsNullOrWhiteSpace(Model.Email) ? null : Model.Email.Trim(),
+            ServiceType = Model.ServiceType,
+            OriginZone = Model.OriginZone,
+            DestinationZone = Model.DestinationZone,
+            PreferredDate = Model.PreferredDate,
+            Details = Model.Details,
+        };
+        using (var db = DbFactory.CreateDbContext())
+        {
+            db.QuoteRequests.Add(request);
+            await db.SaveChangesAsync();
+        }
+
+        // 2) Aviso por email a la oficina — SOLO si el SMTP está configurado (best-effort)
+        if (Email.IsConfigured)
+        {
+            try
+            {
+                var body =
+                    $"Nueva solicitud de cotización\n\n" +
+                    $"Nombre: {request.Name}\nTeléfono: {request.Phone}\nEmail: {request.Email}\n" +
+                    $"Servicio: {request.ServiceType}\nDesde: {request.OriginZone}\nHasta: {request.DestinationZone}\n" +
+                    $"Fecha: {request.PreferredDate}\n\nDetalles:\n{request.Details}";
+                await Email.SendAsync(SiteInfo.Email, "Nueva cotización desde la web", body);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "No se pudo enviar el email de cotización (queda guardada en la BD).");
+            }
+        }
+
+        sent = true;
+        Model = new();
+    }
+
+    public class QuoteForm
+    {
+        [Required(ErrorMessage = "Escribe tu nombre.")]
+        public string? Name { get; set; }
+
+        [Required(ErrorMessage = "Escribe un teléfono de contacto.")]
+        public string? Phone { get; set; }
+
+        public string? Email { get; set; }
+        public string? ServiceType { get; set; }
+        public string? OriginZone { get; set; }
+        public string? DestinationZone { get; set; }
+        public string? PreferredDate { get; set; }
+        public string? Details { get; set; }
+    }
+}

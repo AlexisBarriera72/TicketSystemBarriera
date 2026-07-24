@@ -18,6 +18,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DirectMessage> DirectMessages { get; set; }
     public DbSet<Complaint> Complaints { get; set; }
     public DbSet<DeviceToken> DeviceTokens { get; set; }
+    public DbSet<QuoteRequest> QuoteRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
