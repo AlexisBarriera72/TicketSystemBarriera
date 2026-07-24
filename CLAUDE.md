@@ -100,6 +100,18 @@ submission**, and **clock-in/clock-out**. Sequence work so these land early and 
    `dotnet user-secrets set "Push:ServiceAccountJson" "$(cat clave.json)"`
    (la clave NUNCA en git; el .gitignore ya bloquea *firebase-adminsdk*.json).
    iOS/APNs aplazado: encaja en IPushSender/IPushRegistrar sin reestructurar.
+10. ✅ Sitio público de marketing (rama phase9-public-site). "/" = landing de
+   PR Transporte Caribe (SSR ESTÁTICO, CERO JavaScript: el único <script> es
+   JSON-LD, que es dato). El home interno se movió a **/portal** (login redirige
+   ahí). PublicLayout + site.css propio (nada de Bootstrap en público); fuentes
+   Fraunces + Libre Franklin AUTOALOJADAS en wwwroot/fonts. Paleta del rótulo de
+   los camiones: navy #123A5C + teal #1F8BA0 + amarillo #F5C400.
+   REGLAS: contenido REAL únicamente — 6 reseñas de Google verbatim (5.0/6),
+   teléfono/IG/FB reales, sin estadísticas inventadas, sin emoji (iconos SVG).
+   Cotización: /cotizacion guarda SIEMPRE en QuoteRequests y además envía email
+   solo si Email:Host está configurado → la oficina la ve en /admin/cotizaciones.
+   Peso primera carga móvil 264 KB (era 802: fuera runtime Blazor + logo 349 KB
+   servido a 42 px). Contraste WCAG AA verificado en todos los pares.
 
 ## Reference material
 - `/docs/*.pdf`            → university module PDFs = reference implementation + spec
