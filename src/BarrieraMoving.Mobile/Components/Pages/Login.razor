@@ -2,54 +2,120 @@
 @inject AuthService Auth
 @inject NavigationManager Nav
 
-<div class="mx-auto" style="max-width: 420px;">
-    <h4 class="mb-3">Iniciar Sesión</h4>
+<div class="login-page">
 
-    @if (!string.IsNullOrEmpty(error))
-    {
-        <div class="alert alert-danger py-2">@error</div>
-    }
-
-    <div class="mb-3">
-        <label class="form-label">Email</label>
-        <input class="form-control" type="email" inputmode="email" autocapitalize="none"
-               @bind="email" @bind:event="oninput" />
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Contraseña</label>
-        <input class="form-control" type="password" @bind="password" @bind:event="oninput" />
-    </div>
-
-    <button class="btn btn-primary w-100" @onclick="DoLoginAsync" disabled="@busy">
-        @(busy ? "Conectando..." : "Entrar")
-    </button>
-
-    @* El servidor es configurable por entorno: emulador, teléfono en LAN, producción *@
-    <details class="mt-4">
-        <summary class="text-muted small">Servidor: @serverUrl</summary>
-        <div class="mt-2">
-            <input class="form-control form-control-sm" @bind="serverUrl" />
-            <div class="form-text">
-                Emulador: http://10.0.2.2:5070 · Teléfono físico: http://IP-del-PC:5070
+    @* ---- Cabecera de marca: degradado + logo real (sin ilustraciones) ---- *@
+    <header class="login-hero" style="padding-top: max(env(safe-area-inset-top, 0px), @(topInset)px)">
+        <div class="hero-inner">
+            <span class="hero-logo"><img src="img/logo.png" alt="" /></span>
+            <div>
+                <h1>Transporte Caribe</h1>
+                <p>Mudanzas en todo Puerto Rico</p>
             </div>
         </div>
-    </details>
+    </header>
 
-    <div class="text-center mt-4">
-        <a href="/terms" class="text-muted small">Términos de Servicio</a>
-    </div>
+    @* ---- Tarjeta blanca que sube sobre el degradado ---- *@
+    <section class="login-card">
+        <div class="login-head">
+            <span class="head-ico"><i class="bi bi-person-lock"></i></span>
+            <div>
+                <h2>Iniciar Sesión</h2>
+                <p>Accede a tu cuenta para continuar</p>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <div class="login-error"><i class="bi bi-exclamation-circle-fill"></i> <span>@error</span></div>
+        }
+
+        <label class="fld-label" for="lg-email">Email</label>
+        <div class="fld">
+            <i class="bi bi-envelope fld-ico"></i>
+            <input id="lg-email" type="email" inputmode="email" autocapitalize="none"
+                   autocomplete="username" placeholder="Ingresa tu email"
+                   @bind="email" @bind:event="oninput" />
+        </div>
+
+        <label class="fld-label" for="lg-pass">Contraseña</label>
+        <div class="fld">
+            <i class="bi bi-lock fld-ico"></i>
+            <input id="lg-pass" type="@(showPassword ? "text" : "password")"
+                   autocomplete="current-password" placeholder="Ingresa tu contraseña"
+                   @bind="password" @bind:event="oninput"
+                   @onkeyup="@(e => e.Key == "Enter" ? DoLoginAsync() : Task.CompletedTask)" />
+            <button type="button" class="fld-eye" @onclick="() => showPassword = !showPassword"
+                    aria-label="@(showPassword ? "Ocultar contraseña" : "Mostrar contraseña")">
+                <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+            </button>
+        </div>
+
+        <button class="login-btn" @onclick="DoLoginAsync" disabled="@busy">
+            @if (busy)
+            {
+                <span class="spinner-border spinner-border-sm"></span> <span>Conectando…</span>
+            }
+            else
+            {
+                <i class="bi bi-box-arrow-in-right"></i> <span>Entrar</span>
+            }
+        </button>
+
+        @* ---------------------------------------------------------------
+           SOLO EN COMPILACIONES DE DESARROLLO (ShowServerPicker se compila a
+           false en Release), para que la app de producción apunte siempre al
+           servidor real y el conductor no pueda cambiarlo.
+           --------------------------------------------------------------- *@
+        @if (ShowServerPicker)
+        {
+        <details class="srv">
+            <summary>
+                <span class="srv-ico"><i class="bi bi-hdd-network"></i></span>
+                <span class="srv-txt"><b>Servidor:</b> @serverUrl</span>
+                <i class="bi bi-chevron-down srv-chev"></i>
+            </summary>
+            <div class="srv-body">
+                <input @bind="serverUrl" />
+                <p>Emulador: http://10.0.2.2:5070 · Teléfono físico: http://IP-del-PC:5070</p>
+            </div>
+        </details>
+        }
+
+        <div class="login-sep"><span><i class="bi bi-shield-check"></i></span></div>
+
+        <p class="login-terms"><a href="/terms">Términos de Servicio</a></p>
+
+        <div class="login-safe">
+            <i class="bi bi-shield-lock-fill"></i>
+            <div>
+                <b>Tu información está segura</b>
+                <span>Tu sesión viaja cifrada y tus credenciales se guardan en el almacén seguro del teléfono.</span>
+            </div>
+        </div>
+    </section>
 </div>
 
 @code {
+    // El selector de servidor SOLO existe en compilaciones de desarrollo. En
+    // Release la constante es false y el bloque se elimina del render.
+#if DEBUG
+    private const bool ShowServerPicker = true;
+#else
+    private const bool ShowServerPicker = false;
+#endif
+
     private string email = "";
     private string password = "";
     private string serverUrl = ApiOptions.BaseUrl;
     private string? error;
     private bool busy;
+    private bool showPassword;
+    private double topInset;
 
     protected override async Task OnInitializedAsync()
     {
+        topInset = SafeInsets.TopCssPx();
         if (await Auth.IsLoggedInAsync())
         {
             Nav.NavigateTo("/");
@@ -74,7 +140,7 @@
 
         if (success)
         {
-            // Los conductores aterrizan en el fichaje (gating); el resto en sus órdenes
+            // Los conductores aterrizan en el registro de horas (gating); el resto en sus órdenes
             var user = await Auth.GetCurrentUserAsync();
             Nav.NavigateTo(UserRoles.IsDriverOnly(user) ? "/clock" : "/");
         }

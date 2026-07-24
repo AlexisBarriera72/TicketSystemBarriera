@@ -7,6 +7,10 @@
 @inject IPushRegistrar Push
 
 <div class="app-shell">
+    @* /login trae su propia cabecera de marca a pantalla completa.
+       Se omite por completo (no basta con `hidden`: .d-flex lo sobreescribe). *@
+    @if (!isLoginPage)
+    {
     <header class="app-header d-flex justify-content-between align-items-center px-3"
             style="padding-top: max(env(safe-area-inset-top, 0px), @(topInset)px)">
         <span class="brand fw-bold">
@@ -27,9 +31,10 @@
             </div>
         }
     </header>
+    }
 
-    <main class="app-content p-3"
-          style="padding-bottom: calc(@(hasTabs ? "4.75rem" : "2rem") + max(0px, @(bottomInset)px))">
+    <main class="app-content @(isLoginPage ? "p-0" : "p-3")"
+          style="padding-bottom: calc(@(hasTabs ? "4.75rem" : "0rem") + max(0px, @(bottomInset)px))">
         @Body
     </main>
 
@@ -75,7 +80,12 @@
 
     // La barra inferior solo tiene sentido cuando hay sesión (los tabs navegan a
     // rutas autenticadas). En login/terms no se muestra.
-    private bool hasTabs => isLoggedIn;
+    private bool hasTabs => isLoggedIn && !isLoginPage;
+
+    // /login dibuja su propia cabecera a sangre; la del layout estorba ahí.
+    private bool isLoginPage =>
+        Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/')
+           .StartsWith("login", StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
