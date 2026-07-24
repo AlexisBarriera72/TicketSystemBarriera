@@ -1,0 +1,228 @@
+@page "/"
+@layout PublicLayout
+@using BarrieraMoving.Server.Components.Public
+@using BarrieraMoving.Server.Components.Layout
+
+<HeadContent>
+    <meta name="description" content="Mudanzas en todo Puerto Rico con PR Transporte Caribe. Empacamos, desmontamos, montamos y transportamos con camiones cerrados y seguros. Cotizaciones GRATIS: (787) 598-9433." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PR Transporte Caribe — Mudanzas en todo Puerto Rico" />
+    <meta property="og:description" content="Tu mudanza sin estrés comienza aquí. Cuidamos de tus pertenencias como si fueran nuestras. Cotizaciones GRATIS." />
+    <meta property="og:image" content="img/site/hero.jpg" />
+    <meta property="og:locale" content="es_PR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preload" as="image" href="img/site/hero.jpg" fetchpriority="high" />
+    <script type="application/ld+json">
+    {
+      "@@context":"https://schema.org",
+      "@@type":"MovingCompany",
+      "name":"PR Transporte Caribe",
+      "image":"img/site/hero.jpg",
+      "telephone":"+1-787-598-9433",
+      "email":"prtransportecaribe@@gmail.com",
+      "address":{"@@type":"PostalAddress","addressLocality":"Guaynabo","addressRegion":"PR","addressCountry":"US"},
+      "areaServed":{"@@type":"State","name":"Puerto Rico"},
+      "openingHours":"Mo-Su 00:00-23:59",
+      "sameAs":["https://www.facebook.com/MUDANZASPRTRANSPORTECARIBE","https://www.instagram.com/mudanzasprtransportecaribe"],
+      "aggregateRating":{"@@type":"AggregateRating","ratingValue":"5.0","reviewCount":"6"}
+    }
+    </script>
+</HeadContent>
+
+<PageTitle>PR Transporte Caribe — Mudanzas en todo Puerto Rico</PageTitle>
+
+@* ================= HERO ================= *@
+<section class="hero">
+    <div class="hero-grid">
+        <div class="hero-copy">
+            <div class="wrapin">
+                <p class="eyebrow">Mudanzas · Servicio en todo Puerto Rico</p>
+                <h1>Tu mudanza sin estrés <em>comienza aquí</em></h1>
+                <p class="lead">Cuidamos de tus pertenencias como si fueran nuestras. Empacamos, desmontamos, montamos y transportamos — con camiones cerrados y seguros.</p>
+                <div class="hero-cta">
+                    <a class="btn btn-primary" href="/cotizacion">Cotización GRATIS<Icon Name="arrow" Size="18" /></a>
+                    <a class="btn btn-ghost-light" href="@SiteInfo.TelHref"><Icon Name="phone" Size="18" />@SiteInfo.PhoneDisplay</a>
+                </div>
+            </div>
+        </div>
+        <img class="hero-photo" src="img/site/hero.jpg"
+             srcset="img/site/hero-sm.jpg 640w, img/site/hero.jpg 1280w"
+             sizes="(min-width:900px) 50vw, 100vw"
+             width="1280" height="960" fetchpriority="high"
+             alt="Camión cerrado de PR Transporte Caribe estacionado frente a una residencia en Puerto Rico" />
+    </div>
+</section>
+
+@* ================= INTRO / SPLIT ================= *@
+<section class="section">
+    <div class="wrap">
+        <div class="split">
+            <div>
+                <p class="eyebrow">Quiénes somos</p>
+                <h2>Trabajamos con experiencia, delicadeza y compromiso</h2>
+                <p class="lead" style="max-width:52ch">Contamos con todos los materiales para realizar una mudanza segura y eficaz en todo Puerto Rico. Desde el primer momento cuidamos cada detalle: envolvemos, protegemos y transportamos tus muebles con el mismo cuidado que si fueran nuestros.</p>
+                <p class="muted" style="max-width:52ch">Residencial o comercial, un mueble o una casa completa — te mudamos en 24 horas.</p>
+                <div class="collage">
+                    <img src="img/site/wrapped-load.jpg" loading="lazy" width="800" height="800" alt="Sofá y colchón envueltos y asegurados en la plataforma del camión" />
+                    <img src="img/site/loaded-truck.jpg" loading="lazy" width="737" height="800" alt="Interior del camión cargado: cajas y muebles envueltos, organizados con cuidado" />
+                </div>
+            </div>
+            <div class="split-media">
+                <img src="img/site/sofa-wrap.jpg" loading="lazy" width="899" height="505"
+                     alt="Empleado de Transporte Caribe envolviendo un sofá de cuero con film protector" />
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ================= SERVICIOS ================= *@
+<section class="section services">
+    <div class="wrap">
+        <div class="services-head">
+            <div>
+                <p class="eyebrow">Lo que hacemos</p>
+                <h2>Un solo equipo para toda tu mudanza</h2>
+            </div>
+            <p class="lead">No importa el servicio que necesites, comunícate con nosotros. ¡Estamos para ayudarte en todo Puerto Rico!</p>
+        </div>
+        <div class="svc-grid">
+            @foreach (var (icon, title, desc) in Services)
+            {
+                <div class="svc">
+                    <Icon Name="@icon" Size="30" />
+                    <div>
+                        <h3>@title</h3>
+                        <p>@desc</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@* ================= BAND ================= *@
+<section class="band">
+    <div class="wrap">
+        <p class="eyebrow">Rápido y seguro</p>
+        <h2>Servicio en todo Puerto Rico · Te mudamos en 24 horas</h2>
+        <div class="rule"></div>
+    </div>
+</section>
+
+@* ================= PROCESO ================= *@
+<section class="section">
+    <div class="wrap" style="max-width:820px">
+        <p class="eyebrow">Cómo trabajamos</p>
+        <h2 style="font-size:clamp(2rem,4.5vw,3.1rem);margin-bottom:2rem">Sencillo, de principio a fin</h2>
+        <div class="steps">
+            @foreach (var (n, title, desc) in Steps)
+            {
+                <div class="step">
+                    <div class="num">@n</div>
+                    <div>
+                        <h3>@title</h3>
+                        <p>@desc</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@* ================= RESEÑAS ================= *@
+<section class="section reviews">
+    <div class="wrap">
+        <p class="eyebrow">Lo que dicen nuestros clientes</p>
+        <div class="rating">
+            <span class="stars">
+                @for (var i = 0; i < 5; i++){ <Icon Name="star" Size="18" /> }
+            </span>
+            <span>5.0 · 6 reseñas en Google</span>
+        </div>
+        <div class="review-list">
+            @foreach (var (quote, who, when) in Reviews)
+            {
+                <div class="review">
+                    <q>@quote</q>
+                    <div class="who">@who <span class="when">· @when</span></div>
+                </div>
+            }
+        </div>
+        <p style="margin-top:2rem"><a class="btn btn-ghost" href="@SiteInfo.GoogleReviews" target="_blank" rel="noopener">Ver todas las reseñas<Icon Name="arrow" Size="18" /></a></p>
+    </div>
+</section>
+
+@* ================= CONTACTO (info card transcrita) ================= *@
+<section class="section contact">
+    <div class="wrap">
+        <div class="contact-grid">
+            <div>
+                <p class="eyebrow">Cotizaciones GRATIS</p>
+                <h2>Hablemos de tu mudanza</h2>
+                <a class="bigphone" href="@SiteInfo.TelHref">@SiteInfo.PhoneDisplay</a>
+                <div class="contact-cta">
+                    <a class="btn btn-wa" href="@SiteInfo.WaHref" target="_blank" rel="noopener"><Icon Name="chat" Size="18" />WhatsApp</a>
+                    <a class="btn btn-navy" href="/cotizacion">Solicitar cotización<Icon Name="arrow" Size="18" /></a>
+                </div>
+                <div class="contact-rows">
+                    <a href="@SiteInfo.MailHref"><Icon Name="mail" Size="20" />@SiteInfo.Email</a>
+                    <a href="@SiteInfo.Instagram" target="_blank" rel="noopener"><Icon Name="instagram" Size="20" />@@mudanzasprtransportecaribe</a>
+                    <a href="@SiteInfo.Facebook" target="_blank" rel="noopener"><Icon Name="facebook" Size="20" />Mudanzas PR Transporte Caribe</a>
+                    <span class="contact-rows"><span style="display:inline-flex;align-items:center;gap:.7rem;color:var(--ink)"><Icon Name="mappin" Size="20" />@SiteInfo.Locality — servicio en toda la isla</span></span>
+                    <span style="display:inline-flex;align-items:center;gap:.7rem;color:var(--ink)"><Icon Name="clock" Size="20" />Abierto 24 horas</span>
+                </div>
+            </div>
+            <div class="split-media">
+                <img src="img/site/two-trucks.jpg" loading="lazy" width="800" height="800"
+                     alt="Dos camiones de Mudanzas Transporte Caribe con el logo y el teléfono en la puerta" />
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ================= CIERRE ================= *@
+<section class="cta">
+    <div class="wrap">
+        <h2>¿Te mudas? Cotización GRATIS hoy mismo.</h2>
+        <p>Llámanos o escríbenos por WhatsApp y déjanos hacer de tu mudanza una experiencia fácil y segura.</p>
+        <div class="cta-btns">
+            <a class="btn btn-primary" href="@SiteInfo.TelHref"><Icon Name="phone" Size="18" />@SiteInfo.PhoneDisplay</a>
+            <a class="btn btn-wa" href="@SiteInfo.WaHref" target="_blank" rel="noopener"><Icon Name="chat" Size="18" />WhatsApp</a>
+        </div>
+    </div>
+</section>
+
+@code {
+    private static readonly (string Icon, string Title, string Desc)[] Services =
+    {
+        ("truck",   "Mudanzas residenciales", "Casas y apartamentos, en todo Puerto Rico."),
+        ("box",     "Mudanzas comerciales",   "Oficinas y locales, con el menor tiempo de inactividad."),
+        ("wrench",  "Desmontaje y montaje",   "Camas y muebles: los desarmamos y los volvemos a armar."),
+        ("package", "Empaque profesional",    "Materiales y film para proteger cada artículo."),
+        ("truck",   "Alquiler de camión con chofer", "Con conductor y equipo, cuando lo necesites."),
+        ("repeat",  "Entrega y recogido",     "Delivery y transportación de mercancía."),
+        ("box",     "Transportación de mercancía", "Movemos carga por toda la isla."),
+        ("trash",   "Recogido de artículos para desechar", "Nos llevamos lo que ya no usas."),
+        ("wrench",  "Instalaciones",          "Montaje e instalación en tu nuevo espacio."),
+    };
+
+    private static readonly (string N, string Title, string Desc)[] Steps =
+    {
+        ("01", "Cotización gratis", "Llámanos o escríbenos por WhatsApp. Te damos precio sin compromiso."),
+        ("02", "Empaque y protección", "Envolvemos y aseguramos tus muebles con todos los materiales."),
+        ("03", "Desmontaje y montaje", "Desarmamos lo necesario para moverlo seguro y lo armamos al llegar."),
+        ("04", "Transporte", "Camiones cerrados y seguros hasta tu nuevo destino, en todo Puerto Rico."),
+        ("05", "Entrega", "Colocamos todo en su lugar. Tu mudanza, terminada sin estrés."),
+    };
+
+    // Reseñas REALES de Google — verbatim, atribuidas. No editar ni inventar.
+    private static readonly (string Quote, string Who, string When)[] Reviews =
+    {
+        ("I'm very pleased with the moving company! The awesome team that helped with our move was efficient and professional and Krystal from customer service was outstanding, always attentive and available whenever we needed her. Great experience from start to finish! :)", "Cristina Vázquez-O'Neill", "hace un año"),
+        ("Excelente servicio, comunicación, trato y organización. Realizaron mi mudanza de manera organizada y cuidando cada detalle. Los empleados amables y trabajadores. Lo recomiendo 100%.", "Solymar Rodriguez", "hace 8 meses"),
+        ("Excelente servicio, profesional y rápido. Nos confirmaron la cita el día antes y quedaron en llamar de 8am a 9am el día de la mudanza. Llamaron a las mismas 8:00am y llegaron en menos de 20 minutos. Montaron y envolvieron todo…", "Valeria Hernandez", "hace un año"),
+        ("Excelente servicio, ya los he usado dos veces para mi mudanza y la de mi abuelita y me encantó todo. Súper profesional, llegaron a tiempo, trabajaron con rapidez, no rompieron nada, me desmontaron y montaron las camas. 100/10", "Puerto Rico Boat Charters", "hace un año"),
+        ("Mudaron varias cosas a un 2do piso, hicieron un excelente trabajo. Llegaron a la hora pautada y aclararon todas mis dudas en la facturación. ¡Súper recomendados!", "Sheyssa Cabiya", "hace 2 años"),
+        ("Desde la secretaria hasta los muchachos a cargo de mi mudanza, ¡100% recomendados!", "Lola Lebron", "hace 9 meses"),
+    };
+}

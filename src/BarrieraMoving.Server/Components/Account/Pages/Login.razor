@@ -127,7 +127,8 @@
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");
-            RedirectManager.RedirectTo(ReturnUrl);
+            // "/" es ahora el sitio público; el personal aterriza en el portal interno.
+            RedirectManager.RedirectTo(string.IsNullOrEmpty(ReturnUrl) ? "portal" : ReturnUrl);
         }
         else if (result.RequiresTwoFactor)
         {
