@@ -178,10 +178,20 @@ p{margin:0 0 1rem}
 .footer-brand img{width:44px;height:44px}
 .footer-brand b{font-family:var(--serif);color:#fff;font-size:1.2rem}
 .footer-links{display:grid;gap:.5rem}
-.footer-bottom{border-top:1px solid rgba(255,255,255,.14);margin-top:2.5rem;padding-top:1.5rem;
+.footer-bottom{border-top:1px solid rgba(255,255,255,.14);margin-top:1.75rem;padding-top:1.5rem;
   display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;justify-content:space-between;font-size:.82rem}
-.footer-portal{color:rgba(255,255,255,.5)}
-.footer-portal a{color:rgba(255,255,255,.7);text-decoration:underline}
+
+/* Bloque de acceso al portal (personal). Presente y clicable, pero en tono
+   secundario: quien busca una mudanza no debe confundirlo con el CTA principal. */
+.portal-cta{margin-top:2.5rem;padding:1.35rem 1.5rem;border-radius:8px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem}
+.portal-cta strong{display:block;color:#fff;font-family:var(--serif);font-weight:600;
+  font-size:1.18rem;letter-spacing:-.01em;margin-bottom:.15rem}
+.portal-cta span{color:rgba(255,255,255,.7);font-size:.92rem}
+.btn-portal{background:transparent;color:#fff;border-color:rgba(255,255,255,.55);
+  flex:0 0 auto;padding:.8rem 1.35rem}
+.btn-portal:hover{background:#fff;color:var(--navy-2);border-color:#fff}
 
 /* ---- sticky mobile call bar ---- */
 .callbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;
