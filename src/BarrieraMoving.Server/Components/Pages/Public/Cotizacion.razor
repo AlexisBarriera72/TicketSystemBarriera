@@ -137,19 +137,30 @@
         Model = new();
     }
 
+    // Los límites coinciden con los de la BD (ver Data/ModelLengths): así el
+    // visitante ve un mensaje claro en vez de un error de truncamiento SQL.
     public class QuoteForm
     {
         [Required(ErrorMessage = "Escribe tu nombre.")]
+        [StringLength(120, ErrorMessage = "El nombre es demasiado largo.")]
         public string? Name { get; set; }
 
         [Required(ErrorMessage = "Escribe un teléfono de contacto.")]
+        [StringLength(40, ErrorMessage = "El teléfono es demasiado largo.")]
         public string? Phone { get; set; }
 
+        [EmailAddress(ErrorMessage = "Ese email no parece válido.")]
+        [StringLength(256, ErrorMessage = "El email es demasiado largo.")]
         public string? Email { get; set; }
-        public string? ServiceType { get; set; }
+
+        [StringLength(100)] public string? ServiceType { get; set; }
+        [StringLength(100, ErrorMessage = "Usa un nombre de pueblo o zona más corto.")]
         public string? OriginZone { get; set; }
+        [StringLength(100, ErrorMessage = "Usa un nombre de pueblo o zona más corto.")]
         public string? DestinationZone { get; set; }
-        public string? PreferredDate { get; set; }
+        [StringLength(100)] public string? PreferredDate { get; set; }
+
+        [StringLength(2000, ErrorMessage = "Resume un poco más los detalles (máx. 2000 caracteres).")]
         public string? Details { get; set; }
     }
 }

@@ -24,6 +24,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     {
         base.OnModelCreating(builder);
 
+        // Longitudes máximas de todas las columnas de texto (ver ModelLengths)
+        ModelLengths.Apply(builder);
+
         builder.Entity<Order>()
             .HasOne(o => o.Author)
             .WithMany()
