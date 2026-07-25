@@ -12,10 +12,10 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Resend email confirmation</PageTitle>
+<PageTitle>Reenviar correo de confirmación</PageTitle>
 
-<h1>Resend email confirmation</h1>
-<h2>Enter your email.</h2>
+<h1>Reenviar correo de confirmación</h1>
+<h2>Escribe tu email.</h2>
 <hr />
 <StatusMessage Message="@message" />
 <div class="row">
@@ -49,7 +49,7 @@
         var user = await UserManager.FindByEmailAsync(Input.Email!);
         if (user is null)
         {
-            message = "Verification email sent. Please check your email.";
+            message = "Correo de verificación enviado. Revisa tu bandeja.";
             return;
         }
 
@@ -61,7 +61,7 @@
             new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
         await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
 
-        message = "Verification email sent. Please check your email.";
+        message = "Correo de verificación enviado. Revisa tu bandeja.";
     }
 
     private sealed class InputModel
