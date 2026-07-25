@@ -1,0 +1,160 @@
+@page "/complaints"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using BarrieraMoving.Shared.Enums
+@inject IComplaintService ComplaintService
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Atención al Cliente</PageTitle>
+
+<div class="container mt-4" style="max-width: 900px;">
+    <h3 class="mb-3"><i class="bi bi-headset text-primary"></i> Atención al Cliente</h3>
+
+    @if (!string.IsNullOrEmpty(feedback))
+    {
+        <div class="alert alert-success alert-dismissible fade show">@feedback
+            <button type="button" class="btn-close" @onclick="() => feedback = string.Empty"></button>
+        </div>
+    }
+
+    @if (!isStaff)
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-2 fw-bold">Enviar una reclamación</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label">Asunto</label>
+                    <input class="form-control" @bind="newSubject" placeholder="Resumen breve" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" rows="3" @bind="newDescription"
+                              placeholder="Cuéntanos qué ocurrió"></textarea>
+                </div>
+                <button class="btn btn-primary" @onclick="SubmitAsync">Enviar reclamación</button>
+            </div>
+        </div>
+    }
+
+    <h5 class="text-muted">@(isStaff ? "Todas las reclamaciones" : "Mis reclamaciones")</h5>
+    @if (!complaints.Any())
+    {
+        <div class="alert alert-light border text-center py-4">No hay reclamaciones.</div>
+    }
+    else
+    {
+        @foreach (var c in complaints)
+        {
+            <div class="card shadow-sm mb-2">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>
+                            <span class="badge @StatusBadge(c.Status)">@StatusLabel(c.Status)</span>
+                            <strong class="ms-2">@c.Subject</strong>
+                            @if (isStaff)
+                            {
+                                <span class="text-muted small ms-2">— @(c.Client?.DisplayName ?? c.Client?.Email)</span>
+                            }
+                        </span>
+                        <small class="text-muted">@c.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                    </div>
+                    <p class="mb-1 mt-1 small" style="white-space: pre-wrap;">@c.Description</p>
+
+                    @if (!string.IsNullOrEmpty(c.OfficeResponse))
+                    {
+                        <div class="alert alert-info py-2 px-3 mb-1 small">
+                            <strong>Respuesta de @(c.RespondedBy?.DisplayName ?? c.RespondedBy?.Email):</strong> @c.OfficeResponse
+                        </div>
+                    }
+
+                    @if (isStaff && c.Status != ComplaintStatus.Resolved)
+                    {
+                        <div class="mt-2">
+                            <textarea class="form-control form-control-sm mb-1" rows="2"
+                                      placeholder="Respuesta al cliente"
+                                      @bind:get="responseDrafts.GetValueOrDefault(c.Id, string.Empty)"
+                                      @bind:set="v => responseDrafts[c.Id] = v"></textarea>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => RespondAsync(c.Id, false)">Guardar (en revisión)</button>
+                            <button class="btn btn-sm btn-success" @onclick="() => RespondAsync(c.Id, true)">Responder y resolver</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool isStaff;
+    private string currentUserId = "";
+    private List<Complaint> complaints = [];
+    private Dictionary<int, string> responseDrafts = new();
+    private string newSubject = "";
+    private string newDescription = "";
+    private string feedback = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        complaints = isStaff
+            ? await ComplaintService.GetAllAsync()
+            : await ComplaintService.GetForClientAsync(currentUserId);
+
+        // El @bind del textarea de respuesta usa responseDrafts[c.Id]; el getter
+        // del indexador lanza KeyNotFoundException si la clave no existe todavía,
+        // así que la sembramos para cada reclamación antes de renderizar.
+        foreach (var c in complaints)
+        {
+            responseDrafts.TryAdd(c.Id, "");
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(newSubject) || string.IsNullOrWhiteSpace(newDescription))
+        {
+            feedback = "Escribe un asunto y una descripción.";
+            return;
+        }
+        await ComplaintService.CreateAsync(currentUserId, newSubject, newDescription, null);
+        newSubject = "";
+        newDescription = "";
+        feedback = "Reclamación enviada. La oficina te responderá pronto.";
+        await LoadAsync();
+    }
+
+    private async Task RespondAsync(int id, bool resolve)
+    {
+        var text = responseDrafts.GetValueOrDefault(id, "");
+        var (ok, error) = await ComplaintService.RespondAsync(id, currentUserId, text, resolve);
+        feedback = ok ? "Respuesta guardada." : (error ?? "No se pudo responder.");
+        if (ok) responseDrafts.Remove(id);
+        await LoadAsync();
+    }
+
+    private static string StatusLabel(ComplaintStatus s) => s switch
+    {
+        ComplaintStatus.Open => "Abierta",
+        ComplaintStatus.InReview => "En revisión",
+        ComplaintStatus.Resolved => "Resuelta",
+        _ => s.ToString()
+    };
+
+    private static string StatusBadge(ComplaintStatus s) => s switch
+    {
+        ComplaintStatus.Open => "bg-warning text-dark",
+        ComplaintStatus.InReview => "bg-info text-dark",
+        ComplaintStatus.Resolved => "bg-success",
+        _ => "bg-secondary"
+    };
+}

@@ -1,0 +1,118 @@
+@page "/admin/cotizaciones"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using BarrieraMoving.Server.Data
+@using BarrieraMoving.Server.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@attribute [Authorize(Roles = Roles.Admin + "," + Roles.Office)]
+@rendermode InteractiveServer
+
+<PageTitle>Cotizaciones | Transporte Caribe</PageTitle>
+
+<div class="container mt-4" style="max-width: 900px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0"><i class="bi bi-envelope-paper text-primary"></i> Solicitudes de cotización</h3>
+        <button class="btn btn-outline-primary btn-sm" @onclick="LoadAsync" disabled="@loading">
+            <i class="bi bi-arrow-clockwise"></i> Actualizar
+        </button>
+    </div>
+    <p class="text-muted">Solicitudes enviadas desde el sitio público. Se guardan aquí aunque el email no esté configurado.</p>
+
+    @if (loading)
+    {
+        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else if (items.Count == 0)
+    {
+        <div class="alert alert-light border">Aún no hay solicitudes de cotización.</div>
+    }
+    else
+    {
+        @foreach (var q in items)
+        {
+            <div class="card mb-2 shadow-sm @(q.Handled ? "opacity-75" : "border-primary")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="min-w-0">
+                            @if (!string.IsNullOrWhiteSpace(q.ReferenceCode))
+                            {
+                                <span class="badge bg-dark me-2" title="Código que el cliente usa para consultar">@q.ReferenceCode</span>
+                            }
+                            <div class="fw-bold">@q.Name · <a href="tel:@q.Phone">@q.Phone</a>
+                                @if (!string.IsNullOrWhiteSpace(q.Email)){ <span>· <a href="mailto:@q.Email">@q.Email</a></span> }
+                            </div>
+                            <div class="text-muted small">
+                                @(q.ServiceType ?? "Servicio no indicado")
+                                @if (!string.IsNullOrWhiteSpace(q.OriginZone) || !string.IsNullOrWhiteSpace(q.DestinationZone))
+                                { <span>· @q.OriginZone → @q.DestinationZone</span> }
+                                @if (!string.IsNullOrWhiteSpace(q.PreferredDate)){ <span>· @q.PreferredDate</span> }
+                                · @q.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(q.Details))
+                            {
+                                <p class="mb-0 mt-2" style="white-space:pre-wrap">@q.Details</p>
+                            }
+                        </div>
+                        <div class="text-end text-nowrap">
+                            @if (q.ConvertedOrderId is not null)
+                            {
+                                <span class="badge bg-success mb-2 d-block">Convertida</span>
+                                <a class="btn btn-sm btn-outline-primary" href="/orders/manage/@q.ConvertedOrderId">
+                                    Ver orden #@q.ConvertedOrderId
+                                </a>
+                            }
+                            else
+                            {
+                                @if (q.Handled)
+                                {
+                                    <span class="badge bg-secondary mb-2 d-block">Gestionada</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-primary mb-2 d-block">Nueva</span>
+                                }
+                                <a class="btn btn-sm btn-success mb-1 d-block" href="/orders/create?fromQuote=@q.Id">
+                                    <i class="bi bi-box-seam"></i> Crear orden
+                                </a>
+                                @if (q.Handled)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => SetHandled(q, false)">Reabrir</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => SetHandled(q, true)">Marcar gestionada</button>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<QuoteRequest> items = [];
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        using var db = DbFactory.CreateDbContext();
+        items = await db.QuoteRequests
+            .OrderByDescending(q => !q.Handled).ThenByDescending(q => q.CreatedAtUtc)
+            .ToListAsync();
+        loading = false;
+    }
+
+    private async Task SetHandled(QuoteRequest q, bool handled)
+    {
+        using var db = DbFactory.CreateDbContext();
+        var row = await db.QuoteRequests.FindAsync(q.Id);
+        if (row is not null) { row.Handled = handled; await db.SaveChangesAsync(); }
+        q.Handled = handled;
+    }
+}

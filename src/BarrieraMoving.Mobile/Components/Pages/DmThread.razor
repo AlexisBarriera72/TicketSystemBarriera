@@ -1,0 +1,162 @@
+@page "/dm/{ConvId:int}"
+@implements IDisposable
+@inject ApiClient Api
+@inject AuthService Auth
+@inject OutboxService Outbox
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="detail-head">
+    <button class="back-btn" @onclick="@(() => Nav.NavigateTo("/dm"))"><i class="bi bi-arrow-left"></i></button>
+    <div class="detail-title"><i class="bi bi-chat-dots"></i> Conversación</div>
+</div>
+
+@if (loading)
+{
+    <div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div></div>
+}
+else if (error is not null)
+{
+    <div class="alert alert-warning">@error</div>
+    <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+}
+else
+{
+    <div @ref="box" class="bg-light border rounded-3 p-2 mb-2" style="height: calc(100vh - 240px); overflow-y: auto;">
+        @foreach (var m in messages)
+        {
+            var isMe = m.SenderUserId == myUserId;
+            <div class="d-flex mb-2 @(isMe ? "justify-content-end" : "justify-content-start")">
+                <div class="shadow-sm rounded-3 @(isMe ? "bg-primary text-white" : "bg-white border")"
+                     style="max-width: 85%; padding: 8px 12px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold" style="font-size: 0.75rem;">@(m.SenderName ?? "—")
+                            @if (!string.IsNullOrEmpty(m.SenderRole))
+                            {
+                                <span class="badge @(isMe ? "bg-light text-dark" : "bg-secondary") ms-1"
+                                      style="font-size: 0.55rem;">@RoleNames.DisplayLabel(m.SenderRole)</span>
+                            }
+                        </span>
+                        <small class="opacity-75 ms-2" style="font-size: 0.65rem;">@m.CreatedAt.ToLocalTime().ToString("HH:mm")</small>
+                    </div>
+                    <div class="text-break">@m.Content</div>
+                </div>
+            </div>
+        }
+        @foreach (var p in pending)
+        {
+            <div class="d-flex mb-2 justify-content-end">
+                <div class="rounded-3 border border-secondary bg-white" style="max-width: 85%; padding: 8px 12px; opacity: 0.75;">
+                    <div class="text-break">@p.Text</div>
+                    <div class="text-muted" style="font-size: 0.65rem;">Pendiente de envío</div>
+                </div>
+            </div>
+        }
+    </div>
+    <div class="input-group">
+        <input class="form-control" placeholder="Escribir mensaje..." @bind="draft" @bind:event="oninput"
+               @onkeyup="@(e => e.Key == "Enter" ? SendAsync() : Task.CompletedTask)" disabled="@sending" />
+        <button class="btn btn-primary px-3" @onclick="SendAsync" disabled="@sending"><i class="bi bi-send"></i></button>
+    </div>
+}
+
+@code {
+    [Parameter] public int ConvId { get; set; }
+
+    private List<DirectMessageDto> messages = [];
+    private List<OutboxItem> pending = [];
+    private string myUserId = "";
+    private string draft = "";
+    private bool loading = true;
+    private bool sending;
+    private string? error;
+    private bool scrollPending;
+    private ElementReference box;
+    private System.Threading.Timer? pollTimer;
+    private bool subscribed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync()) { Nav.NavigateTo("/login"); return; }
+        myUserId = (await Auth.GetCurrentUserAsync())?.Id ?? "";
+
+        Outbox.Changed += OnOutboxChanged;
+        subscribed = true;
+        await LoadAsync();
+        await RefreshPendingAsync();
+        pollTimer = new System.Threading.Timer(_ => _ = InvokeAsync(PollAsync), null,
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private void OnOutboxChanged() => _ = InvokeAsync(async () => { await RefreshPendingAsync(); await PollAsync(); });
+
+    private async Task RefreshPendingAsync()
+    {
+        pending = (await Outbox.GetAllAsync())
+            .Where(i => i.Kind == OutboxKind.DirectMessage && i.OrderId == ConvId)
+            .ToList();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        StateHasChanged();
+        try
+        {
+            messages = await Api.GetDirectMessagesAsync(ConvId);
+            scrollPending = true;
+        }
+        catch (Exception)
+        {
+            if (!await Auth.IsLoggedInAsync()) { Nav.NavigateTo("/login"); return; }
+            error = "No se pudo cargar la conversación.";
+        }
+        loading = false;
+    }
+
+    private async Task PollAsync()
+    {
+        if (loading) return;
+        try
+        {
+            var lastId = messages.Count > 0 ? messages[^1].Id : 0;
+            var fresh = await Api.GetDirectMessagesAsync(ConvId, take: 200, afterId: lastId);
+            if (fresh.Count > 0)
+            {
+                messages.AddRange(fresh);
+                scrollPending = true;
+                StateHasChanged();
+            }
+        }
+        catch (Exception) { }
+    }
+
+    private async Task SendAsync()
+    {
+        if (sending || string.IsNullOrWhiteSpace(draft)) return;
+        sending = true;
+        StateHasChanged();
+        await Outbox.EnqueueDirectMessageAsync(ConvId, draft.Trim());
+        draft = "";
+        await RefreshPendingAsync();
+        scrollPending = true;
+        sending = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (scrollPending)
+        {
+            scrollPending = false;
+            try { await JS.InvokeVoidAsync("chatScrollToBottom", box); } catch (Exception) { }
+        }
+    }
+
+    public void Dispose()
+    {
+        pollTimer?.Dispose();
+        if (subscribed) Outbox.Changed -= OnOutboxChanged;
+    }
+}

@@ -1,0 +1,85 @@
+@rendermode InteractiveServer
+@implements IDisposable
+@inject IReportService Reports
+@inject AuthenticationStateProvider AuthProvider
+
+@if (stats is not null)
+{
+    <div class="row g-3 mb-4">
+        @foreach (var t in tiles)
+        {
+            <div class="@colClass">
+                <div class="stat-card sc-@t.Color">
+                    <div class="stat-top">
+                        <span class="stat-badge"><i class="bi @t.Icon"></i></span>
+                        <div>
+                            <div class="stat-number">@t.Number</div>
+                            <div class="stat-label">@t.Label</div>
+                        </div>
+                    </div>
+                    <a href="@t.Link" class="stat-link">Ver detalles <i class="bi bi-arrow-right"></i></a>
+                    <svg class="stat-spark" viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M0 34 Q 15 26 30 30 T 60 16 T 90 20 T 120 6" fill="none"
+                              stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private QuickStatsDto? stats;
+    private bool isStaff;
+    private string colClass = "col-12 col-sm-6 col-lg-3";
+    private List<(int Number, string Label, string Icon, string Color, string Link)> tiles = [];
+    private System.Threading.Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
+
+        await RefreshAsync();
+        // "Tiempo real": se re-consulta cada 30 s mientras la página está abierta
+        timer = new System.Threading.Timer(_ => _ = InvokeAsync(RefreshAsync), null,
+            TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            stats = await Reports.GetQuickStatsAsync();
+        }
+        catch (Exception)
+        {
+            return; // fallo transitorio: el siguiente tick lo reintenta
+        }
+
+        if (isStaff)
+        {
+            tiles =
+            [
+                (stats.ActiveStaff, "Personal en Activo", "bi-people-fill", "blue", "/admin/dashboard"),
+                (stats.ActiveMoves, "Mudanzas en Curso", "bi-truck", "green", "/admin/dashboard"),
+                (stats.CompletedOrders, "Órdenes Completadas", "bi-clipboard2-check-fill", "purple", "/admin/dashboard"),
+                (stats.PendingComplaints, "Reclamaciones Pendientes", "bi-exclamation-circle-fill", "orange", "/complaints"),
+            ];
+            colClass = "col-12 col-sm-6 col-lg-3";
+        }
+        else
+        {
+            tiles =
+            [
+                (stats.CompletedOrders, "Mudanzas Completadas", "bi-check2-circle", "green", "/orders/my-list"),
+                (stats.ClientsServed, "Clientes Atendidos", "bi-people-fill", "blue", "/orders/my-list"),
+            ];
+            colClass = "col-12 col-md-6";
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose() => timer?.Dispose();
+}

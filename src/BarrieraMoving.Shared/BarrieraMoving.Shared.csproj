@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Lee los .cs sin BOM como UTF-8 (evita mojibake en literales con acentos) -->
+    <CodePage>65001</CodePage>
+  </PropertyGroup>
+
+</Project>

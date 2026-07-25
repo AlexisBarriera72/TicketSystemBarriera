@@ -1,0 +1,84 @@
+@page "/admin/approvals"
+@using Microsoft.AspNetCore.Authorization
+@using BarrieraMoving.Shared.Dtos
+@inject IApprovalService ApprovalSvc
+@attribute [Authorize(Roles = Roles.Admin + "," + Roles.Office)]
+@rendermode InteractiveServer
+
+<PageTitle>Aprobaciones | Transporte Caribe</PageTitle>
+
+<div class="container mt-4" style="max-width: 820px;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h3 class="mb-0"><i class="bi bi-patch-check-fill text-primary"></i> Aprobaciones pendientes</h3>
+        <button class="btn btn-outline-primary btn-sm" @onclick="LoadAsync" disabled="@loading">
+            <i class="bi bi-arrow-clockwise"></i> Actualizar
+        </button>
+    </div>
+    <p class="text-muted">
+        Órdenes que esperan la aprobación de la oficina (firmas) o con papeleo pendiente.
+        Es <strong>time-sensitive</strong>: bloquea completar la orden.
+    </p>
+
+    @if (loading)
+    {
+        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else if (items.Count == 0)
+    {
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle-fill"></i> Todo al día — no hay nada pendiente de aprobar.
+        </div>
+    }
+    else
+    {
+        @foreach (var it in items)
+        {
+            <div class="card mb-2 shadow-sm @(it.SignaturePending ? "border-primary" : "")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="min-w-0">
+                            <div class="fw-bold">Orden #@it.OrderId · @it.OrderTitle</div>
+                            <div class="text-muted small">
+                                Conductor: @(it.DriverName ?? "sin asignar") · Estado: @it.Status
+                                @if (it.SignedAtUtc is not null)
+                                {
+                                    <span>· Firmado @it.SignedAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                                }
+                            </div>
+                            <ul class="mt-2 mb-0 ps-3">
+                                @foreach (var p in it.Pending)
+                                {
+                                    <li class="@(p.StartsWith("Firma") ? "text-primary fw-semibold" : "text-danger")">@p</li>
+                                }
+                            </ul>
+                        </div>
+                        <div class="text-end text-nowrap">
+                            @if (it.SignaturePending)
+                            {
+                                <span class="badge bg-primary mb-2 d-block">Firma pendiente</span>
+                            }
+                            <a class="btn btn-sm btn-primary" href="/orders/manage/@it.OrderId">
+                                Revisar <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<ApprovalItemDto> items = [];
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        items = await ApprovalSvc.GetPendingApprovalsAsync();
+        loading = false;
+    }
+}

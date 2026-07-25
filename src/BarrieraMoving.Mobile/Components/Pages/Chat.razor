@@ -1,0 +1,468 @@
+@page "/orders/{Id:int}/chat"
+@implements IDisposable
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ClockState Clock
+@inject OutboxService Outbox
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="d-flex align-items-center mb-2">
+    <button class="back-btn me-2" @onclick="@(() => Nav.NavigateTo($"/orders/{Id}"))"><i class="bi bi-arrow-left"></i></button>
+    <div>
+        <div class="detail-title"><i class="bi bi-chat-text"></i> Orden #@Id</div>
+        @if (order is not null)
+        {
+            <div class="text-muted small">@order.Title</div>
+        }
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else if (loadError is not null)
+{
+    <div class="alert alert-warning">@loadError</div>
+    <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+}
+else
+{
+    <div @ref="chatBox" class="bg-light border rounded-3 p-2 mb-2"
+         style="height: calc(100vh - 260px); overflow-y: auto;">
+        @if (canLoadOlder)
+        {
+            <div class="text-center mb-2">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadOlderAsync">
+                    Cargar mensajes anteriores
+                </button>
+            </div>
+        }
+        @if (!messages.Any() && !pendingItems.Any())
+        {
+            <p class="text-center text-muted py-4">No hay mensajes aún. ¡Escribe el primero!</p>
+        }
+        else
+        {
+            @foreach (var m in messages)
+            {
+                @if (m.IsSystem)
+                {
+                    <div class="text-center my-2">
+                        <span class="badge rounded-pill bg-light text-muted border px-3 text-wrap">
+                            @m.Content.Replace("[EVENTO]", "").Replace("[SISTEMA]", "")
+                        </span>
+                        <div style="font-size: 0.6rem;" class="text-muted">@m.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+                    </div>
+                }
+                else
+                {
+                    bool isMe = m.UserId == myUserId;
+                    <div class="d-flex mb-2 @(isMe ? "justify-content-end" : "justify-content-start")">
+                        <div class="shadow-sm rounded-3 @(isMe ? "bg-primary text-white" : "bg-white border")"
+                             style="max-width: 85%; min-width: 140px; padding: 8px 12px;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>
+                                    <span class="fw-bold" style="font-size: 0.75rem;">@(m.UserName ?? "—")</span>
+                                    @if (!string.IsNullOrEmpty(m.SenderRole))
+                                    {
+                                        <span class="badge @(isMe ? "bg-light text-dark" : RoleBadgeClass(m.SenderRole)) ms-1"
+                                              style="font-size: 0.55rem;">@RoleNames.DisplayLabel(m.SenderRole)</span>
+                                    }
+                                </span>
+                                <small class="opacity-75 ms-2" style="font-size: 0.65rem;">
+                                    @m.CreatedAt.ToLocalTime().ToString("HH:mm")
+                                </small>
+                            </div>
+                            <div class="text-break">@m.Content</div>
+                            @if (m.HasAttachment)
+                            {
+                                @if (thumbCache.TryGetValue(m.Id, out var thumbUri) && thumbUri is not null)
+                                {
+                                    <img src="@thumbUri" alt="Foto" class="rounded mt-1 d-block"
+                                         style="max-width: 180px; cursor: pointer;"
+                                         @onclick="() => OpenViewerAsync(m.Id)" />
+                                }
+                                else
+                                {
+                                    <div class="text-muted small mt-1"><i class="bi bi-camera"></i> Cargando foto…</div>
+                                }
+                            }
+                            @if (m.Latitude is not null && m.Longitude is not null)
+                            {
+                                <a class="small @(isMe ? "text-white-50" : "text-muted")" target="_blank"
+                                   href="https://maps.google.com/?q=@m.Latitude,@m.Longitude"><i class="bi bi-geo-alt"></i> Ver ubicación</a>
+                            }
+                            @if (m.CapturedAtUtc is not null &&
+                                 (m.CreatedAt - m.CapturedAtUtc.Value) > TimeSpan.FromMinutes(5))
+                            {
+                                <div class="@(isMe ? "text-white-50" : "text-muted")" style="font-size: 0.6rem;">
+                                    Capturado @m.CapturedAtUtc.Value.ToLocalTime().ToString("HH:mm"),
+                                    entregado @m.CreatedAt.ToLocalTime().ToString("HH:mm")
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+
+            @* --- Pendientes de la cola offline: el conductor SIEMPRE ve qué llegó y qué no --- *@
+            @foreach (var p in pendingItems)
+            {
+                <div class="d-flex mb-2 justify-content-end">
+                    <div class="rounded-3 border border-secondary bg-white"
+                         style="max-width: 85%; min-width: 140px; padding: 8px 12px; opacity: 0.75;">
+                        @if (p.Kind == OutboxKind.Photo)
+                        {
+                            @if (stagedThumbCache.TryGetValue(p.Id, out var staged))
+                            {
+                                <img src="@staged" alt="Foto pendiente" class="rounded d-block mb-1" style="max-width: 180px;" />
+                            }
+                            else
+                            {
+                                <div class="text-muted small"><i class="bi bi-camera"></i> Foto</div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-break">@p.Text</div>
+                        }
+                        @if (p.Status == OutboxStatus.Failed)
+                        {
+                            <div class="text-danger" style="font-size: 0.65rem;">@p.LastError</div>
+                            <button class="btn btn-sm btn-outline-primary py-0 me-1" style="font-size: 0.65rem;"
+                                    @onclick="() => Outbox.RetryAsync(p.Id)">Reintentar</button>
+                            <button class="btn btn-sm btn-outline-danger py-0" style="font-size: 0.65rem;"
+                                    @onclick="() => Outbox.DiscardAsync(p.Id)">Descartar</button>
+                        }
+                        else
+                        {
+                            <div class="text-muted" style="font-size: 0.65rem;">
+                                Pendiente de envío (@p.CapturedAtUtc.ToLocalTime().ToString("HH:mm"))
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    @if (sendError is not null)
+    {
+        <div class="alert alert-warning py-2 mb-2">@sendError</div>
+    }
+
+    @* Documentación de daños: foto de RECOGIDA (antes) y de ENTREGA (después) *@
+    <div class="stage-row">
+        <button class="stage-btn" @onclick="() => SendPhotoAsync(true, PhotoStage.Pickup)" disabled="@sending">
+            <i class="bi bi-box-arrow-up"></i> Foto recogida
+        </button>
+        <button class="stage-btn" @onclick="() => SendPhotoAsync(true, PhotoStage.Delivery)" disabled="@sending">
+            <i class="bi bi-box-arrow-in-down"></i> Foto entrega
+        </button>
+    </div>
+
+    <div class="input-group chat-compose">
+        <button class="btn btn-outline-secondary px-3" @onclick="() => SendPhotoAsync(fromCamera: true)"
+                disabled="@sending" title="Cámara"><i class="bi bi-camera"></i></button>
+        <button class="btn btn-outline-secondary px-3" @onclick="() => SendPhotoAsync(fromCamera: false)"
+                disabled="@sending" title="Galería"><i class="bi bi-image"></i></button>
+        <input class="form-control" placeholder="Escribir mensaje..."
+               @bind="draft" @bind:event="oninput" disabled="@sending"
+               @onkeyup="@(e => e.Key == "Enter" ? SendAsync() : Task.CompletedTask)" />
+        <button class="btn btn-primary px-3" @onclick="SendAsync" disabled="@sending">
+            @if (sending) { <span>…</span> } else { <i class="bi bi-send"></i> }
+        </button>
+    </div>
+}
+
+@* --- Visor de foto completa --- *@
+@if (viewerId is not null)
+{
+    <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: flex; align-items: center; justify-content: center;"
+         @onclick="CloseViewer">
+        @if (viewerUri is null)
+        {
+            <div class="spinner-border text-light" role="status"></div>
+        }
+        else
+        {
+            <img src="@viewerUri" style="max-width: 96vw; max-height: 92vh; object-fit: contain;" />
+        }
+        <button class="btn btn-light" style="position: fixed; top: max(env(safe-area-inset-top, 0px), 12px); right: 12px;"
+                @onclick="CloseViewer">✕</button>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private OrderDto? order;
+    private List<MessageDto> messages = [];
+    private List<OutboxItem> pendingItems = [];
+    private readonly Dictionary<int, string?> thumbCache = [];
+    private readonly Dictionary<string, string> stagedThumbCache = [];
+    private string myUserId = "";
+    private string draft = "";
+    private bool loading = true;
+    private bool sending;
+    private string? loadError;
+    private string? sendError;
+    private bool canLoadOlder;
+    private bool scrollPending;
+    private int? viewerId;
+    private string? viewerUri;
+    private ElementReference chatBox;
+    private System.Threading.Timer? pollTimer;
+    private bool subscribed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        var user = await Auth.GetCurrentUserAsync();
+        myUserId = user?.Id ?? "";
+
+        // Mismo gating que el resto de pantallas de órdenes (solo conductores)
+        if (UserRoles.IsDriverOnly(user))
+        {
+            try
+            {
+                await Clock.EnsureLoadedAsync(Api);
+            }
+            catch (Exception) { }
+            if (Clock.OpenEntry is null)
+            {
+                Nav.NavigateTo("/clock");
+                return;
+            }
+        }
+
+        Outbox.Changed += OnOutboxChanged;
+        subscribed = true;
+
+        await LoadAsync();
+        await RefreshPendingAsync();
+
+        // Polling delta cada 5 s mientras el chat está abierto
+        pollTimer = new System.Threading.Timer(
+            _ => _ = InvokeAsync(PollAsync), null,
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private void OnOutboxChanged() => _ = InvokeAsync(async () =>
+    {
+        await RefreshPendingAsync();
+        await PollAsync(); // un item Sent aparece enseguida como mensaje real
+    });
+
+    private async Task RefreshPendingAsync()
+    {
+        pendingItems = await Outbox.GetForOrderAsync(Id);
+        foreach (var p in pendingItems.Where(p => p.Kind == OutboxKind.Photo && p.FilePath is not null))
+        {
+            if (!stagedThumbCache.ContainsKey(p.Id) && File.Exists(p.FilePath))
+            {
+                var bytes = await File.ReadAllBytesAsync(p.FilePath!);
+                stagedThumbCache[p.Id] = $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}";
+            }
+        }
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        loadError = null;
+        StateHasChanged();
+        try
+        {
+            order = await Api.GetOrderAsync(Id);
+            if (order is null)
+            {
+                loadError = "Orden no encontrada o sin acceso.";
+                loading = false;
+                return;
+            }
+            messages = await Api.GetOrderMessagesAsync(Id);
+            canLoadOlder = messages.Count >= 50;
+            scrollPending = true;
+        }
+        catch (Exception)
+        {
+            if (!await Auth.IsLoggedInAsync())
+            {
+                Nav.NavigateTo("/login");
+                return;
+            }
+            loadError = "No se pudo conectar al servidor.";
+        }
+        loading = false;
+        _ = LoadThumbsAsync();
+    }
+
+    private async Task PollAsync()
+    {
+        if (loading) return;
+        try
+        {
+            var lastId = messages.Count > 0 ? messages[^1].Id : 0;
+            var fresh = await Api.GetOrderMessagesAsync(Id, take: 200, afterId: lastId);
+            if (fresh.Count > 0)
+            {
+                messages.AddRange(fresh);
+                scrollPending = true;
+                StateHasChanged();
+                _ = LoadThumbsAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // sin red: el siguiente tick reintenta solo
+        }
+    }
+
+    private async Task LoadThumbsAsync()
+    {
+        foreach (var m in messages.Where(m => m.HasAttachment && !thumbCache.ContainsKey(m.Id)).ToList())
+        {
+            thumbCache[m.Id] = null; // marcado como "cargando"
+            try
+            {
+                var bytes = await Api.GetPhotoAsync(m.Id, thumb: true);
+                thumbCache[m.Id] = bytes is null ? null : $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}";
+            }
+            catch (Exception)
+            {
+                thumbCache.Remove(m.Id); // reintentará en el próximo load
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadOlderAsync()
+    {
+        if (messages.Count == 0) return;
+        try
+        {
+            var older = await Api.GetOrderMessagesAsync(Id, take: 50, beforeId: messages[0].Id);
+            messages.InsertRange(0, older);
+            canLoadOlder = older.Count >= 50;
+            _ = LoadThumbsAsync();
+        }
+        catch (Exception)
+        {
+            sendError = "No se pudieron cargar los mensajes anteriores.";
+        }
+    }
+
+    // Texto: SIEMPRE por la cola — online sale en <1 s; offline queda visible como pendiente
+    private async Task SendAsync()
+    {
+        if (sending || string.IsNullOrWhiteSpace(draft)) return;
+        sending = true;
+        sendError = null;
+        StateHasChanged();
+
+        var (ok, error) = await Outbox.EnqueueMessageAsync(Id, draft.Trim());
+        if (ok)
+        {
+            draft = "";
+            await RefreshPendingAsync();
+            scrollPending = true;
+        }
+        else
+        {
+            sendError = error;
+        }
+        sending = false;
+    }
+
+    private async Task SendPhotoAsync(bool fromCamera, PhotoStage stage = PhotoStage.General)
+    {
+        if (sending) return;
+        sending = true;
+        sendError = null;
+        StateHasChanged();
+
+        var result = fromCamera ? await PhotoCapture.FromCameraAsync() : await PhotoCapture.FromGalleryAsync();
+        if (result.Error is not null)
+        {
+            sendError = result.Error; // p. ej. sin permiso de cámara → usa galería
+        }
+        else if (result.Jpeg is not null)
+        {
+            // GPS deliberado y opcional: sin permiso o sin señal, la foto va igual
+            var location = await LocationHelper.TryGetLocationAsync();
+            var (ok, error) = await Outbox.EnqueuePhotoAsync(Id, result.Jpeg, location?.Latitude, location?.Longitude, stage);
+            if (ok)
+            {
+                await RefreshPendingAsync();
+                scrollPending = true;
+            }
+            else
+            {
+                sendError = error;
+            }
+        }
+        sending = false;
+    }
+
+    private async Task OpenViewerAsync(int messageId)
+    {
+        viewerId = messageId;
+        viewerUri = null;
+        StateHasChanged();
+        try
+        {
+            var bytes = await Api.GetPhotoAsync(messageId, thumb: false);
+            viewerUri = bytes is null ? null : $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}";
+            if (viewerUri is null) viewerId = null;
+        }
+        catch (Exception)
+        {
+            viewerId = null;
+        }
+        StateHasChanged();
+    }
+
+    private void CloseViewer()
+    {
+        viewerId = null;
+        viewerUri = null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (scrollPending)
+        {
+            scrollPending = false;
+            try
+            {
+                await JS.InvokeVoidAsync("chatScrollToBottom", chatBox);
+            }
+            catch (Exception) { }
+        }
+    }
+
+    private static string RoleBadgeClass(string? role) => role switch
+    {
+        RoleNames.Admin => "bg-dark",
+        RoleNames.Office => "bg-primary",
+        RoleNames.Driver => "bg-warning text-dark",
+        RoleNames.Client => "bg-secondary",
+        _ => "bg-light text-dark border"
+    };
+
+    public void Dispose()
+    {
+        pollTimer?.Dispose();
+        if (subscribed) Outbox.Changed -= OnOutboxChanged;
+    }
+}

@@ -1,0 +1,134 @@
+@page "/orders/create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using BarrieraMoving.Server.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject IOrderService OrderService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Nueva Orden de Mudanza</PageTitle>
+
+<div class="container mt-4">
+	<h2>Solicitar una Mudanza</h2>
+	<hr />
+
+	@if (quote is not null)
+	{
+		<div class="alert alert-info d-flex align-items-start gap-2">
+			<i class="bi bi-envelope-paper-fill"></i>
+			<div>
+				<strong>Creando la orden desde la solicitud web #@quote.Id</strong>
+				<div class="small">
+					@quote.Name · <a href="tel:@quote.Phone">@quote.Phone</a>
+					@if (!string.IsNullOrWhiteSpace(quote.Email)) { <span> · @quote.Email</span> }
+					— revisa los datos antes de guardar.
+				</div>
+			</div>
+		</div>
+	}
+
+	<EditForm Model="newOrder" OnValidSubmit="HandleSubmit" FormName="CreateOrderForm">
+		<DataAnnotationsValidator />
+		<ValidationSummary class="text-danger" />
+
+		<div class="mb-3">
+			<label class="form-label">Título</label>
+			<InputText @bind-Value="newOrder.Title" class="form-control" placeholder="Resumen breve de la mudanza" />
+		</div>
+
+		<div class="mb-3">
+			<label class="form-label">Tipo de mudanza</label>
+			<InputSelect @bind-Value="newOrder.CategoryId" class="form-select">
+				<option value="0">-- Seleccionar tipo --</option>
+				@foreach (var cat in categories)
+				{
+					<option value="@cat.Id">@cat.Name</option>
+				}
+			</InputSelect>
+		</div>
+
+		<div class="mb-3">
+			<label class="form-label">Prioridad</label>
+			<InputSelect @bind-Value="newOrder.Priority" class="form-select">
+				@foreach (var priority in Enum.GetValues<OrderPriority>())
+				{
+					<option value="@priority">@priority</option>
+				}
+			</InputSelect>
+		</div>
+
+		<div class="mb-3">
+			<label class="form-label">Descripción (direcciones, fechas, detalles)</label>
+			<InputTextArea @bind-Value="newOrder.Description" class="form-control" rows="4" />
+		</div>
+
+		<button type="submit" class="btn btn-primary">Crear Orden</button>
+		<a href="/" class="btn btn-secondary">Cancelar</a>
+	</EditForm>
+</div>
+
+@code {
+	private Order newOrder = new() { AuthorId = "", Title = "", Description = "" };
+	private List<Category> categories = new();
+
+	// Conversión de una solicitud de cotización del sitio público en una orden.
+	[SupplyParameterFromQuery(Name = "fromQuote")]
+	private int? FromQuote { get; set; }
+
+	private QuoteRequest? quote;
+
+	protected override async Task OnInitializedAsync()
+	{
+		categories = await OrderService.GetCategoriesAsync();
+		// Obtener el ID del usuario actual autenticado
+		var authState = await AuthProvider.GetAuthenticationStateAsync();
+		var user = authState.User;
+		newOrder.AuthorId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+
+		if (FromQuote is null) return;
+
+		// El solicitante no tiene cuenta: la orden la crea la oficina (autor) y los
+		// datos de contacto quedan escritos en la descripción, no inventamos usuarios.
+		using var db = DbFactory.CreateDbContext();
+		quote = await db.QuoteRequests.FindAsync(FromQuote.Value);
+		if (quote is null || quote.ConvertedOrderId is not null) return;
+
+		newOrder.Title = string.IsNullOrWhiteSpace(quote.ServiceType)
+			? $"Mudanza — {quote.Name}"
+			: $"{quote.ServiceType} — {quote.Name}";
+
+		var lines = new List<string> { $"Solicitud web #{quote.Id}", $"Cliente: {quote.Name}", $"Teléfono: {quote.Phone}" };
+		if (!string.IsNullOrWhiteSpace(quote.Email)) lines.Add($"Email: {quote.Email}");
+		if (!string.IsNullOrWhiteSpace(quote.OriginZone) || !string.IsNullOrWhiteSpace(quote.DestinationZone))
+			lines.Add($"Ruta: {quote.OriginZone} → {quote.DestinationZone}");
+		if (!string.IsNullOrWhiteSpace(quote.PreferredDate)) lines.Add($"Fecha deseada: {quote.PreferredDate}");
+		if (!string.IsNullOrWhiteSpace(quote.Details)) lines.Add($"\nDetalles del cliente:\n{quote.Details}");
+		newOrder.Description = string.Join("\n", lines);
+	}
+
+	private async Task HandleSubmit()
+	{
+		if (newOrder.CategoryId == 0) return; // Validación simple de tipo de mudanza
+		await OrderService.CreateOrderAsync(newOrder);
+
+		// Cierra el círculo: la solicitud queda gestionada y enlazada a su orden
+		if (quote is not null)
+		{
+			using var db = DbFactory.CreateDbContext();
+			var row = await db.QuoteRequests.FindAsync(quote.Id);
+			if (row is not null)
+			{
+				row.Handled = true;
+				row.ConvertedOrderId = newOrder.Id;
+				await db.SaveChangesAsync();
+			}
+			Navigation.NavigateTo($"/orders/manage/{newOrder.Id}");
+			return;
+		}
+		Navigation.NavigateTo("/orders/my-list");
+	}
+}

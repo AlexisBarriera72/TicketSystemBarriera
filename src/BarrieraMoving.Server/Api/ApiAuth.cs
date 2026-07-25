@@ -1,0 +1,10 @@
+namespace BarrieraMoving.Server.Api;
+
+// Nombres de las policies de autorización de la API (esquema JWT Bearer)
+public static class ApiAuth
+{
+    public const string Policy = "ApiJwt";
+    public const string StaffPolicy = "ApiJwtStaff";       // Admin u Oficina
+    public const string EmployeePolicy = "ApiJwtEmployee"; // Admin, Oficina o Conductor (no clientes)
+    public const string PhotoPolicy = "ApiPhoto"; // cookie del dashboard O JWT del móvil (para <img>)
+}

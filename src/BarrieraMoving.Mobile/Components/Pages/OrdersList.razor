@@ -1,0 +1,130 @@
+@page "/"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ClockState Clock
+@inject NavigationManager Nav
+
+<div class="page-head">
+    <h4>Mis Órdenes</h4>
+    <button class="pill-btn" @onclick="LoadAsync" disabled="@loading">
+        <i class="bi bi-arrow-clockwise"></i> Actualizar
+    </button>
+</div>
+
+@if (user is not null)
+{
+    <p class="page-sub">@(user.DisplayName ?? user.Email) · @string.Join(", ", user.Roles)</p>
+}
+
+@if (loading)
+{
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Cargando órdenes...</p>
+    </div>
+}
+else if (error is not null)
+{
+    <div class="alert alert-warning">@error</div>
+    <button class="btn btn-outline-primary w-100" @onclick="LoadAsync">Reintentar</button>
+}
+else if (orders.Count == 0)
+{
+    <div class="alert alert-light border text-center p-4">
+        <div style="font-size: 2.2rem; color:#c2c8db;"><i class="bi bi-inbox"></i></div>
+        <p class="mb-0 mt-2">No tienes órdenes todavía.</p>
+    </div>
+}
+else
+{
+    @foreach (var order in orders)
+    {
+        var done = order.Status == OrderStatus.Completed;
+        <div class="list-card" @onclick="@(() => Nav.NavigateTo($"/orders/{order.Id}"))">
+            <span class="card-badge @(done ? "b-green" : "b-blue")">
+                <i class="bi @(done ? "bi-box-seam" : "bi-clipboard-check")"></i>
+            </span>
+            <div class="card-main">
+                <div class="card-title">#@order.Id · @order.Title</div>
+                <div class="card-sub">
+                    @order.CategoryName · @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")
+                </div>
+            </div>
+            <span class="status-pill @GetStatusPill(order.Status)">@order.Status</span>
+            <i class="bi bi-chevron-right card-chevron"></i>
+        </div>
+    }
+
+    <div class="info-callout">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>Aquí puedes ver todas las órdenes asignadas y su estado actual.</span>
+    </div>
+}
+
+@code {
+    private List<OrderDto> orders = [];
+    private UserSummaryDto? user;
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync())
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        user = await Auth.GetCurrentUserAsync();
+
+        // Gating (solo conductores): sin jornada abierta no se ven las órdenes
+        if (UserRoles.IsDriverOnly(user))
+        {
+            try
+            {
+                await Clock.EnsureLoadedAsync(Api);
+            }
+            catch (Exception) { /* sin red: no bloqueamos por el gate; la lista fallará y mostrará su error */ }
+            if (Clock.OpenEntry is null)
+            {
+                Nav.NavigateTo("/clock");
+                return;
+            }
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        error = null;
+        StateHasChanged();
+        try
+        {
+            orders = await Api.GetOrdersAsync();
+        }
+        catch (Exception)
+        {
+            // Si el auto-refresh falló, TokenStore quedó limpio → volver al login
+            if (!await Auth.IsLoggedInAsync())
+            {
+                Nav.NavigateTo("/login");
+                return;
+            }
+            error = "No se pudieron cargar las órdenes. Revisa la conexión con el servidor.";
+        }
+        loading = false;
+    }
+
+    // Mismos colores de estado que el dashboard web
+    private static string GetStatusPill(OrderStatus status) => status switch
+    {
+        OrderStatus.Requested => "s-info",
+        OrderStatus.Assigned => "s-gray",
+        OrderStatus.EnRoute => "s-amber",
+        OrderStatus.InProgress => "s-amber",
+        OrderStatus.PendingSignature => "s-blue",
+        OrderStatus.Completed => "s-green",
+        _ => "s-gray"
+    };
+}

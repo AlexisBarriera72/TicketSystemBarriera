@@ -1,0 +1,168 @@
+@inject IApprovalService Approvals
+@inject AuthenticationStateProvider AuthProvider
+@inject Microsoft.EntityFrameworkCore.IDbContextFactory<BarrieraMoving.Server.Data.ApplicationDbContext> DbFactory
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="portal">
+            <img src="img/logo-96.png" class="brand-logo" alt="" />
+            <span>Transporte Caribe</span>
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+
+        @* ---- SECCIÓN 1: Enlaces Públicos ---- *@
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="portal" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill" aria-hidden="true"></span> Inicio
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="terms">
+                <span class="bi bi-file-earmark-text" aria-hidden="true"></span> Términos
+            </NavLink>
+        </div>
+
+        @* ---- SECCIÓN 2: Enlaces para Usuarios Autenticados ---- *@
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="orders/create">
+                        <span class="bi bi-box-seam" aria-hidden="true"></span> Nueva Orden
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="orders/my-list">
+                        <span class="bi bi-clipboard-check" aria-hidden="true"></span> Mis Órdenes
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="notifications">
+                        <span class="bi bi-bell" aria-hidden="true"></span> Notificaciones
+                    </NavLink>
+                </div>
+
+                @* ---- SECCIÓN 3: Dashboard + Aprobaciones para Admin y Oficina ---- *@
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staffContext">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/dashboard">
+                            <span class="bi bi-bar-chart-line-fill" aria-hidden="true"></span> Dashboard
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/approvals">
+                            <span class="bi bi-patch-check-fill" aria-hidden="true"></span> Aprobaciones
+                            @if (approvalCount > 0)
+                            {
+                                <span class="badge bg-danger rounded-pill ms-2">@approvalCount</span>
+                            }
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/cotizaciones">
+                            <span class="bi bi-envelope-paper" aria-hidden="true"></span> Cotizaciones
+                            @if (quoteCount > 0)
+                            {
+                                <span class="badge bg-warning text-dark rounded-pill ms-2">@quoteCount</span>
+                            }
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                @* ---- Gestión de usuarios: solo el jefe ---- *@
+                <AuthorizeView Roles="@Roles.Admin" Context="adminContext">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/users">
+                            <span class="bi bi-people-fill" aria-hidden="true"></span> Usuarios
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                @* ---- Mensajes directos: todos los autenticados ---- *@
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="dm">
+                        <span class="bi bi-chat-dots-fill" aria-hidden="true"></span> Mensajes
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="complaints">
+                        <span class="bi bi-headset" aria-hidden="true"></span> Atención al Cliente
+                    </NavLink>
+                </div>
+
+                @* ---- SECCIÓN 4: Gestión de Cuenta (Logout) ---- *@
+                <div class="nav-item px-3">
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="" />
+                        <button type="submit">
+                            <span class="bi bi-box-arrow-left" aria-hidden="true"></span>
+                            Logout (@context.User.Identity?.Name)
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+
+            @* ---- SECCIÓN 5: Solo para Invitados (Login/Register) ---- *@
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Register">
+                        <span class="bi bi-person-plus-fill" aria-hidden="true"></span> Register
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Login">
+                        <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+
+    </nav>
+</div>
+
+@code {
+    // Badge de "Aprobaciones": time-sensitive, así que además de cargar al entrar
+    // se refresca en segundo plano (solo para Oficina/Admin, en circuitos interactivos).
+    private int approvalCount;
+    private int quoteCount;
+    private bool isStaff;
+    private System.Threading.Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthProvider.GetAuthenticationStateAsync();
+        isStaff = auth.User.IsInRole(Roles.Admin) || auth.User.IsInRole(Roles.Office);
+        if (isStaff)
+        {
+            await RefreshAsync();
+            timer = new System.Threading.Timer(_ => _ = InvokeAsync(RefreshAsync), null,
+                TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            approvalCount = await Approvals.GetPendingCountAsync();
+            using var db = DbFactory.CreateDbContext();
+            quoteCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+                .CountAsync(db.QuoteRequests.Where(q => !q.Handled));
+            StateHasChanged();
+        }
+        catch { /* el badge nunca debe romper la navegación */ }
+    }
+
+    public void Dispose() => timer?.Dispose();
+}

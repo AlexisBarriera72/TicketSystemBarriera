@@ -1,0 +1,111 @@
+@page "/portal"
+@using Microsoft.AspNetCore.Authorization
+<PageTitle>Inicio | Transporte Caribe</PageTitle>
+
+<div class="container mt-4">
+    <AuthorizeView>
+        <Authorized Context="authCtx">
+            <div class="hero-banner mb-4">
+                <span class="hero-badge"><img src="img/logo-192.png" class="hero-logo" alt="Transporte Caribe" /></span>
+                <div>
+                    <h1 class="hero-h1">Bienvenido, @Greeting(authCtx.User)</h1>
+                    <p class="hero-p">Gestiona tus mudanzas, conductores, oficina y clientes de forma rápida y eficiente.</p>
+                </div>
+            </div>
+
+            @* Barra de métricas operativas en tiempo real (se refresca cada 30s) *@
+            <QuickStatsBar />
+
+            <div class="section-head">
+                <i class="bi bi-grid-1x2-fill"></i><span>Accesos Rápidos</span>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6 col-xl-4">
+                    <a href="/orders/my-list" class="access-card ac-blue">
+                        <span class="access-badge"><i class="bi bi-clipboard-check"></i></span>
+                        <div class="access-text">
+                            <div class="access-title">Mis Órdenes</div>
+                            <div class="access-desc">Consulta y sigue el estado de tus mudanzas.</div>
+                        </div>
+                        <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                        <i class="bi bi-clipboard-check access-watermark"></i>
+                    </a>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <a href="/dm" class="access-card ac-purple">
+                        <span class="access-badge"><i class="bi bi-chat-dots-fill"></i></span>
+                        <div class="access-text">
+                            <div class="access-title">Mensajes</div>
+                            <div class="access-desc">Habla directamente con el equipo.</div>
+                        </div>
+                        <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                        <i class="bi bi-chat-dots-fill access-watermark"></i>
+                    </a>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <a href="/complaints" class="access-card ac-orange">
+                        <span class="access-badge"><i class="bi bi-headset"></i></span>
+                        <div class="access-text">
+                            <div class="access-title">Atención al Cliente</div>
+                            <div class="access-desc">Envía una reclamación o consulta su estado.</div>
+                        </div>
+                        <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                        <i class="bi bi-headset access-watermark"></i>
+                    </a>
+                </div>
+
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staff">
+                    <div class="col-md-6 col-xl-4">
+                        <a href="/orders/create" class="access-card ac-green">
+                            <span class="access-badge"><i class="bi bi-box-seam"></i></span>
+                            <div class="access-text">
+                                <div class="access-title">Nueva Orden</div>
+                                <div class="access-desc">Registra una mudanza para un cliente.</div>
+                            </div>
+                            <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                            <i class="bi bi-box-seam access-watermark"></i>
+                        </a>
+                    </div>
+                    <div class="col-md-6 col-xl-4">
+                        <a href="/admin/dashboard" class="access-card ac-blue">
+                            <span class="access-badge"><i class="bi bi-bar-chart-fill"></i></span>
+                            <div class="access-text">
+                                <div class="access-title">Dashboard</div>
+                                <div class="access-desc">Métricas, fichajes, documentos y export.</div>
+                            </div>
+                            <span class="access-chevron"><i class="bi bi-chevron-right"></i></span>
+                            <i class="bi bi-bar-chart-fill access-watermark"></i>
+                        </a>
+                    </div>
+                </AuthorizeView>
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <div class="hero-banner mb-4">
+                <span class="hero-badge"><img src="img/logo-192.png" class="hero-logo" alt="Transporte Caribe" /></span>
+                <div>
+                    <h1 class="hero-h1">Transporte Caribe</h1>
+                    <p class="hero-p">Plataforma de gestión de mudanzas — oficina, conductores y clientes en un solo sitio.</p>
+                </div>
+            </div>
+            <div class="alert alert-info">
+                Inicia sesión para gestionar tus mudanzas.
+                <a href="Account/Login" class="alert-link">Entrar</a> ·
+                <a href="Account/Register" class="alert-link">Crear cuenta</a> ·
+                <a href="/terms" class="alert-link">Términos de Servicio</a>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    // Nombre amable para el saludo: la parte antes de la @ del email, capitalizada
+    // (admin@system.com → "Admin"). Cambia a DisplayName si prefieres el nombre real.
+    private static string Greeting(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var name = user.Identity?.Name ?? "";
+        var local = name.Contains('@') ? name[..name.IndexOf('@')] : name;
+        return string.IsNullOrWhiteSpace(local) ? "" : char.ToUpper(local[0]) + local[1..];
+    }
+}

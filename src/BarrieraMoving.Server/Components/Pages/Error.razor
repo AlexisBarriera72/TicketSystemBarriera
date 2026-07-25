@@ -1,0 +1,49 @@
+@page "/Error"
+@using System.Diagnostics
+@using BarrieraMoving.Server.Components.Public
+@layout BarrieraMoving.Server.Components.Layout.PublicLayout
+
+<PageTitle>Algo salió mal | PR Transporte Caribe</PageTitle>
+
+<section class="section">
+    <div class="wrap" style="max-width:640px;text-align:center">
+        <p class="eyebrow">Error inesperado</p>
+        <h1 style="font-size:clamp(2rem,5vw,3rem);margin-bottom:1rem">Algo salió mal por nuestra parte</h1>
+        <p class="lead" style="margin-inline:auto">
+            No pudimos completar tu solicitud. No es culpa tuya — vuelve a intentarlo en
+            un momento, o llámanos y lo resolvemos contigo ahora mismo.
+        </p>
+
+        <div class="contact-cta" style="justify-content:center;margin-top:2rem">
+            <a class="btn btn-primary" href="@SiteInfo.TelHref">
+                <Icon Name="phone" Size="18" />@SiteInfo.PhoneDisplay
+            </a>
+            <a class="btn btn-wa" href="@SiteInfo.WaHref" target="_blank" rel="noopener">
+                <Icon Name="chat" Size="18" />WhatsApp
+            </a>
+        </div>
+
+        <p style="margin-top:1.75rem">
+            <a class="btn btn-ghost" href="/">Volver al inicio</a>
+        </p>
+
+        @if (ShowRequestId)
+        {
+            @* Solo como referencia si el cliente nos llama; no revela nada del sistema *@
+            <p class="muted" style="margin-top:2.5rem;font-size:.82rem">
+                Referencia: <code>@RequestId</code>
+            </p>
+        }
+    </div>
+</section>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

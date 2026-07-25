@@ -1,0 +1,639 @@
+@page "/orders/manage/{OrderId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject IOrderService OrderService
+@inject ITrackingService Tracking
+@inject ISignatureService SignatureService
+@inject IPaperworkService PaperworkService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+@implements IDisposable
+
+<div class="container mt-4">
+    @* ---Alertas --- *@
+    @if (!string.IsNullOrEmpty(feedbackMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> @feedbackMessage
+            <button type="button" class="btn-close" @onclick="() => feedbackMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (order == null)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando detalles de la orden...</p>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow border-0 mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 text-white">Orden #@order.Id: @order.Title</h4>
+                <span class="badge rounded-pill bg-light text-dark px-3 shadow-sm">@order.Status</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p class="text-muted small mb-1">Cliente: <strong>@(order.Author?.DisplayName ?? order.Author?.Email)</strong></p>
+                        <p class="text-muted small">Fecha: @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                        <hr />
+                        <p class="fs-5">@order.Description</p>
+
+                        @* Documentación de daños: antes (recogida) vs después (entrega) *@
+                        @if (pickupPhotos.Count > 0 || deliveryPhotos.Count > 0)
+                        {
+                            <div class="row mt-3 g-3">
+                                <div class="col-md-6">
+                                    <h6 class="text-muted small fw-bold text-uppercase">
+                                        <i class="bi bi-box-arrow-up"></i> Recogida (antes) — @pickupPhotos.Count
+                                    </h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var p in pickupPhotos)
+                                        {
+                                            <a href="/api/v1/photos/@p.Id" target="_blank" title="@p.CreatedAt.ToLocalTime()">
+                                                <img src="/api/v1/photos/@p.Id/thumb" alt="Foto de recogida"
+                                                     style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6" />
+                                            </a>
+                                        }
+                                        @if (pickupPhotos.Count == 0) { <span class="text-muted small">Sin fotos</span> }
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-muted small fw-bold text-uppercase">
+                                        <i class="bi bi-box-arrow-in-down"></i> Entrega (después) — @deliveryPhotos.Count
+                                    </h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var p in deliveryPhotos)
+                                        {
+                                            <a href="/api/v1/photos/@p.Id" target="_blank" title="@p.CreatedAt.ToLocalTime()">
+                                                <img src="/api/v1/photos/@p.Id/thumb" alt="Foto de entrega"
+                                                     style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6" />
+                                            </a>
+                                        }
+                                        @if (deliveryPhotos.Count == 0) { <span class="text-muted small">Sin fotos</span> }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (canBypassFlow)
+                        {
+                            @* Enlace de seguimiento para el cliente (sin login).
+                               Muestra SOLO estado y fecha; se puede desactivar. *@
+                            <div class="border rounded p-3 bg-light mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong class="small text-uppercase text-muted">Enlace de seguimiento para el cliente</strong>
+                                    @if (trackingUrl is null)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="CreateTrackingAsync">
+                                            <i class="bi bi-link-45deg"></i> Generar enlace
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="RevokeTrackingAsync">
+                                            Desactivar
+                                        </button>
+                                    }
+                                </div>
+                                @if (trackingUrl is not null)
+                                {
+                                    <input class="form-control form-control-sm" readonly value="@trackingUrl" />
+                                    <div class="form-text">
+                                        Compártelo por WhatsApp. Solo muestra el estado de la mudanza —
+                                        sin fotos, documentos ni direcciones. Caduca 30 días después de completarla.
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="form-text mb-0">Aún no has generado un enlace para esta orden.</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="col-md-4 border-start">
+                        <h6 class="text-muted small fw-bold text-uppercase">Información de Asignación</h6>
+                        <p class="mb-1">Conductor: <strong>@(order.AssignedDriver?.DisplayName ?? order.AssignedDriver?.Email ?? "No asignado")</strong></p>
+                        <p class="mb-1">Tipo: <span class="badge bg-light text-dark border">@order.Category?.Name</span></p>
+                        <p>Prioridad: <span class="badge bg-secondary">@order.Priority</span></p>
+                    </div>
+                </div>
+
+                @* --- Chat de la orden --- *@
+                <div class="mt-5">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-chat-square-text-fill me-1"></i> Canal de Comunicación
+                    </h6>
+                    <div class="bg-light p-3 rounded-3 shadow-inner mb-3"
+                         style="max-height: 400px; overflow-y: auto; border: 1px solid #e9ecef;">
+                        @if (canLoadOlder)
+                        {
+                            <div class="text-center mb-2">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadOlderAsync">
+                                    Cargar mensajes anteriores
+                                </button>
+                            </div>
+                        }
+                        @if (!messages.Any())
+                        {
+                            <p class="text-center text-muted py-4">No hay mensajes en esta orden aún.</p>
+                        }
+                        else
+                        {
+                            @foreach (var m in messages)
+                            {
+                                @if (m.IsSystem)
+                                {
+                                    @* MENSAJE DE SISTEMA / AUDITORÍA *@
+                                    <div class="text-center my-3">
+                                        <span class="badge rounded-pill bg-light text-muted border px-3">
+                                            <i class="bi bi-info-circle me-1"></i>@m.Content.Replace("[EVENTO]", "").Replace("[SISTEMA]", "")
+                                        </span>
+                                        <div style="font-size: 0.6rem;" class="text-muted mt-1">@m.CreatedAt.ToLocalTime().ToString("t")</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    bool isMe = m.UserId == currentUserId;
+                                    <div class="d-flex mb-3 @(isMe ? "justify-content-end" : "justify-content-start")">
+                                        <div class="shadow-sm rounded-3 @(isMe ? "bg-primary text-white" : "bg-white border")"
+                                             style="max-width: 80%; min-width: 200px; padding: 12px;">
+
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <span>
+                                                    <span class="fw-bold small">@(m.User?.DisplayName ?? m.User?.Email)</span>
+                                                    @if (!string.IsNullOrEmpty(m.SenderRole))
+                                                    {
+                                                        <span class="badge @(isMe ? "bg-light text-dark" : RoleBadgeClass(m.SenderRole)) ms-1"
+                                                              style="font-size: 0.6rem;">@RoleNames.DisplayLabel(m.SenderRole)</span>
+                                                    }
+                                                </span>
+                                                <small class="opacity-75 ms-2" style="font-size: 0.7rem;">
+                                                    @m.CreatedAt.ToLocalTime().ToString("t")
+                                                </small>
+                                            </div>
+                                            <div class="text-break">@m.Content</div>
+                                            @if (m.AttachmentPath is not null)
+                                            {
+                                                @* Miniatura inline → clic abre la foto completa (mismo ACL, cookie) *@
+                                                <a href="/api/v1/photos/@m.Id" target="_blank">
+                                                    <img src="/api/v1/photos/@m.Id/thumb" alt="Foto adjunta"
+                                                         class="rounded mt-2 d-block" style="max-width: 200px;" />
+                                                </a>
+                                            }
+                                            @if (m.Latitude is not null && m.Longitude is not null)
+                                            {
+                                                <a class="small @(isMe ? "text-white-50" : "text-muted")" target="_blank"
+                                                   href="https://maps.google.com/?q=@m.Latitude,@m.Longitude">
+                                                    📍 Ver ubicación
+                                                </a>
+                                            }
+                                            @if (m.CapturedAtUtc is not null &&
+                                                 (m.CreatedAt - m.CapturedAtUtc.Value) > TimeSpan.FromMinutes(5))
+                                            {
+                                                <div class="small @(isMe ? "text-white-50" : "text-muted")" style="font-size: 0.65rem;">
+                                                    ⏱ Capturado @m.CapturedAtUtc.Value.ToLocalTime().ToString("HH:mm"),
+                                                    entregado @m.CreatedAt.ToLocalTime().ToString("HH:mm") (estaba sin conexión)
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        }
+                    </div>
+                    <div class="input-group shadow-sm">
+                        <input type="text" class="form-control" placeholder="Escribir mensaje..."
+                               @bind="newMessageContent" @onkeyup="@(e => e.Key == "Enter" ? SendMessage() : Task.CompletedTask)" />
+                        <button class="btn btn-primary px-4" @onclick="SendMessage">
+                            Enviar <i class="bi bi-send-fill ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @* --- PAPELEO OBLIGATORIO (parte del paquete firmado; sin borrado) --- *@
+                <div class="mt-5">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-clipboard-check me-1"></i> Papeleo Obligatorio
+                    </h6>
+                    @foreach (var (slot, doc) in paperworkState)
+                    {
+                        <div class="border rounded-3 p-2 mb-2 bg-white shadow-sm d-flex justify-content-between align-items-center flex-wrap">
+                            <span class="small">
+                                <strong>@slot.Label</strong>
+                                @if (doc is null)
+                                {
+                                    <span class="badge bg-secondary ms-2">Pendiente</span>
+                                }
+                                else if (doc.Status == PaperworkStatus.Attached)
+                                {
+                                    <span class="badge bg-success ms-2">Adjunto</span>
+                                    <span class="text-muted ms-2">@doc.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                                }
+                                else if (doc.Status == PaperworkStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger ms-2">Rechazado</span>
+                                    <span class="text-danger ms-2">@doc.RejectReason</span>
+                                }
+                            </span>
+                            <span>
+                                @if (doc is not null)
+                                {
+                                    <a class="btn btn-sm btn-outline-primary me-1" target="_blank"
+                                       href="/api/v1/paperwork/@doc.Id/file">Ver</a>
+                                }
+                                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="pwCtx">
+                                    @if (doc?.Status == PaperworkStatus.Attached)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => RejectPaperworkAsync(doc.Id, slot.Label)">✖ Rechazar</button>
+                                    }
+                                </AuthorizeView>
+                            </span>
+                        </div>
+                    }
+                    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="pwReasonCtx">
+                        <input class="form-control form-control-sm mt-1" style="max-width: 420px;"
+                               placeholder="Motivo del rechazo de papeleo (obligatorio antes de pulsar Rechazar)"
+                               @bind="pwRejectReason" />
+                    </AuthorizeView>
+                </div>
+
+                @* --- DOCUMENTOS DE FIRMA (registros legales; sin borrado) --- *@
+                <div class="mt-4">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-pen-fill me-1"></i> Documentos de Firma
+                    </h6>
+                    @if (!documents.Any())
+                    {
+                        <p class="text-muted small">Aún no hay documentos de firma en esta orden.</p>
+                    }
+                    else
+                    {
+                        @foreach (var doc in documents)
+                        {
+                            <div class="border rounded-3 p-3 mb-2 bg-white shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                    <span>
+                                        <span class="badge @DocBadgeClass(doc.Status)">@DocStatusLabel(doc.Status)</span>
+                                        @if (doc.IsProvisional)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-1"
+                                                  title="Firmado en el dispositivo sin conexión — evidencia provisional, verificar con especial cuidado">PROVISIONAL</span>
+                                        }
+                                        <span class="ms-2 small">@(doc.SignerName ?? "—")</span>
+                                        @if (doc.SignedAtUtc is not null)
+                                        {
+                                            <span class="text-muted small ms-2">firmado @doc.SignedAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                                        }
+                                    </span>
+                                    <span>
+                                        @if (doc.PdfPath is not null)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary me-1" target="_blank"
+                                               href="/api/v1/documents/@doc.Id/pdf">📄 Ver PDF</a>
+                                        }
+                                    </span>
+                                </div>
+                                @if (doc.Status == SignatureDocStatus.Rejected)
+                                {
+                                    <div class="alert alert-danger py-1 px-2 mt-2 mb-0 small">
+                                        Rechazado por @(doc.ReviewedBy?.DisplayName ?? doc.ReviewedBy?.Email):
+                                        <strong>@doc.RejectReason</strong> — el conductor debe repetir la firma.
+                                    </div>
+                                }
+                                @if (doc.Status == SignatureDocStatus.Approved)
+                                {
+                                    <div class="text-success small mt-1">
+                                        ✔ Aprobado por @(doc.ReviewedBy?.DisplayName ?? doc.ReviewedBy?.Email)
+                                        el @doc.ReviewedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm")
+                                    </div>
+                                }
+                                <div class="small text-muted mt-1">
+                                    Copia al cliente:
+                                    @(doc.EmailStatus switch
+                                    {
+                                        EmailDeliveryStatus.Sent => "✔ enviada",
+                                        EmailDeliveryStatus.Failed => $"❌ fallo: {doc.EmailError}",
+                                        EmailDeliveryStatus.NotConfigured => "⚠ sin servicio de correo configurado",
+                                        _ => "no enviada"
+                                    })
+                                    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="emailCtx">
+                                        @if (doc.EmailStatus != EmailDeliveryStatus.Sent && doc.PdfPath is not null)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary py-0 ms-2"
+                                                    @onclick="() => ResendEmailAsync(doc.Id)">Reenviar</button>
+                                        }
+                                    </AuthorizeView>
+                                </div>
+                                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="reviewCtx">
+                                    @if (doc.Status == SignatureDocStatus.Signed)
+                                    {
+                                        <div class="mt-2 d-flex gap-2 flex-wrap align-items-center">
+                                            <button class="btn btn-sm btn-success" @onclick="() => ApproveDocAsync(doc.Id)">
+                                                ✔ Aprobar
+                                            </button>
+                                            <input class="form-control form-control-sm" style="max-width: 320px;"
+                                                   placeholder="Motivo del rechazo (obligatorio)" @bind="rejectReason" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RejectDocAsync(doc.Id)">
+                                                ✖ Rechazar
+                                            </button>
+                                        </div>
+                                    }
+                                </AuthorizeView>
+                            </div>
+                        }
+                    }
+                </div>
+
+                @* --- ACCIONES DE STAFF (PROTEGIDAS) --- *@
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office},{Roles.Driver}")">
+                    <Authorized>
+                        <div class="row mt-5 bg-light p-4 rounded-3 border">
+                            <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staffCtx">
+                                <div class="col-md-5 border-end">
+                                    <h6 class="text-uppercase small fw-bold text-muted mb-3">
+                                        Oficina: Asignación de Conductor
+                                    </h6>
+                                    <select class="form-select mb-2 shadow-sm" @bind="selectedDriverId">
+                                        <option value="">-- Seleccionar Conductor --</option>
+                                        @foreach (var driver in drivers)
+                                        {
+                                            <option value="@driver.Id">@(driver.DisplayName ?? driver.Email)</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-success w-100 shadow-sm" @onclick="AssignDriver">
+                                        <i class="bi bi-person-check"></i> Confirmar Asignación
+                                    </button>
+                                </div>
+                            </AuthorizeView>
+
+                            <div class="col-md-7 ps-4">
+                                <h6 class="text-uppercase small fw-bold text-muted mb-3">
+                                    Control de Estados (Conductor)
+                                </h6>
+                                <div class="btn-group w-100 shadow-sm">
+                                    @if (order.Status == OrderStatus.Requested)
+                                    {
+                                        <div class="alert alert-secondary w-100 mb-0 py-2 text-center">
+                                            <i class="bi bi-hourglass-split"></i> Esperando asignación de conductor.
+                                        </div>
+                                    }
+                                    @if (order.Status == OrderStatus.Assigned)
+                                    {
+                                        <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(OrderStatus.EnRoute)">
+                                            <i class="bi bi-truck"></i> Salir en Camino
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.EnRoute)
+                                    {
+                                        <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(OrderStatus.InProgress)">
+                                            <i class="bi bi-play-fill"></i> Llegué — Iniciar Trabajo
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.InProgress)
+                                    {
+                                        <button class="btn btn-primary py-2" @onclick="() => UpdateStatus(OrderStatus.PendingSignature)">
+                                            <i class="bi bi-pen"></i> Solicitar Firma del Cliente
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.PendingSignature)
+                                    {
+                                        @* Fase 6 añadirá el gate: no se puede completar sin documento firmado y aprobado *@
+                                        <button class="btn btn-success py-2" @onclick="() => UpdateStatus(OrderStatus.Completed)">
+                                            <i class="bi bi-check-all"></i> Marcar como Completada
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.Completed)
+                                    {
+                                        <div class="alert alert-info w-100 mb-0 py-2 text-center">
+                                            <i class="bi bi-lock-fill"></i> La orden está completada.
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+            </div>
+        </div>
+    }
+</div>
+@code {
+    [Parameter] public int OrderId { get; set; }
+    private Order? order;
+    private List<ApplicationUser> drivers = [];
+    private List<Message> messages = [];
+
+    // Galerías antes/después. Se derivan de los mensajes ya cargados: sin consulta extra.
+    private List<Message> pickupPhotos =>
+        messages.Where(m => m.AttachmentPath is not null && m.Stage == PhotoStage.Pickup)
+                .OrderBy(m => m.CreatedAt).ToList();
+    private List<Message> deliveryPhotos =>
+        messages.Where(m => m.AttachmentPath is not null && m.Stage == PhotoStage.Delivery)
+                .OrderBy(m => m.CreatedAt).ToList();
+    private string selectedDriverId = "";
+    private string newMessageContent = "";
+    private string currentUserId = "";
+    private string feedbackMessage = "";
+    private bool canBypassFlow = false; // Admin/Oficina pueden saltarse el flujo normal de estados
+    private string? myRole;
+    private string? trackingUrl;
+    private bool canLoadOlder;
+    private System.Threading.Timer? pollTimer;
+
+    private string BuildTrackingUrl(string token) =>
+        $"{Navigation.BaseUri.TrimEnd('/')}/seguimiento/{token}";
+
+    private async Task CreateTrackingAsync()
+    {
+        var token = await Tracking.EnsureTokenAsync(OrderId);
+        trackingUrl = token is null ? null : BuildTrackingUrl(token);
+    }
+
+    private async Task RevokeTrackingAsync()
+    {
+        await Tracking.RevokeAsync(OrderId);
+        trackingUrl = null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        canBypassFlow = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
+        myRole = Roles.PrimaryRole(user); // se congela en cada mensaje enviado
+
+        await LoadData();
+
+        if (canBypassFlow)
+        {
+            var existing = await Tracking.GetTokenAsync(OrderId);
+            trackingUrl = existing is null ? null : BuildTrackingUrl(existing);
+        }
+
+        // Solo el autor (cliente), el staff (Admin/Oficina) o el conductor pueden ver la orden
+        bool isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office) || user.IsInRole(Roles.Driver);
+        if (!isStaff && order?.AuthorId != currentUserId)
+        {
+            Navigation.NavigateTo("/orders/my-list");
+            return;
+        }
+
+        // Polling delta cada 5 s: la oficina ve los mensajes del conductor sin recargar
+        pollTimer = new System.Threading.Timer(
+            _ => _ = InvokeAsync(PollNewMessagesAsync), null,
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private List<SignatureDocument> documents = [];
+    private List<(PaperworkSlot Slot, PaperworkDocument? Doc)> paperworkState = [];
+    private string rejectReason = "";
+    private string pwRejectReason = "";
+
+    private async Task LoadData()
+    {
+        order = await OrderService.GetOrderByIdAsync(OrderId);
+        drivers = await OrderService.GetDriversAsync();
+        messages = await OrderService.GetMessagesAsync(OrderId); // últimos 50
+        canLoadOlder = messages.Count >= 50;
+        documents = await SignatureService.GetForOrderAsync(OrderId);
+        var currentPw = await PaperworkService.GetCurrentBySlotAsync(OrderId);
+        paperworkState = PaperworkService.GetSlots()
+            .Select(s => (s, currentPw.GetValueOrDefault(s.Key)))
+            .ToList();
+        if (order?.AssignedDriverId != null) selectedDriverId = order.AssignedDriverId;
+    }
+
+    private async Task RejectPaperworkAsync(int documentId, string label)
+    {
+        var (ok, error) = await PaperworkService.RejectAsync(documentId, currentUserId, pwRejectReason);
+        feedbackMessage = ok
+            ? $"'{label}' rechazado: el conductor verá el motivo. Si había firma, queda invalidada (habrá que re-firmar)."
+            : (error ?? "No se pudo rechazar.");
+        if (ok) pwRejectReason = "";
+        await LoadData();
+    }
+
+    private async Task ApproveDocAsync(int documentId)
+    {
+        var (ok, error) = await SignatureService.ApproveAsync(documentId, currentUserId);
+        feedbackMessage = ok ? "Documento aprobado: la orden ya puede completarse." : (error ?? "No se pudo aprobar.");
+        await LoadData();
+    }
+
+    private async Task RejectDocAsync(int documentId)
+    {
+        var (ok, error) = await SignatureService.RejectAsync(documentId, currentUserId, rejectReason);
+        feedbackMessage = ok ? "Documento rechazado: el conductor verá el motivo." : (error ?? "No se pudo rechazar.");
+        if (ok) rejectReason = "";
+        await LoadData();
+    }
+
+    private async Task ResendEmailAsync(int documentId)
+    {
+        var (ok, error) = await SignatureService.ResendEmailAsync(documentId);
+        feedbackMessage = ok ? "Copia enviada al cliente." : (error ?? "No se pudo enviar el correo.");
+        await LoadData();
+    }
+
+    private static string DocStatusLabel(SignatureDocStatus status) => status switch
+    {
+        SignatureDocStatus.AwaitingSignature => "Esperando firma",
+        SignatureDocStatus.Signed => "Firmado — por revisar",
+        SignatureDocStatus.Approved => "Aprobado",
+        SignatureDocStatus.Rejected => "Rechazado",
+        _ => status.ToString()
+    };
+
+    private static string DocBadgeClass(SignatureDocStatus status) => status switch
+    {
+        SignatureDocStatus.AwaitingSignature => "bg-secondary",
+        SignatureDocStatus.Signed => "bg-primary",
+        SignatureDocStatus.Approved => "bg-success",
+        SignatureDocStatus.Rejected => "bg-danger",
+        _ => "bg-light text-dark border"
+    };
+
+    private async Task PollNewMessagesAsync()
+    {
+        try
+        {
+            var lastId = messages.Count > 0 ? messages[^1].Id : 0;
+            var fresh = await OrderService.GetMessagesAsync(OrderId, take: 200, afterId: lastId);
+            if (fresh.Count > 0)
+            {
+                messages.AddRange(fresh);
+                StateHasChanged();
+            }
+        }
+        catch (Exception)
+        {
+            // fallo transitorio: el siguiente tick lo reintenta
+        }
+    }
+
+    private async Task LoadOlderAsync()
+    {
+        if (messages.Count == 0) return;
+        var older = await OrderService.GetMessagesAsync(OrderId, take: 50, beforeId: messages[0].Id);
+        messages.InsertRange(0, older);
+        canLoadOlder = older.Count >= 50;
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(newMessageContent) || string.IsNullOrEmpty(currentUserId)) return;
+
+        var message = new Message
+        {
+            Content = newMessageContent.Trim(),
+            OrderId = OrderId,
+            UserId = currentUserId,
+            CreatedAt = DateTime.UtcNow,
+            SenderRole = myRole,
+            IsSystem = false
+        };
+
+        await OrderService.AddMessageAsync(message);
+        newMessageContent = "";
+        await PollNewMessagesAsync(); // añade el mío y cualquier otro nuevo
+    }
+
+    private static string RoleBadgeClass(string? role) => role switch
+    {
+        Roles.Admin => "bg-dark",
+        Roles.Office => "bg-primary",
+        Roles.Driver => "bg-warning text-dark",
+        Roles.Client => "bg-secondary",
+        _ => "bg-light text-dark border"
+    };
+
+    public void Dispose() => pollTimer?.Dispose();
+
+    private async Task AssignDriver()
+    {
+        if (string.IsNullOrEmpty(selectedDriverId)) return;
+
+        // El servicio avanza automáticamente Requested → Assigned al asignar conductor
+        var (ok, error) = await OrderService.UpdateOrderStatusAsync(OrderId, order!.Status, selectedDriverId, currentUserId);
+
+        feedbackMessage = ok ? "Conductor asignado a la orden." : (error ?? "No se pudo asignar el conductor.");
+        await LoadData();
+    }
+
+    private async Task UpdateStatus(OrderStatus status)
+    {
+        var (ok, error) = await OrderService.UpdateOrderStatusAsync(OrderId, status, null, currentUserId, canBypassFlow);
+
+        // El error del gate de firma es accionable: dice exactamente qué falta
+        feedbackMessage = ok ? $"Estado actualizado a {status}." : (error ?? "Transición de estado no permitida.");
+        await LoadData();
+    }
+}

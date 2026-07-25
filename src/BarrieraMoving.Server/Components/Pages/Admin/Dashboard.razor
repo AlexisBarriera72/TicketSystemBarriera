@@ -1,0 +1,325 @@
+@page "/admin/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@inject IOrderService OrderService
+@inject IReportService ReportService
+@inject ITimeService TimeService
+@inject ISignatureService SignatureService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = Roles.Admin + "," + Roles.Office)]
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard - Transporte Caribe</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-speedometer2"></i> Panel Administrativo</h3>
+    <span class="text-muted">Métricas de operación en tiempo real</span>
+    @* Descarga nativa del navegador: no pasa por SignalR ni por Base64 *@
+    <a class="btn btn-outline-success" href="/admin/reports/ordenes.xlsx">
+        <i class="bi bi-file-earmark-excel"></i> Exportar Reporte
+    </a>
+</div>
+
+    @* ---- SECCIÓN DE ESTADÍSTICAS ---- *@
+    <div class="row g-3 mb-5">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Total Órdenes</h6>
+                    <h2 class="display-6 fw-bold">@stats["Total"]</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Activas</h6>
+                    <h2 class="display-6 fw-bold">@stats["Active"]</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-dark border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Esperando Firma</h6>
+                    <h2 class="display-6 fw-bold">@stats["PendingSignature"]</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-uppercase opacity-75 small">Completadas</h6>
+                    <h2 class="display-6 fw-bold">@stats["Completed"]</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ---- FIRMAS PENDIENTES DE REVISIÓN (bloquean el cierre de sus órdenes) ---- *@
+    @if (pendingDocs.Any())
+    {
+        <div class="card border-primary shadow-sm mb-4">
+            <div class="card-header bg-primary text-white py-2">
+                <strong>✍ @pendingDocs.Count documento(s) firmados esperando revisión</strong>
+                — sus órdenes no pueden completarse hasta aprobarlos
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm align-middle mb-0">
+                    <tbody>
+                        @foreach (var doc in pendingDocs)
+                        {
+                            <tr>
+                                <td class="ps-3">Orden #@doc.OrderId — @doc.Order?.Title</td>
+                                <td>@doc.SignerName</td>
+                                <td>@doc.SignedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                <td>
+                                    @if (doc.IsProvisional)
+                                    {
+                                        <span class="badge bg-warning text-dark">PROVISIONAL</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-sm btn-primary"
+                                            @onclick="@(() => Navigation.NavigateTo($"/orders/manage/{doc.OrderId}"))">
+                                        Revisar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ---- FICHAJES: quién está trabajando ahora ---- *@
+    <div class="row g-3 mb-4">
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 text-secondary"><i class="bi bi-clock-fill text-success"></i> Trabajando Ahora</h5>
+                </div>
+                <div class="card-body p-0">
+                    @if (!activeEntries.Any())
+                    {
+                        <p class="text-muted text-center py-4 mb-0">Nadie está fichado en este momento.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr><th class="ps-3">Empleado</th><th>Entrada</th><th>Tiempo</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in activeEntries)
+                                {
+                                    <tr>
+                                        <td class="ps-3 fw-bold">@(entry.User?.DisplayName ?? entry.User?.Email)</td>
+                                        <td>@entry.ClockInUtc.ToLocalTime().ToString("HH:mm")</td>
+                                        <td><span class="badge bg-success">@FormatElapsed(DateTime.UtcNow - entry.ClockInUtc)</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 text-secondary"><i class="bi bi-calendar-week"></i> Fichajes Recientes (7 días)</h5>
+                </div>
+                <div class="card-body p-0" style="max-height: 320px; overflow-y: auto;">
+                    @if (!recentEntries.Any())
+                    {
+                        <p class="text-muted text-center py-4 mb-0">Sin fichajes esta semana.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr><th class="ps-3">Empleado</th><th>Entrada</th><th>Salida</th><th>Horas</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in recentEntries)
+                                {
+                                    <tr>
+                                        <td class="ps-3">@(entry.User?.DisplayName ?? entry.User?.Email)</td>
+                                        <td>
+                                            @entry.ClockInUtc.ToLocalTime().ToString("dd/MM HH:mm")
+                                            @if (IsDeferred(entry.ClockInUtc, entry.ClockInCapturedAtUtc))
+                                            {
+                                                <span class="badge bg-warning text-dark ms-1"
+                                                      title="Fichaje entregado con retraso (cola offline). Pulsado en el dispositivo a las @entry.ClockInCapturedAtUtc!.Value.ToLocalTime().ToString("HH:mm") — la hora de nómina es la de recepción; verificar.">Diferido</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (entry.ClockOutUtc is null)
+                                            {
+                                                <span class="badge bg-success">Abierta</span>
+                                            }
+                                            else
+                                            {
+                                                @entry.ClockOutUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")
+                                                @if (entry.AutoClosed)
+                                                {
+                                                    <span class="badge bg-danger ms-1" title="Cerrada automáticamente al tope máximo — verificar horas reales">Auto</span>
+                                                }
+                                                @if (IsDeferred(entry.ClockOutUtc.Value, entry.ClockOutCapturedAtUtc))
+                                                {
+                                                    <span class="badge bg-warning text-dark ms-1"
+                                                          title="Salida entregada con retraso (cola offline). Pulsada en el dispositivo a las @entry.ClockOutCapturedAtUtc!.Value.ToLocalTime().ToString("HH:mm") — verificar.">Diferido</span>
+                                                }
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (entry.ClockOutUtc is not null)
+                                            {
+                                                @Math.Round((entry.ClockOutUtc.Value - entry.ClockInUtc).TotalHours, 2)
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ---- TABLA DE GESTIÓN ---- *@
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 text-secondary">Todas las Órdenes</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Título</th>
+                            <th>Cliente</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Conductor</th>
+                            <th>Papeleo</th>
+                            <th>Firma</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in allOrders)
+                        {
+                            <tr>
+                                <td class="fw-bold">@order.Title</td>
+                                <td>@(order.Author?.DisplayName ?? order.Author?.Email)</td>
+                                <td>
+                                    <span class="badge rounded-pill bg-light text-dark border">
+                                        @order.Category?.Name
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(order.Status)">
+                                        @order.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (order.AssignedDriver != null)
+                                    {
+                                        <span class="text-primary">
+                                            <i class="bi bi-person-check"></i>
+                                            @(order.AssignedDriver.DisplayName ?? order.AssignedDriver.Email)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted italic">Sin asignar</span>
+                                    }
+                                </td>
+                                <td>
+                                    @{ var summary = docSummaries.GetValueOrDefault(order.Id); }
+                                    <span class="badge @(summary?.PaperworkComplete == true ? "bg-success" : "bg-secondary")">
+                                        @(summary?.PaperworkAttached ?? 0)/@(summary?.PaperworkRequired ?? requiredSlotCount)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (summary?.SignatureStatus is { } sig)
+                                    {
+                                        <span class="badge @SigBadge(sig)">@sig</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">—</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-primary shadow-sm"
+                                            @onclick="@(() => Navigation.NavigateTo($"/orders/manage/{order.Id}"))">
+                                        <i class="bi bi-gear-fill"></i> Gestionar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+@code {
+    private List<Order> allOrders = new();
+    private Dictionary<string, int> stats = new()
+    {
+        ["Total"] = 0,
+        ["Active"] = 0,
+        ["PendingSignature"] = 0,
+        ["Completed"] = 0,
+        ["Urgent"] = 0
+    };
+
+    private List<TimeEntry> activeEntries = [];
+    private List<TimeEntry> recentEntries = [];
+    private List<SignatureDocument> pendingDocs = [];
+    private Dictionary<int, OrderDocSummary> docSummaries = [];
+    private int requiredSlotCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allOrders = await OrderService.GetAllOrdersAsync();
+        stats = await ReportService.GetOrderStatsAsync();
+        activeEntries = await TimeService.GetActiveEntriesAsync();
+        recentEntries = await TimeService.GetRecentEntriesAsync(days: 7);
+        pendingDocs = await SignatureService.GetPendingReviewAsync();
+        docSummaries = await ReportService.GetOrderDocSummariesAsync();
+    }
+
+    private static string SigBadge(SignatureDocStatus s) => s switch
+    {
+        SignatureDocStatus.Approved => "bg-success",
+        SignatureDocStatus.Signed => "bg-primary",
+        SignatureDocStatus.Rejected => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string FormatElapsed(TimeSpan elapsed) =>
+        elapsed.TotalHours >= 1 ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m" : $"{elapsed.Minutes}m";
+
+    // Fichaje de la cola offline entregado tarde: la hora del servidor (nómina) y la
+    // del dispositivo difieren — la oficina debe verlo y decidir
+    private static bool IsDeferred(DateTime serverUtc, DateTime? capturedUtc) =>
+        capturedUtc is not null && (serverUtc - capturedUtc.Value).Duration() > TimeSpan.FromMinutes(5);
+
+    private string GetStatusBadgeClass(OrderStatus status) => status switch
+    {
+        OrderStatus.Requested => "bg-info text-dark",
+        OrderStatus.Assigned => "bg-secondary",
+        OrderStatus.EnRoute => "bg-warning text-dark",
+        OrderStatus.InProgress => "bg-warning text-dark",
+        OrderStatus.PendingSignature => "bg-primary",
+        OrderStatus.Completed => "bg-success",
+        _ => "bg-secondary"
+    };
+
+}

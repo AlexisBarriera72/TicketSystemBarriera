@@ -1,0 +1,14 @@
+@page "/terms"
+@using BarrieraMoving.Shared
+
+<PageTitle>Términos de Servicio | Transporte Caribe</PageTitle>
+
+<div class="container mt-4" style="max-width: 800px;">
+    <h3 class="mb-3"><i class="bi bi-file-earmark-text"></i> Términos de Servicio</h3>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">@LegalText.TermsOfService</pre>
+        </div>
+    </div>
+    <p class="text-muted small mt-2">Versión: @LegalText.TermsVersion</p>
+</div>

@@ -361,3 +361,17 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Fotos subidas en desarrollo (servidas solo por la API con ACL)
+src/BarrieraMoving.Server/App_Data/
+
+# Firebase / FCM SERVER credential — the service-account private key is a secret.
+# It lives in user-secrets / env vars, NEVER in git. (google-services.json is
+# client config that ships inside the APK, so that one is fine to track.)
+*firebase-adminsdk*.json
+**/firebase-service-account*.json
+**/serviceAccountKey.json
+
+# Artefactos de despliegue (nunca dentro del proyecto: el build los tomaría como fuentes)
+_deploy/
+deploy.zip
+publish/

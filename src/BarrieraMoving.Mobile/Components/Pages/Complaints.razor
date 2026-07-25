@@ -1,0 +1,157 @@
+@page "/complaints"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="page-head">
+    <span class="page-title-icon">
+        <i class="bi bi-headset"></i>
+        <h4>Atención al Cliente</h4>
+    </span>
+</div>
+<p class="page-sub">Cuéntanos qué ocurrió y nuestro equipo te ayudará.</p>
+
+@if (feedback is not null)
+{
+    <div class="alert alert-success py-2">@feedback</div>
+}
+
+<div class="form-card mb-3">
+    <div class="form-card-head">
+        <span class="card-badge b-blue"><i class="bi bi-pencil-square"></i></span>
+        <div>
+            <div class="card-title">Nueva reclamación</div>
+            <div class="card-sub">Describe el problema con el mayor detalle posible.</div>
+        </div>
+    </div>
+
+    <label class="field-label">Asunto</label>
+    <div class="input-group mb-2">
+        <span class="input-group-text"><i class="bi bi-pencil"></i></span>
+        <input class="form-control" @bind="subject" placeholder="Resumen breve" disabled="@busy" />
+    </div>
+
+    <label class="field-label">Descripción</label>
+    <div class="input-group mb-2">
+        <span class="input-group-text align-items-start pt-2"><i class="bi bi-file-text"></i></span>
+        <textarea class="form-control" rows="3" @bind="description"
+                  placeholder="Cuéntanos qué ocurrió" disabled="@busy"></textarea>
+    </div>
+
+    @if (error is not null)
+    {
+        <div class="alert alert-warning py-2">@error</div>
+    }
+    <button class="btn btn-primary w-100 send-btn" @onclick="SubmitAsync" disabled="@busy">
+        <i class="bi bi-send"></i> @(busy ? "Enviando..." : "Enviar reclamación")
+    </button>
+</div>
+
+<div class="section-head">
+    <i class="bi bi-clipboard-check"></i><span>Mis reclamaciones</span>
+</div>
+@if (loading)
+{
+    <div class="text-center p-3"><div class="spinner-border text-primary" role="status"></div></div>
+}
+else if (!complaints.Any())
+{
+    <p class="text-muted small">Aún no has enviado reclamaciones.</p>
+}
+else
+{
+    @foreach (var c in complaints)
+    {
+        <div class="list-card" style="cursor: default; align-items: flex-start;">
+            <div class="card-main">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center" style="gap: 0.5rem;">
+                        <span class="status-pill @StatusPill(c.Status)">@StatusLabel(c.Status)</span>
+                        <strong class="card-title">@c.Subject</strong>
+                    </span>
+                    <small class="card-sub">@c.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</small>
+                </div>
+                <p class="card-sub mb-1 mt-1" style="white-space: pre-wrap;">@c.Description</p>
+                @if (!string.IsNullOrEmpty(c.OfficeResponse))
+                {
+                    <div class="office-reply"><strong>Respuesta:</strong> @c.OfficeResponse</div>
+                }
+            </div>
+        </div>
+    }
+}
+
+<div class="info-callout">
+    <i class="bi bi-info-circle-fill"></i>
+    <span>Puedes ver el estado de todas tus reclamaciones y nuestro equipo te dará seguimiento.</span>
+</div>
+
+@code {
+    private List<ComplaintDto> complaints = [];
+    private string subject = "";
+    private string description = "";
+    private bool loading = true;
+    private bool busy;
+    private string? error;
+    private string? feedback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await Auth.IsLoggedInAsync()) { Nav.NavigateTo("/login"); return; }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        try { complaints = await Api.GetMyComplaintsAsync(); }
+        catch (Exception) { }
+        loading = false;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (busy) return;
+        error = null;
+        if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(description))
+        {
+            error = "Escribe un asunto y una descripción.";
+            return;
+        }
+        busy = true;
+        StateHasChanged();
+        try
+        {
+            var (c, err) = await Api.CreateComplaintAsync(subject.Trim(), description.Trim());
+            if (err is not null) { error = err; }
+            else
+            {
+                subject = ""; description = "";
+                feedback = "Reclamación enviada. La oficina te responderá pronto.";
+                await LoadAsync();
+            }
+        }
+        catch (Exception)
+        {
+            error = "Sin conexión — no se pudo enviar. Inténtalo de nuevo con red.";
+        }
+        busy = false;
+    }
+
+    private static string StatusLabel(ComplaintStatus s) => s switch
+    {
+        ComplaintStatus.Open => "Abierta",
+        ComplaintStatus.InReview => "En revisión",
+        ComplaintStatus.Resolved => "Resuelta",
+        _ => s.ToString()
+    };
+
+    private static string StatusPill(ComplaintStatus s) => s switch
+    {
+        ComplaintStatus.Open => "s-amber",
+        ComplaintStatus.InReview => "s-info",
+        ComplaintStatus.Resolved => "s-green",
+        _ => "s-gray"
+    };
+}

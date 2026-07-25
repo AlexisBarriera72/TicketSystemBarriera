@@ -1,0 +1,25 @@
+@page "/not-found"
+@using BarrieraMoving.Server.Components.Public
+@layout BarrieraMoving.Server.Components.Layout.PublicLayout
+
+<PageTitle>Página no encontrada | PR Transporte Caribe</PageTitle>
+
+<section class="section">
+    <div class="wrap" style="max-width:640px;text-align:center">
+        <p class="eyebrow">Error 404</p>
+        <h1 style="font-size:clamp(2rem,5vw,3rem);margin-bottom:1rem">No encontramos esa página</h1>
+        <p class="lead" style="margin-inline:auto">
+            Puede que el enlace esté roto o que la página haya cambiado de sitio.
+            Si buscabas una cotización, te la damos por teléfono en un minuto.
+        </p>
+
+        <div class="contact-cta" style="justify-content:center;margin-top:2rem">
+            <a class="btn btn-primary" href="/cotizacion">Cotización GRATIS<Icon Name="arrow" Size="18" /></a>
+            <a class="btn btn-ghost" href="@SiteInfo.TelHref"><Icon Name="phone" Size="18" />@SiteInfo.PhoneDisplay</a>
+        </div>
+
+        <p style="margin-top:1.75rem">
+            <a class="btn btn-ghost" href="/">Volver al inicio</a>
+        </p>
+    </div>
+</section>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Transporte Caribe</title>
+    <base href="/" />
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="lib/bootstrap-icons/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="BarrieraMoving.Mobile.styles.css" />
+    <link rel="icon" href="data:,">
+</head>
+
+<body>
+
+    <div class="status-bar-safe-area"></div>
+
+    <div id="app">Loading...</div>
+
+    <div id="blazor-error-ui" data-nosnippet>
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+
+    <script>
+        // Baja el hilo del chat al último mensaje (lo llama Chat.razor)
+        window.chatScrollToBottom = (el) => { if (el) { el.scrollTop = el.scrollHeight; } };
+
+        // Lienzo de firma para la ceremonia OFFLINE (Sign.razor). Solo captura los
+        // trazos: el valor probatorio lo aportan los metadatos que añade el servidor.
+        window.sigPad = {
+            _canvas: null, _ctx: null, _drawing: false, _dirty: false,
+            init(canvas) {
+                this._canvas = canvas;
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                canvas.style.touchAction = 'none';
+                const ctx = this._ctx = canvas.getContext('2d');
+                ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+                const pos = (e) => {
+                    const r = canvas.getBoundingClientRect();
+                    return { x: e.clientX - r.left, y: e.clientY - r.top };
+                };
+                canvas.addEventListener('pointerdown', e => {
+                    e.preventDefault();
+                    canvas.setPointerCapture(e.pointerId);
+                    this._drawing = true; this._dirty = true;
+                    const p = pos(e);
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 0.1, p.y + 0.1); ctx.stroke();
+                });
+                canvas.addEventListener('pointermove', e => {
+                    if (!this._drawing) return;
+                    e.preventDefault();
+                    const p = pos(e);
+                    ctx.lineTo(p.x, p.y); ctx.stroke();
+                });
+                const stop = () => { this._drawing = false; };
+                canvas.addEventListener('pointerup', stop);
+                canvas.addEventListener('pointercancel', stop);
+            },
+            clear() {
+                if (this._ctx) { this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height); this._dirty = false; }
+            },
+            isEmpty() { return !this._dirty; },
+            toPngBase64() {
+                if (!this._canvas || !this._dirty) return null;
+                const out = document.createElement('canvas');
+                out.width = this._canvas.width; out.height = this._canvas.height;
+                const octx = out.getContext('2d');
+                octx.fillStyle = '#fff'; octx.fillRect(0, 0, out.width, out.height);
+                octx.drawImage(this._canvas, 0, 0);
+                return out.toDataURL('image/png').split(',')[1];
+            }
+        };
+    </script>
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+
+</body>
+
+</html>

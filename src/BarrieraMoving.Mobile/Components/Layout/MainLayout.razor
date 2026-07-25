@@ -1,0 +1,149 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject AuthService Auth
+@inject ApiClient Api
+@inject NotificationState Notif
+@inject NavigationManager Nav
+@inject IPushRegistrar Push
+@inject DeepLinkState DeepLink
+
+<div class="app-shell">
+    @* /login trae su propia cabecera de marca a pantalla completa.
+       Se omite por completo (no basta con `hidden`: .d-flex lo sobreescribe). *@
+    @if (!isLoginPage)
+    {
+    <header class="app-header d-flex justify-content-between align-items-center px-3"
+            style="padding-top: max(env(safe-area-inset-top, 0px), @(topInset)px)">
+        <span class="brand fw-bold">
+            <img src="img/logo.png" class="brand-logo" alt="" />
+            Transporte Caribe
+        </span>
+        @if (isLoggedIn)
+        {
+            <div class="header-actions d-flex align-items-center">
+                <a class="icon-btn" href="/notifications" title="Notificaciones">
+                    <i class="bi bi-bell"></i>
+                    @if (Notif.Unread > 0)
+                    {
+                        <span class="badge-dot">@Notif.Unread</span>
+                    }
+                </a>
+                <button class="salir-btn" @onclick="LogoutAsync">Salir</button>
+            </div>
+        }
+    </header>
+    }
+
+    <main class="app-content @(isLoginPage ? "p-0" : "p-3")"
+          style="padding-bottom: calc(@(hasTabs ? "4.75rem" : "0rem") + max(0px, @(bottomInset)px))">
+        @Body
+    </main>
+
+    @if (hasTabs)
+    {
+        <nav class="bottom-nav" style="padding-bottom: max(env(safe-area-inset-bottom, 0px), @(bottomInset)px)">
+            <NavLink class="nav-tab" href="/" Match="NavLinkMatch.All">
+                <i class="bi bi-clipboard-check"></i><span>Órdenes</span>
+            </NavLink>
+
+            @if (isStaff)
+            {
+                <NavLink class="nav-tab" href="/clock">
+                    <i class="bi bi-clock-history"></i><span>Horas</span>
+                </NavLink>
+            }
+
+            <NavLink class="nav-tab" href="/dm">
+                <i class="bi bi-chat-dots"></i><span>Mensajes</span>
+            </NavLink>
+
+            <NavLink class="nav-tab" href="/complaints">
+                <i class="bi bi-headset"></i><span>Atención</span>
+            </NavLink>
+
+            @if (isManager)
+            {
+                <NavLink class="nav-tab" href="/team">
+                    <i class="bi bi-people"></i><span>Equipo</span>
+                </NavLink>
+            }
+        </nav>
+    }
+</div>
+
+@code {
+    private bool isLoggedIn;
+    private bool isStaff;
+    private bool isManager;
+    private double topInset;
+    private double bottomInset;
+    private bool subscribed;
+
+    // La barra inferior solo tiene sentido cuando hay sesión (los tabs navegan a
+    // rutas autenticadas). En login/terms no se muestra.
+    private bool hasTabs => isLoggedIn && !isLoginPage;
+
+    // /login dibuja su propia cabecera a sangre; la del layout estorba ahí.
+    private bool isLoginPage =>
+        Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/')
+           .StartsWith("login", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Insets del sistema (barra de estado/cámara y barra de gestos): ver SafeInsets
+        topInset = SafeInsets.TopCssPx();
+        bottomInset = SafeInsets.BottomCssPx();
+
+        Notif.Changed += OnNotifChanged;
+        DeepLink.Changed += OnDeepLink;   // push pulsada con la app ya abierta
+        subscribed = true;
+
+        // Sesión ya iniciada de arranques anteriores: re-registrar el token push
+        // y cargar el contador de notificaciones sin leer.
+        if (await Auth.IsLoggedInAsync())
+        {
+            _ = Push.RegisterAsync();
+            _ = Notif.RefreshAsync(Api);
+            NavigateFromPush();           // push pulsada con la app cerrada
+        }
+    }
+
+    // Abre la pantalla concreta que indicaba la notificación (chat, DM, orden…)
+    private void NavigateFromPush()
+    {
+        var route = DeepLink.Consume();
+        if (!string.IsNullOrEmpty(route)) Nav.NavigateTo(route);
+    }
+
+    private void OnDeepLink() => _ = InvokeAsync(async () =>
+    {
+        if (await Auth.IsLoggedInAsync()) NavigateFromPush();
+    });
+
+    private void OnNotifChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (subscribed)
+        {
+            Notif.Changed -= OnNotifChanged;
+            DeepLink.Changed -= OnDeepLink;
+        }
+    }
+
+    // Se ejecuta en cada navegación; mantiene el header y los tabs sincronizados
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoggedIn = await Auth.IsLoggedInAsync();
+        var user = isLoggedIn ? await Auth.GetCurrentUserAsync() : null;
+        isStaff = UserRoles.IsStaff(user);
+        isManager = UserRoles.IsManager(user);
+    }
+
+    private async Task LogoutAsync()
+    {
+        await Auth.LogoutAsync();
+        isLoggedIn = false;
+        Nav.NavigateTo("/login");
+    }
+}

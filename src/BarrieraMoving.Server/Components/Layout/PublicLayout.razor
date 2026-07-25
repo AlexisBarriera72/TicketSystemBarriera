@@ -1,0 +1,86 @@
+@inherits LayoutComponentBase
+@using BarrieraMoving.Server.Components.Public
+
+<header class="site-header">
+    <div class="wrap">
+        <a class="brand" href="/">
+            <img src="img/logo-96.png" alt="" width="42" height="42" />
+            <span>
+                <b>Transporte Caribe</b>
+                <span>Mudanzas · Puerto Rico</span>
+            </span>
+        </a>
+        <div class="header-actions">
+            <a class="header-phone" href="@SiteInfo.TelHref"><Icon Name="phone" Size="20" /><span>@SiteInfo.PhoneDisplay</span></a>
+            <a class="btn btn-ghost" href="@SiteInfo.WaHref" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="btn btn-outline-navy" href="/estado">Consultar mudanza</a>
+            <a class="btn btn-primary" href="/cotizacion">Cotización GRATIS</a>
+        </div>
+    </div>
+</header>
+
+<main>
+    @Body
+</main>
+
+<footer class="site-footer">
+    <div class="wrap">
+        <div class="footer-grid">
+            <div>
+                <div class="footer-brand">
+                    <img src="img/logo-96.png" alt="" width="44" height="44" />
+                    <b>Transporte Caribe</b>
+                </div>
+                <p>¡Tu mudanza sin estrés comienza aquí! Cuidamos de tus pertenencias como si fueran nuestras. Servicio en TODO Puerto Rico.</p>
+            </div>
+            <div>
+                <h4>Servicios</h4>
+                <div class="footer-links">
+                    <span>Mudanzas residenciales y comerciales</span>
+                    <span>Alquiler de camión con chofer</span>
+                    <span>Desmontaje y montaje</span>
+                    <span>Empaque · Entrega y recogido</span>
+                    <span>Transportación de mercancía</span>
+                </div>
+            </div>
+            <div>
+                <h4>Tu mudanza</h4>
+                <div class="footer-links">
+                    <a href="/cotizacion">Pedir cotización gratis</a>
+                    <a href="/estado">Consultar mi mudanza</a>
+                </div>
+            </div>
+            <div>
+                <h4>Contacto</h4>
+                <div class="footer-links">
+                    <a href="@SiteInfo.TelHref">@SiteInfo.PhoneDisplay</a>
+                    <a href="@SiteInfo.MailHref">@SiteInfo.Email</a>
+                    <span>@SiteInfo.Locality</span>
+                    <span>Abierto 24 horas · Cotizaciones gratis</span>
+                    <span>
+                        <a href="@SiteInfo.Facebook" target="_blank" rel="noopener">Facebook</a> ·
+                        <a href="@SiteInfo.Instagram" target="_blank" rel="noopener">Instagram</a>
+                    </span>
+                </div>
+            </div>
+        </div>
+        @* Acceso del personal: bloque propio, discreto pero claro — no un enlace suelto *@
+        <div class="portal-cta">
+            <div>
+                <strong>¿Ya nos conoces?</strong>
+                <span>Empleados, conductores y oficina: entra al portal para gestionar tus mudanzas.</span>
+            </div>
+            <a class="btn btn-portal" href="/portal">Ir al portal<Icon Name="arrow" Size="18" /></a>
+        </div>
+
+        <div class="footer-bottom">
+            <span>© @DateTime.Now.Year PR Transporte Caribe LLC. Todos los derechos reservados.</span>
+        </div>
+    </div>
+</footer>
+
+@* Barra fija de contacto en móvil *@
+<nav class="callbar" aria-label="Contacto rápido">
+    <a class="c-call" href="@SiteInfo.TelHref"><Icon Name="phone" Size="20" /> Llamar</a>
+    <a class="c-wa" href="@SiteInfo.WaHref" target="_blank" rel="noopener"><Icon Name="chat" Size="20" /> WhatsApp</a>
+</nav>
