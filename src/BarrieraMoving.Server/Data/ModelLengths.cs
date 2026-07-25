@@ -133,6 +133,7 @@ public static class ModelLengths
             e.Property(x => x.DestinationZone).HasMaxLength(Short);
             e.Property(x => x.PreferredDate).HasMaxLength(Short);
             e.Property(x => x.Details).HasMaxLength(Text);
+            e.Property(x => x.ReferenceCode).HasMaxLength(Role);
         });
     }
 }

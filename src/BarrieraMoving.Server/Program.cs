@@ -41,6 +41,7 @@ builder.Services.AddScoped<IComplaintService, ComplaintService>();
 builder.Services.AddScoped<INotificationFeedService, NotificationFeedService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
 builder.Services.AddScoped<ITrackingService, TrackingService>();
+builder.Services.AddScoped<IGuestLookupService, GuestLookupService>();
 builder.Services.AddScoped<TokenService>();
 
 // Correo saliente: SMTP (MailKit) si hay Email:Host en user-secrets; si no, el
@@ -151,19 +152,35 @@ builder.Services.AddRateLimiter(options =>
     // aparte al que colgar una policy con nombre.)
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(http =>
     {
-        var isQuotePost = HttpMethods.IsPost(http.Request.Method)
-            && http.Request.Path.StartsWithSegments("/cotizacion");
-
-        if (!isQuotePost) return RateLimitPartition.GetNoLimiter("sin-limite");
-
+        if (!HttpMethods.IsPost(http.Request.Method)) return RateLimitPartition.GetNoLimiter("sin-limite");
+        var path = http.Request.Path;
         var ip = http.Connection.RemoteIpAddress?.ToString() ?? "sin-ip";
-        return RateLimitPartition.GetFixedWindowLimiter($"cotizacion:{ip}",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(10),
-                QueueLimit = 0,
-            });
+
+        // Envío del formulario de cotización
+        if (path.StartsWithSegments("/cotizacion"))
+        {
+            return RateLimitPartition.GetFixedWindowLimiter($"cotizacion:{ip}",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(10),
+                    QueueLimit = 0,
+                });
+        }
+
+        // Consulta de invitados: sin límite se podrían probar códigos a lo bruto.
+        if (path.StartsWithSegments("/estado"))
+        {
+            return RateLimitPartition.GetFixedWindowLimiter($"estado:{ip}",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(10),
+                    QueueLimit = 0,
+                });
+        }
+
+        return RateLimitPartition.GetNoLimiter("sin-limite");
     });
 
     options.OnRejected = async (context, ct) =>

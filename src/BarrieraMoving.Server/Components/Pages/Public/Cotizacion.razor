@@ -9,6 +9,7 @@
 @using BarrieraMoving.Server.Services
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IAppEmailSender Email
+@inject IGuestLookupService Guest
 @inject ILogger<Cotizacion> Logger
 
 <HeadContent>
@@ -26,7 +27,13 @@
         {
             <div class="form-ok">
                 <h3 style="font-family:var(--sans);font-weight:700;color:var(--navy);margin:0 0 .4rem">¡Gracias! Recibimos tu solicitud.</h3>
-                <p style="margin:0">Te contactaremos pronto para darte el precio. Si es urgente, llámanos o escríbenos por WhatsApp ahora mismo.</p>
+                <p style="margin:0 0 1rem">Te contactaremos pronto para darte el precio. Si es urgente, llámanos o escríbenos por WhatsApp ahora mismo.</p>
+
+                <div class="ref-box">
+                    <span>Guarda este número de referencia</span>
+                    <strong>@sentCode</strong>
+                    <span>Con él y tu teléfono puedes <a href="/estado">consultar el estado de tu mudanza</a> cuando quieras, sin crear una cuenta.</span>
+                </div>
                 <div class="contact-cta" style="margin-top:1.2rem">
                     <a class="btn btn-navy" href="@SiteInfo.TelHref"><Icon Name="phone" Size="18" />@SiteInfo.PhoneDisplay</a>
                     <a class="btn btn-wa" href="@SiteInfo.WaHref" target="_blank" rel="noopener"><Icon Name="chat" Size="18" />WhatsApp</a>
@@ -94,12 +101,17 @@
 @code {
     [SupplyParameterFromForm] private QuoteForm Model { get; set; } = new();
     private bool sent;
+    private string? sentCode;
 
     private async Task SubmitAsync()
     {
         // 1) SIEMPRE se guarda en la BD — nunca se pierde un cliente aunque falle el correo
+        // Código de consulta para clientes SIN cuenta
+        var reference = await Guest.GenerateReferenceCodeAsync();
+
         var request = new QuoteRequest
         {
+            ReferenceCode = reference,
             Name = Model.Name!.Trim(),
             Phone = Model.Phone!.Trim(),
             Email = string.IsNullOrWhiteSpace(Model.Email) ? null : Model.Email.Trim(),
@@ -133,6 +145,7 @@
             }
         }
 
+        sentCode = reference;
         sent = true;
         Model = new();
     }

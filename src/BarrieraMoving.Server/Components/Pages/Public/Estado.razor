@@ -1,0 +1,161 @@
+@page "/estado"
+@layout PublicLayout
+@using System.ComponentModel.DataAnnotations
+@using BarrieraMoving.Server.Components.Public
+@using BarrieraMoving.Server.Components.Layout
+@using BarrieraMoving.Server.Services
+@using BarrieraMoving.Shared.Enums
+@inject IGuestLookupService Guest
+
+<HeadContent>
+    <meta name="description" content="Consulta el estado de tu mudanza con tu número de referencia y tu teléfono. Sin crear cuenta." />
+</HeadContent>
+<PageTitle>Consultar mi mudanza | PR Transporte Caribe</PageTitle>
+
+<section class="section">
+    <div class="wrap form-wrap">
+        <p class="eyebrow">Sin cuenta · Sin contraseña</p>
+        <h1 style="font-size:clamp(2rem,5.5vw,3.2rem);margin-bottom:.7rem">Consulta tu mudanza</h1>
+        <p class="lead" style="margin-bottom:1.8rem">
+            Escribe el número de referencia que te dimos al solicitar la cotización
+            y el teléfono que nos diste.
+        </p>
+
+        <EditForm Model="Model" FormName="estado" OnValidSubmit="LookupAsync">
+            <DataAnnotationsValidator />
+
+            <div class="field">
+                <label for="e-code">Número de referencia *</label>
+                <InputText id="e-code" @bind-Value="Model.Code" placeholder="TC-4F7K2M" autocomplete="off" />
+                <ValidationMessage For="() => Model.Code" />
+            </div>
+            <div class="field">
+                <label for="e-phone">Teléfono *</label>
+                <InputText id="e-phone" type="tel" @bind-Value="Model.Phone" placeholder="(787) 000-0000" autocomplete="tel" />
+                <ValidationMessage For="() => Model.Phone" />
+            </div>
+
+            <button class="btn btn-primary" type="submit">Consultar<Icon Name="arrow" Size="18" /></button>
+        </EditForm>
+
+        @if (searched && result is null)
+        {
+            @* Mensaje ÚNICO tanto si el código no existe como si el teléfono no
+               casa: distinguirlos permitiría enumerar códigos válidos. *@
+            <div class="form-note" style="margin-top:1.6rem">
+                <Icon Name="shield" Size="18" />
+                <span>
+                    No encontramos ninguna mudanza con esos datos. Revisa el número de
+                    referencia y el teléfono, o llámanos al
+                    <a href="@SiteInfo.TelHref">@SiteInfo.PhoneDisplay</a>.
+                </span>
+            </div>
+        }
+
+        @if (result is not null)
+        {
+            <div class="track-now" style="margin-top:2rem">
+                <span class="track-badge @BadgeClass()">@Label()</span>
+                <p>@Explain()</p>
+                <p class="muted" style="margin:0">
+                    Referencia <strong>@result.ReferenceCode</strong> ·
+                    solicitada el @result.RequestedAtUtc.ToLocalTime().ToString("dd/MM/yyyy")
+                    @if (!string.IsNullOrWhiteSpace(result.ServiceType)) { <span> · @result.ServiceType</span> }
+                </p>
+                @if (result.Converted && !string.IsNullOrWhiteSpace(result.DriverFirstName)
+                     && result.Status is OrderStatus.EnRoute or OrderStatus.InProgress)
+                {
+                    <p class="muted" style="margin:.4rem 0 0">Tu equipo va con <strong>@result.DriverFirstName</strong>.</p>
+                }
+            </div>
+
+            @if (result.Converted && result.Status is not null)
+            {
+                <ol class="track-steps">
+                    @foreach (var step in Steps)
+                    {
+                        var done = (int)result.Status >= (int)step.Status;
+                        var current = result.Status == step.Status;
+                        <li class="@(done ? "done" : "") @(current ? "current" : "")">
+                            <span class="dot">@(done ? "✓" : "")</span>
+                            <span>@step.Label</span>
+                        </li>
+                    }
+                </ol>
+            }
+
+            <div class="info-callout" style="margin-top:1.8rem">
+                <Icon Name="phone" Size="18" />
+                <span>
+                    ¿Necesitas cambiar algo de tu mudanza? Llámanos al
+                    <a href="@SiteInfo.TelHref">@SiteInfo.PhoneDisplay</a>
+                    o escríbenos por <a href="@SiteInfo.WaHref" target="_blank" rel="noopener">WhatsApp</a>.
+                </span>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromForm] private LookupForm Model { get; set; } = new();
+    private GuestOrderStatus? result;
+    private bool searched;
+
+    private async Task LookupAsync()
+    {
+        result = await Guest.LookupAsync(Model.Code!, Model.Phone!);
+        searched = true;
+    }
+
+    private static readonly (OrderStatus Status, string Label)[] Steps =
+    {
+        (OrderStatus.Requested, "Solicitada"),
+        (OrderStatus.Assigned, "Equipo asignado"),
+        (OrderStatus.EnRoute, "En camino"),
+        (OrderStatus.InProgress, "Mudanza en curso"),
+        (OrderStatus.PendingSignature, "Pendiente de firma"),
+        (OrderStatus.Completed, "Completada"),
+    };
+
+    private string Label() => !result!.Converted ? "Solicitud recibida" : result.Status switch
+    {
+        OrderStatus.Requested => "Solicitada",
+        OrderStatus.Assigned => "Equipo asignado",
+        OrderStatus.EnRoute => "En camino",
+        OrderStatus.InProgress => "Mudanza en curso",
+        OrderStatus.PendingSignature => "Pendiente de firma",
+        OrderStatus.Completed => "Completada",
+        _ => "En proceso"
+    };
+
+    private string Explain() => !result!.Converted
+        ? "Recibimos tu solicitud y la estamos revisando. Te llamamos pronto con el precio."
+        : result.Status switch
+        {
+            OrderStatus.Requested => "Tu mudanza está registrada. Estamos organizando el equipo.",
+            OrderStatus.Assigned => "Ya tienes equipo asignado para tu mudanza.",
+            OrderStatus.EnRoute => "El equipo va de camino hacia ti.",
+            OrderStatus.InProgress => "Estamos con tu mudanza en este momento.",
+            OrderStatus.PendingSignature => "Terminamos el trabajo; falta la firma de conformidad.",
+            OrderStatus.Completed => "Mudanza completada. ¡Gracias por confiar en nosotros!",
+            _ => ""
+        };
+
+    private string BadgeClass() => !result!.Converted ? "b-navy" : result.Status switch
+    {
+        OrderStatus.Completed => "b-green",
+        OrderStatus.EnRoute or OrderStatus.InProgress => "b-amber",
+        _ => "b-navy"
+    };
+
+    public class LookupForm
+    {
+        [Required(ErrorMessage = "Escribe tu número de referencia.")]
+        [StringLength(40)]
+        public string? Code { get; set; }
+
+        [Required(ErrorMessage = "Escribe el teléfono que nos diste.")]
+        [StringLength(40)]
+        public string? Phone { get; set; }
+    }
+}

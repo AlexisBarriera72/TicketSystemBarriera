@@ -34,6 +34,10 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start gap-3">
                         <div class="min-w-0">
+                            @if (!string.IsNullOrWhiteSpace(q.ReferenceCode))
+                            {
+                                <span class="badge bg-dark me-2" title="Código que el cliente usa para consultar">@q.ReferenceCode</span>
+                            }
                             <div class="fw-bold">@q.Name · <a href="tel:@q.Phone">@q.Phone</a>
                                 @if (!string.IsNullOrWhiteSpace(q.Email)){ <span>· <a href="mailto:@q.Email">@q.Email</a></span> }
                             </div>

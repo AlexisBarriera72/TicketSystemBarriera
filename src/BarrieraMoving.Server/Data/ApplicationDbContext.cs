@@ -181,6 +181,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasFilter("[TrackingToken] IS NOT NULL")
             .IsUnique();
 
+        // Código de consulta del cliente sin cuenta: único y buscado en cada consulta
+        builder.Entity<QuoteRequest>()
+            .HasIndex(q => q.ReferenceCode)
+            .HasFilter("[ReferenceCode] IS NOT NULL")
+            .IsUnique();
+
         // Una solicitud de cotización puede haberse convertido en orden. Si la
         // orden se borra, la solicitud sobrevive sin el vínculo (no se pierde el lead).
         builder.Entity<QuoteRequest>()

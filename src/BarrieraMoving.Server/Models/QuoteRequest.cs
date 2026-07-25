@@ -14,6 +14,11 @@ public class QuoteRequest
     public string? DestinationZone { get; set; }
     public string? PreferredDate { get; set; }
     public string? Details { get; set; }
+    // Código que se le da al cliente SIN cuenta para consultar su mudanza
+    // (formato TC-XXXXXX). Aleatorio, no correlativo: un número de orden
+    // secuencial dejaría adivinar los de los demás clientes.
+    public string? ReferenceCode { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public bool Handled { get; set; }
 
