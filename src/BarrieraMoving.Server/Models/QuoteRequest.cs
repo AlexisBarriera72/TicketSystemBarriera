@@ -16,4 +16,9 @@ public class QuoteRequest
     public string? Details { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public bool Handled { get; set; }
+
+    // Orden creada a partir de esta solicitud (si la oficina la convirtió). Deja
+    // rastro de la conversión y evita crear dos órdenes por el mismo cliente.
+    public int? ConvertedOrderId { get; set; }
+    public Order? ConvertedOrder { get; set; }
 }

@@ -50,15 +50,34 @@
                             }
                         </div>
                         <div class="text-end text-nowrap">
-                            @if (q.Handled)
+                            @if (q.ConvertedOrderId is not null)
                             {
-                                <span class="badge bg-success mb-2 d-block">Gestionada</span>
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => SetHandled(q, false)">Reabrir</button>
+                                <span class="badge bg-success mb-2 d-block">Convertida</span>
+                                <a class="btn btn-sm btn-outline-primary" href="/orders/manage/@q.ConvertedOrderId">
+                                    Ver orden #@q.ConvertedOrderId
+                                </a>
                             }
                             else
                             {
-                                <span class="badge bg-primary mb-2 d-block">Nueva</span>
-                                <button class="btn btn-sm btn-success" @onclick="() => SetHandled(q, true)">Marcar gestionada</button>
+                                @if (q.Handled)
+                                {
+                                    <span class="badge bg-secondary mb-2 d-block">Gestionada</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-primary mb-2 d-block">Nueva</span>
+                                }
+                                <a class="btn btn-sm btn-success mb-1 d-block" href="/orders/create?fromQuote=@q.Id">
+                                    <i class="bi bi-box-seam"></i> Crear orden
+                                </a>
+                                @if (q.Handled)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => SetHandled(q, false)">Reabrir</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => SetHandled(q, true)">Marcar gestionada</button>
+                                }
                             }
                         </div>
                     </div>

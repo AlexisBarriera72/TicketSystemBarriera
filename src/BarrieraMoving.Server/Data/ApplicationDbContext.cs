@@ -174,6 +174,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(c => c.OrderId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Una solicitud de cotización puede haberse convertido en orden. Si la
+        // orden se borra, la solicitud sobrevive sin el vínculo (no se pierde el lead).
+        builder.Entity<QuoteRequest>()
+            .HasOne(q => q.ConvertedOrder)
+            .WithMany()
+            .HasForeignKey(q => q.ConvertedOrderId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Tokens push: el token FCM es global-único (un aparato = una fila);
         // se busca por usuario al notificar.
         builder.Entity<DeviceToken>()
