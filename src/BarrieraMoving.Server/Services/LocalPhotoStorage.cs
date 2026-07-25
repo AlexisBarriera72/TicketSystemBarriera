@@ -32,8 +32,12 @@ public class LocalPhotoStorage : IPhotoStorage
     // nada fuera de la raíz de fotos.
     private string SafeFullPath(string relativeKey)
     {
+        // El prefijo se compara CON separador final: si no, una raíz "/fotos"
+        // aceptaría por error una ruta "/fotos-otra/x".
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_root))
+                   + Path.DirectorySeparatorChar;
         var full = Path.GetFullPath(Path.Combine(_root, relativeKey));
-        if (!full.StartsWith(Path.GetFullPath(_root), StringComparison.OrdinalIgnoreCase))
+        if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Clave de foto fuera de la raíz de almacenamiento.");
         }

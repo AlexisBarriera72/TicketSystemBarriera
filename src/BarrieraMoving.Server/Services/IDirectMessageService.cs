@@ -12,6 +12,10 @@ public interface IDirectMessageService
 
     Task<List<DirectConversation>> GetMineAsync(string userId);
     Task<DirectMessage?> GetLastMessageAsync(int conversationId);
+
+    // Último mensaje de VARIAS conversaciones en UNA consulta (evita el N+1 al
+    // pintar la lista de conversaciones).
+    Task<Dictionary<int, DirectMessage>> GetLastMessagesAsync(IEnumerable<int> conversationIds);
     Task<List<DirectMessage>> GetMessagesAsync(int conversationId, int take = 50, int? beforeId = null, int? afterId = null);
 
     Task<(DirectMessage? Message, string? Error)> SendAsync(int conversationId, string senderUserId,

@@ -23,15 +23,14 @@ public static class DirectMessageEndpoints
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
             var conversations = await dm.GetMineAsync(userId);
-            var result = new List<DirectConversationDto>();
-            foreach (var conv in conversations)
-            {
-                var last = await dm.GetLastMessageAsync(conv.Id);
-                result.Add(new DirectConversationDto(
-                    conv.Id,
-                    conv.Participants.Select(p => p.User!.ToDto()).ToList(),
-                    last?.ToDto()));
-            }
+            // Últimos mensajes de TODAS las conversaciones en una sola consulta
+            var lastByConv = await dm.GetLastMessagesAsync(conversations.Select(c => c.Id));
+
+            var result = conversations.Select(conv => new DirectConversationDto(
+                conv.Id,
+                conv.Participants.Select(p => p.User!.ToDto()).ToList(),
+                lastByConv.TryGetValue(conv.Id, out var last) ? last.ToDto() : null));
+
             return Results.Ok(result.OrderByDescending(c => c.LastMessage?.CreatedAt ?? DateTime.MinValue));
         });
 

@@ -72,6 +72,26 @@ public class DirectMessageService(
             .FirstOrDefaultAsync();
     }
 
+    // UNA sola consulta para el último mensaje de N conversaciones: agrupa por
+    // conversación y se queda con el Id máximo. Sustituye al bucle de N consultas.
+    public async Task<Dictionary<int, DirectMessage>> GetLastMessagesAsync(IEnumerable<int> conversationIds)
+    {
+        var ids = conversationIds.Distinct().ToList();
+        if (ids.Count == 0) return [];
+
+        using var context = dbFactory.CreateDbContext();
+        var lastIds = await context.DirectMessages
+            .Where(m => ids.Contains(m.ConversationId))
+            .GroupBy(m => m.ConversationId)
+            .Select(g => g.Max(m => m.Id))
+            .ToListAsync();
+
+        return await context.DirectMessages
+            .Include(m => m.Sender)
+            .Where(m => lastIds.Contains(m.Id))
+            .ToDictionaryAsync(m => m.ConversationId);
+    }
+
     public async Task<List<DirectMessage>> GetMessagesAsync(int conversationId, int take = 50,
         int? beforeId = null, int? afterId = null)
     {

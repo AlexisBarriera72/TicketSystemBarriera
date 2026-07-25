@@ -35,8 +35,18 @@ public sealed class ApprovalService(
             .Where(o => orderIds.Contains(o.Id) && o.Status != OrderStatus.Completed)
             .ToListAsync();
 
-        var slotLabels = paperwork.GetSlots().ToDictionary(s => s.Key, s => s.Label);
+        var slots = paperwork.GetSlots();
+        var slotLabels = slots.ToDictionary(s => s.Key, s => s.Label);
         string Label(string key) => slotLabels.TryGetValue(key, out var l) ? l : key;
+
+        // Papeleo VIGENTE de todas las órdenes implicadas en UNA consulta, para no
+        // llamar a GetMissingRequiredLabelsAsync una vez por orden (N+1).
+        var attachedByOrder = (await db.PaperworkDocuments
+                .Where(p => orderIds.Contains(p.OrderId) && p.Status == PaperworkStatus.Attached)
+                .Select(p => new { p.OrderId, p.SlotKey })
+                .ToListAsync())
+            .GroupBy(p => p.OrderId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.SlotKey).ToHashSet());
 
         var result = new List<ApprovalItemDto>();
         foreach (var o in orders)
@@ -54,7 +64,10 @@ public sealed class ApprovalService(
             }
 
             // Requeridos que faltan (no dupliques los ya listados como rechazados)
-            var missing = await paperwork.GetMissingRequiredLabelsAsync(o.Id);
+            attachedByOrder.TryGetValue(o.Id, out var attached);
+            var missing = slots
+                .Where(s => s.Required && !(attached?.Contains(s.Key) ?? false))
+                .Select(s => s.Label);
             foreach (var lbl in missing)
                 if (!rejectedLabels.Contains(lbl))
                     pending.Add($"Falta papeleo: {lbl}");

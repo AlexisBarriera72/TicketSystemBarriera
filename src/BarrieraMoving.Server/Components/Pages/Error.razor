@@ -1,30 +1,43 @@
-﻿@page "/Error"
+@page "/Error"
 @using System.Diagnostics
+@using BarrieraMoving.Server.Components.Public
+@layout BarrieraMoving.Server.Components.Layout.PublicLayout
 
-<PageTitle>Error</PageTitle>
+<PageTitle>Algo salió mal | PR Transporte Caribe</PageTitle>
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<section class="section">
+    <div class="wrap" style="max-width:640px;text-align:center">
+        <p class="eyebrow">Error inesperado</p>
+        <h1 style="font-size:clamp(2rem,5vw,3rem);margin-bottom:1rem">Algo salió mal por nuestra parte</h1>
+        <p class="lead" style="margin-inline:auto">
+            No pudimos completar tu solicitud. No es culpa tuya — vuelve a intentarlo en
+            un momento, o llámanos y lo resolvemos contigo ahora mismo.
+        </p>
 
-@if (ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@RequestId</code>
-    </p>
-}
+        <div class="contact-cta" style="justify-content:center;margin-top:2rem">
+            <a class="btn btn-primary" href="@SiteInfo.TelHref">
+                <Icon Name="phone" Size="18" />@SiteInfo.PhoneDisplay
+            </a>
+            <a class="btn btn-wa" href="@SiteInfo.WaHref" target="_blank" rel="noopener">
+                <Icon Name="chat" Size="18" />WhatsApp
+            </a>
+        </div>
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+        <p style="margin-top:1.75rem">
+            <a class="btn btn-ghost" href="/">Volver al inicio</a>
+        </p>
 
-@code{
+        @if (ShowRequestId)
+        {
+            @* Solo como referencia si el cliente nos llama; no revela nada del sistema *@
+            <p class="muted" style="margin-top:2.5rem;font-size:.82rem">
+                Referencia: <code>@RequestId</code>
+            </p>
+        }
+    </div>
+</section>
+
+@code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using BarrieraMoving.Server.Api;
 using BarrieraMoving.Server.Components;
 using BarrieraMoving.Server.Components.Account;
@@ -134,6 +136,45 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddOpenApi();
 
+// Sonda de salud para el hosting (uptime, balanceadores). Comprueba la BD.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("db");
+
+// LÍMITE DE PETICIONES en el formulario público de cotización: es anónimo y
+// escribe en la BD, así que sin esto un script puede inundar QuoteRequests.
+// 5 envíos por IP cada 10 minutos; el resto recibe 429 con mensaje amable.
+builder.Services.AddRateLimiter(options =>
+{
+    // Limitador GLOBAL que solo actúa sobre el POST del formulario público.
+    // (Blazor SSR estático publica sobre la misma URL, así que no hay endpoint
+    // aparte al que colgar una policy con nombre.)
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(http =>
+    {
+        var isQuotePost = HttpMethods.IsPost(http.Request.Method)
+            && http.Request.Path.StartsWithSegments("/cotizacion");
+
+        if (!isQuotePost) return RateLimitPartition.GetNoLimiter("sin-limite");
+
+        var ip = http.Connection.RemoteIpAddress?.ToString() ?? "sin-ip";
+        return RateLimitPartition.GetFixedWindowLimiter($"cotizacion:{ip}",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+            });
+    });
+
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
+        await context.HttpContext.Response.WriteAsync(
+            "Has enviado varias solicitudes seguidas. Espera unos minutos e inténtalo de nuevo, " +
+            "o llámanos directamente al (787) 598-9433.", ct);
+    };
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -156,6 +197,10 @@ app.UseWhen(
 app.UseHttpsRedirection();
 
 app.UseAntiforgery();
+app.UseRateLimiter();
+
+// Sonda de salud para el hosting. Anónima a propósito y sin detalles internos.
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
@@ -163,6 +208,9 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+// Descargas del dashboard (cookie de Identity, no JWT)
+app.MapReportDownloads();
 
 // API REST /api/v1 para los clientes (MAUI en Fase 2)
 if (!string.IsNullOrEmpty(jwtKey))

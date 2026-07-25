@@ -87,7 +87,26 @@ public class ReportService(
     }
 
     // Reporte Excel con el resumen de órdenes, usando ClosedXML
+    // Vuelca el informe en el stream destino. ClosedXML necesita un buffer con
+    // posicionamiento para cerrar el ZIP, así que se arma en memoria UNA vez y se
+    // copia; aun así evitamos el byte[] extra y el Base64 (+33%) del interop JS.
+    public async Task WriteExcelReportAsync(Stream destination)
+    {
+        using var buffer = new MemoryStream();
+        await BuildExcelAsync(buffer);
+        buffer.Position = 0;
+        await buffer.CopyToAsync(destination);
+    }
+
+    // Compatibilidad: sigue existiendo para quien necesite los bytes en memoria.
     public async Task<byte[]> GenerateExcelReportAsync()
+    {
+        using var buffer = new MemoryStream();
+        await BuildExcelAsync(buffer);
+        return buffer.ToArray();
+    }
+
+    private async Task BuildExcelAsync(Stream destination)
     {
         using var context = dbFactory.CreateDbContext();
         var orders = await context.Orders
@@ -238,8 +257,6 @@ public class ReportService(
         }
         docSheet.Columns().AdjustToContents();
 
-        using var stream = new MemoryStream();
-        workbook.SaveAs(stream);
-        return stream.ToArray();
+        workbook.SaveAs(destination);
     }
 }

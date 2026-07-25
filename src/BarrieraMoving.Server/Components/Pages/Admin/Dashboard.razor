@@ -14,9 +14,10 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3><i class="bi bi-speedometer2"></i> Panel Administrativo</h3>
     <span class="text-muted">Métricas de operación en tiempo real</span>
-    <button class="btn btn-outline-success" @onclick="ExportToExcel">
+    @* Descarga nativa del navegador: no pasa por SignalR ni por Base64 *@
+    <a class="btn btn-outline-success" href="/admin/reports/ordenes.xlsx">
         <i class="bi bi-file-earmark-excel"></i> Exportar Reporte
-    </button>
+    </a>
 </div>
 
     @* ---- SECCIÓN DE ESTADÍSTICAS ---- *@
@@ -321,18 +322,4 @@
         _ => "bg-secondary"
     };
 
-    private async Task ExportToExcel()
-    {
-        try
-        {
-            var excelData = await ReportService.GenerateExcelReportAsync();
-            var base64 = Convert.ToBase64String(excelData);
-            var fileName = $"Reporte_Ordenes_{DateTime.Now:yyyyMMdd}.xlsx";
-            await JS.InvokeVoidAsync("downloadFile", fileName, base64);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
-    }
 }
