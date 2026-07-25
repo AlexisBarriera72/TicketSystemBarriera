@@ -116,8 +116,18 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser());
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+// Azure SQL serverless se AUTO-PAUSA cuando está ocioso y tarda 30-60 s en
+// despertar; el timeout por defecto (15 s) expira antes y la primera petición
+// del día fallaba. Reintentos + timeouts amplios cubren ese arranque en frío.
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString, sql =>
+    {
+        sql.EnableRetryOnFailure(
+            maxRetryCount: 8,
+            maxRetryDelay: TimeSpan.FromSeconds(20),
+            errorNumbersToAdd: null);
+        sql.CommandTimeout(120);
+    }));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
@@ -251,10 +261,23 @@ else
         "API deshabilitada: falta Jwt:SigningKey. Configúrala con 'dotnet user-secrets set \"Jwt:SigningKey\" ...'.");
 }
 
-// Datos iniciales: roles, admin (desde user-secrets) y tipos de mudanza
+// Datos iniciales: roles, admin (desde user-secrets) y tipos de mudanza.
+// NUNCA debe tumbar el arranque: el sitio público de marketing no necesita base
+// de datos, así que un fallo aquí (BD pausada, migración pendiente, red) tiene
+// que dejar la web en pie y quedar VISIBLE en el log, no devolver un 500 a quien
+// escanea el código QR del camión. /health seguirá reportando el problema.
 using (var scope = app.Services.CreateScope())
 {
-    await DbSeeder.SeedAsync(scope.ServiceProvider, app.Configuration, app.Logger);
+    try
+    {
+        await DbSeeder.SeedAsync(scope.ServiceProvider, app.Configuration, app.Logger);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex,
+            "Fallo al sembrar datos iniciales. La aplicación arranca igualmente, pero " +
+            "revisa la conexión a la base de datos y si las migraciones están aplicadas.");
+    }
 }
 
 app.Run();

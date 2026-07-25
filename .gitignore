@@ -370,3 +370,8 @@ src/BarrieraMoving.Server/App_Data/
 *firebase-adminsdk*.json
 **/firebase-service-account*.json
 **/serviceAccountKey.json
+
+# Artefactos de despliegue (nunca dentro del proyecto: el build los tomaría como fuentes)
+_deploy/
+deploy.zip
+publish/
