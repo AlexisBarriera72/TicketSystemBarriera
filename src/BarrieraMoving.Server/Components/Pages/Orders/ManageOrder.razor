@@ -43,6 +43,43 @@
                         <hr />
                         <p class="fs-5">@order.Description</p>
 
+                        @* Documentación de daños: antes (recogida) vs después (entrega) *@
+                        @if (pickupPhotos.Count > 0 || deliveryPhotos.Count > 0)
+                        {
+                            <div class="row mt-3 g-3">
+                                <div class="col-md-6">
+                                    <h6 class="text-muted small fw-bold text-uppercase">
+                                        <i class="bi bi-box-arrow-up"></i> Recogida (antes) — @pickupPhotos.Count
+                                    </h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var p in pickupPhotos)
+                                        {
+                                            <a href="/api/v1/photos/@p.Id" target="_blank" title="@p.CreatedAt.ToLocalTime()">
+                                                <img src="/api/v1/photos/@p.Id/thumb" alt="Foto de recogida"
+                                                     style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6" />
+                                            </a>
+                                        }
+                                        @if (pickupPhotos.Count == 0) { <span class="text-muted small">Sin fotos</span> }
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-muted small fw-bold text-uppercase">
+                                        <i class="bi bi-box-arrow-in-down"></i> Entrega (después) — @deliveryPhotos.Count
+                                    </h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var p in deliveryPhotos)
+                                        {
+                                            <a href="/api/v1/photos/@p.Id" target="_blank" title="@p.CreatedAt.ToLocalTime()">
+                                                <img src="/api/v1/photos/@p.Id/thumb" alt="Foto de entrega"
+                                                     style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6" />
+                                            </a>
+                                        }
+                                        @if (deliveryPhotos.Count == 0) { <span class="text-muted small">Sin fotos</span> }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
                         @if (canBypassFlow)
                         {
                             @* Enlace de seguimiento para el cliente (sin login).
@@ -392,6 +429,14 @@
     private Order? order;
     private List<ApplicationUser> drivers = [];
     private List<Message> messages = [];
+
+    // Galerías antes/después. Se derivan de los mensajes ya cargados: sin consulta extra.
+    private List<Message> pickupPhotos =>
+        messages.Where(m => m.AttachmentPath is not null && m.Stage == PhotoStage.Pickup)
+                .OrderBy(m => m.CreatedAt).ToList();
+    private List<Message> deliveryPhotos =>
+        messages.Where(m => m.AttachmentPath is not null && m.Stage == PhotoStage.Delivery)
+                .OrderBy(m => m.CreatedAt).ToList();
     private string selectedDriverId = "";
     private string newMessageContent = "";
     private string currentUserId = "";

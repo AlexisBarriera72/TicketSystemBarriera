@@ -53,9 +53,10 @@ public class OutboxService(IHttpClientFactory httpClientFactory, TokenStore toke
     public Task<(bool Ok, string? Error)> EnqueueDirectMessageAsync(int conversationId, string text) =>
         EnqueueAsync(new OutboxItem { Kind = OutboxKind.DirectMessage, OrderId = conversationId, Text = text.Trim() });
 
-    public async Task<(bool Ok, string? Error)> EnqueuePhotoAsync(int orderId, byte[] jpeg, double? latitude, double? longitude)
+    public async Task<(bool Ok, string? Error)> EnqueuePhotoAsync(int orderId, byte[] jpeg, double? latitude, double? longitude,
+        BarrieraMoving.Shared.Enums.PhotoStage stage = BarrieraMoving.Shared.Enums.PhotoStage.General)
     {
-        var item = new OutboxItem { Kind = OutboxKind.Photo, OrderId = orderId, Latitude = latitude, Longitude = longitude };
+        var item = new OutboxItem { Kind = OutboxKind.Photo, OrderId = orderId, Latitude = latitude, Longitude = longitude, Stage = stage };
         var dir = Path.Combine(FileSystem.AppDataDirectory, "outbox");
         Directory.CreateDirectory(dir);
         item.FilePath = Path.Combine(dir, $"{item.Id}.jpg");
@@ -275,7 +276,7 @@ public class OutboxService(IHttpClientFactory httpClientFactory, TokenStore toke
                 }
                 var jpeg = await File.ReadAllBytesAsync(item.FilePath);
                 var (_, photoError) = await api.UploadPhotoAsync(item.OrderId, jpeg,
-                    item.Latitude, item.Longitude, item.CapturedAtUtc, item.Id);
+                    item.Latitude, item.Longitude, item.CapturedAtUtc, item.Id, item.Stage);
                 return photoError;
 
             case OutboxKind.Signature:

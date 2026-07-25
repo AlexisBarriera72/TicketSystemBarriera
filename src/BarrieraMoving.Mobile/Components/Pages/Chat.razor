@@ -155,6 +155,16 @@ else
         <div class="alert alert-warning py-2 mb-2">@sendError</div>
     }
 
+    @* Documentación de daños: foto de RECOGIDA (antes) y de ENTREGA (después) *@
+    <div class="stage-row">
+        <button class="stage-btn" @onclick="() => SendPhotoAsync(true, PhotoStage.Pickup)" disabled="@sending">
+            <i class="bi bi-box-arrow-up"></i> Foto recogida
+        </button>
+        <button class="stage-btn" @onclick="() => SendPhotoAsync(true, PhotoStage.Delivery)" disabled="@sending">
+            <i class="bi bi-box-arrow-in-down"></i> Foto entrega
+        </button>
+    </div>
+
     <div class="input-group chat-compose">
         <button class="btn btn-outline-secondary px-3" @onclick="() => SendPhotoAsync(fromCamera: true)"
                 disabled="@sending" title="Cámara"><i class="bi bi-camera"></i></button>
@@ -374,7 +384,7 @@ else
         sending = false;
     }
 
-    private async Task SendPhotoAsync(bool fromCamera)
+    private async Task SendPhotoAsync(bool fromCamera, PhotoStage stage = PhotoStage.General)
     {
         if (sending) return;
         sending = true;
@@ -390,7 +400,7 @@ else
         {
             // GPS deliberado y opcional: sin permiso o sin señal, la foto va igual
             var location = await LocationHelper.TryGetLocationAsync();
-            var (ok, error) = await Outbox.EnqueuePhotoAsync(Id, result.Jpeg, location?.Latitude, location?.Longitude);
+            var (ok, error) = await Outbox.EnqueuePhotoAsync(Id, result.Jpeg, location?.Latitude, location?.Longitude, stage);
             if (ok)
             {
                 await RefreshPendingAsync();

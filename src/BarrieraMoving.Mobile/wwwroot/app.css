@@ -409,3 +409,30 @@ h1:focus {
         padding-left: env(safe-area-inset-left);
     }
 }
+
+/* --- Botones de etapa de foto (documentación de daños) --- */
+.stage-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.stage-btn {
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.6rem 0.5rem;
+    border: 1.5px solid #bcdfe6;
+    border-radius: 12px;
+    background: #f2fafb;
+    color: #14395a;
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.stage-btn:active { background: #e3f2f5; }
+.stage-btn:disabled { opacity: 0.55; }

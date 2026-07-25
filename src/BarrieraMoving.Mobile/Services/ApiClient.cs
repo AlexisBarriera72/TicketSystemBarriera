@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using BarrieraMoving.Shared;
 using BarrieraMoving.Shared.Dtos;
+using BarrieraMoving.Shared.Enums;
 
 namespace BarrieraMoving.Mobile.Services;
 
@@ -56,7 +57,8 @@ public class ApiClient(HttpClient http)
 
     // Foto al chat: multipart con el JPEG YA comprimido + GPS deliberado + metadatos de cola
     public async Task<(MessageDto? Message, string? Error)> UploadPhotoAsync(int orderId, byte[] jpeg,
-        double? latitude, double? longitude, DateTime? capturedAtUtc = null, string? idempotencyKey = null)
+        double? latitude, double? longitude, DateTime? capturedAtUtc = null, string? idempotencyKey = null,
+        PhotoStage stage = PhotoStage.General)
     {
         using var form = new MultipartFormDataContent();
         var file = new ByteArrayContent(jpeg);
@@ -70,6 +72,8 @@ public class ApiClient(HttpClient http)
             form.Add(new StringContent(capturedAtUtc.Value.ToString("O")), "capturedAtUtc");
         if (!string.IsNullOrEmpty(idempotencyKey))
             form.Add(new StringContent(idempotencyKey), "idempotencyKey");
+        if (stage != PhotoStage.General)
+            form.Add(new StringContent(stage.ToString()), "stage");
 
         var response = await http.PostAsync($"{ApiRoutes.Orders}/{orderId}/photos", form);
         if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)

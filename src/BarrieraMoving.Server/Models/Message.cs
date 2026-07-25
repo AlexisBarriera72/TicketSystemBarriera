@@ -1,6 +1,7 @@
 namespace BarrieraMoving.Server.Models;
 
 using BarrieraMoving.Server.Data;
+using BarrieraMoving.Shared.Enums;
 
 // Mensaje del chat de una orden (antes "TicketComment")
 public class Message
@@ -24,6 +25,9 @@ public class Message
     // La imagen se sirve SOLO por el endpoint con el mismo ACL de la orden.
     public string? AttachmentPath { get; set; }
     public string? AttachmentThumbPath { get; set; }
+
+    // Etapa de la foto (Recogida / Entrega). Null en mensajes sin foto.
+    public PhotoStage? Stage { get; set; }
 
     // GPS capturado DELIBERADAMENTE al enviar (el EXIF original se elimina siempre)
     public double? Latitude { get; set; }

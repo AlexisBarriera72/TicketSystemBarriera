@@ -18,7 +18,7 @@ public static class MappingExtensions
         m.User?.DisplayName ?? m.User?.Email,
         m.IsSystem, m.SenderRole,
         m.AttachmentPath is not null,
-        m.Latitude, m.Longitude, m.CapturedAtUtc);
+        m.Latitude, m.Longitude, m.CapturedAtUtc, m.Stage);
 
     public static CategoryDto ToDto(this Category c) => new(c.Id, c.Name, c.Description);
 

@@ -5,6 +5,7 @@ using BarrieraMoving.Server.Data;
 using BarrieraMoving.Server.Models;
 using BarrieraMoving.Server.Services;
 using BarrieraMoving.Shared;
+using BarrieraMoving.Shared.Enums;
 using static BarrieraMoving.Server.Api.OrderAccess;
 
 namespace BarrieraMoving.Server.Api;
@@ -35,6 +36,9 @@ public static class PhotoEndpoints
             DateTime? capturedAt = DateTime.TryParse(form["capturedAtUtc"], CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var cap) ? cap : null;
             string? idempotencyKey = form["idempotencyKey"].FirstOrDefault();
+            // Etapa: Recogida / Entrega. Si no se indica, foto suelta del chat.
+            var stage = Enum.TryParse<PhotoStage>(form["stage"], ignoreCase: true, out var st)
+                ? st : PhotoStage.General;
 
             // Reintento de la cola offline que sí llegó: devolver el original, no duplicar
             if (!string.IsNullOrEmpty(idempotencyKey))
@@ -56,7 +60,13 @@ public static class PhotoEndpoints
             var message = new Message
             {
                 OrderId = id,
-                Content = "📷 Foto",
+                Content = stage switch
+                {
+                    PhotoStage.Pickup => "📷 Foto — Recogida",
+                    PhotoStage.Delivery => "📷 Foto — Entrega",
+                    _ => "📷 Foto",
+                },
+                Stage = stage,
                 UserId = user.FindFirstValue(ClaimTypes.NameIdentifier)!,
                 CreatedAt = DateTime.UtcNow,
                 CapturedAtUtc = capturedAt,

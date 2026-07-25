@@ -29,7 +29,8 @@ public record MessageDto(
     bool HasAttachment,
     double? Latitude,
     double? Longitude,
-    DateTime? CapturedAtUtc);
+    DateTime? CapturedAtUtc,
+    PhotoStage? Stage = null);
 
 public record CategoryDto(int Id, string Name, string? Description);
 

@@ -19,6 +19,8 @@ public class OutboxItem
     public string? Text { get; set; }         // contenido del mensaje
     public string? FilePath { get; set; }     // JPEG comprimido en disco (fotos)
     public double? Latitude { get; set; }
+    // Etapa de la foto (Recogida/Entrega). sqlite-net añade la columna sola.
+    public BarrieraMoving.Shared.Enums.PhotoStage Stage { get; set; }
     public double? Longitude { get; set; }
 
     // Hora del DISPOSITIVO al pulsar (metadato no fiable; el servidor sella la suya)
