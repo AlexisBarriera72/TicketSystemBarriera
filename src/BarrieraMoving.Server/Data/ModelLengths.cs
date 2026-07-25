@@ -25,6 +25,9 @@ public static class ModelLengths
 
     public static void Apply(ModelBuilder b)
     {
+        // Nombre real del usuario (obligatorio al registrarse)
+        b.Entity<ApplicationUser>(e => e.Property(x => x.DisplayName).HasMaxLength(Name));
+
         b.Entity<Category>(e =>
         {
             e.Property(x => x.Name).HasMaxLength(Title);
