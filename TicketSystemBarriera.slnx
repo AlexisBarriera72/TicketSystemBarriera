@@ -4,4 +4,7 @@
     <Project Path="src/BarrieraMoving.Server/BarrieraMoving.Server.csproj" />
     <Project Path="src/BarrieraMoving.Shared/BarrieraMoving.Shared.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BarrieraMoving.Server.Tests/BarrieraMoving.Server.Tests.csproj" />
+  </Folder>
 </Solution>

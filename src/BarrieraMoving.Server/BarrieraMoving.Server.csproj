@@ -17,6 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Las reglas de acceso (OrderAccess) son internal a propósito; los tests
+         necesitan verlas para poder cubrirlas. -->
+    <InternalsVisibleTo Include="BarrieraMoving.Server.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="FirebaseAdmin" Version="3.6.0" />
     <PackageReference Include="MailKit" Version="4.17.0" />
