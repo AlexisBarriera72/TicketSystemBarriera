@@ -5,6 +5,7 @@
 @inject NotificationState Notif
 @inject NavigationManager Nav
 @inject IPushRegistrar Push
+@inject DeepLinkState DeepLink
 
 <div class="app-shell">
     @* /login trae su propia cabecera de marca a pantalla completa.
@@ -94,6 +95,7 @@
         bottomInset = SafeInsets.BottomCssPx();
 
         Notif.Changed += OnNotifChanged;
+        DeepLink.Changed += OnDeepLink;   // push pulsada con la app ya abierta
         subscribed = true;
 
         // Sesión ya iniciada de arranques anteriores: re-registrar el token push
@@ -102,14 +104,31 @@
         {
             _ = Push.RegisterAsync();
             _ = Notif.RefreshAsync(Api);
+            NavigateFromPush();           // push pulsada con la app cerrada
         }
     }
+
+    // Abre la pantalla concreta que indicaba la notificación (chat, DM, orden…)
+    private void NavigateFromPush()
+    {
+        var route = DeepLink.Consume();
+        if (!string.IsNullOrEmpty(route)) Nav.NavigateTo(route);
+    }
+
+    private void OnDeepLink() => _ = InvokeAsync(async () =>
+    {
+        if (await Auth.IsLoggedInAsync()) NavigateFromPush();
+    });
 
     private void OnNotifChanged() => _ = InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        if (subscribed) Notif.Changed -= OnNotifChanged;
+        if (subscribed)
+        {
+            Notif.Changed -= OnNotifChanged;
+            DeepLink.Changed -= OnDeepLink;
+        }
     }
 
     // Se ejecuta en cada navegación; mantiene el header y los tabs sincronizados

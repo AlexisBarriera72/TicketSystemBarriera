@@ -23,6 +23,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<AuthService>();
 		builder.Services.AddSingleton<OutboxService>(); // cola offline compartida (mensajes/fotos/fichajes)
 		builder.Services.AddSingleton<NotificationState>(); // feed de notificaciones (contador no leído)
+		builder.Services.AddSingleton<DeepLinkState>();   // ruta pendiente al pulsar una push
 		builder.Services.AddTransient<AuthMessageHandler>();
 
 		// Registro de push por plataforma (Android = FCM; iOS = APNs en el futuro)
