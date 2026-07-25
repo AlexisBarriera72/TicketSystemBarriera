@@ -205,6 +205,28 @@ p{margin:0 0 1rem}
 @media(max-width:720px){.callbar{display:grid}body{padding-bottom:4rem}}
 
 /* ---- quote form ---- */
+/* ---- seguimiento público de la mudanza ---- */
+.track-now{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:1.5rem 1.5rem 1.25rem;margin:1.5rem 0 2rem;box-shadow:0 4px 14px rgba(23,33,70,.05)}
+.track-badge{display:inline-block;padding:.4rem .9rem;border-radius:999px;
+  font-weight:700;font-size:.86rem;color:#fff;margin-bottom:.9rem}
+.track-badge.b-navy{background:var(--navy)}
+.track-badge.b-amber{background:#b8791a}
+.track-badge.b-green{background:var(--green-btn)}
+.track-now p{margin:0 0 .5rem;font-size:1.05rem}
+
+.track-steps{list-style:none;margin:0;padding:0}
+.track-steps li{display:flex;align-items:center;gap:.85rem;padding:.7rem 0;
+  color:var(--muted);border-bottom:1px solid var(--line)}
+.track-steps li:last-child{border-bottom:0}
+.track-steps .dot{flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+  border:2px solid var(--line);display:flex;align-items:center;justify-content:center;
+  font-size:.8rem;font-weight:700;color:#fff;background:transparent}
+.track-steps li.done{color:var(--ink)}
+.track-steps li.done .dot{background:var(--green-btn);border-color:var(--green-btn)}
+.track-steps li.current{font-weight:700;color:var(--navy)}
+.track-steps li.current .dot{box-shadow:0 0 0 4px rgba(31,139,160,.18)}
+
 .form-wrap{max-width:640px;margin-inline:auto}
 .field{margin-bottom:1.1rem}
 .field label{display:block;font-weight:600;font-size:.9rem;color:var(--navy);margin-bottom:.35rem}

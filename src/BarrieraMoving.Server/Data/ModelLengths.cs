@@ -37,6 +37,7 @@ public static class ModelLengths
             e.Property(x => x.Description).HasMaxLength(Text);
             e.Property(x => x.AuthorId).HasMaxLength(Id);
             e.Property(x => x.AssignedDriverId).HasMaxLength(Id);
+            e.Property(x => x.TrackingToken).HasMaxLength(Idem); // 32 bytes en Base64url = 43
         });
 
         b.Entity<Message>(e =>

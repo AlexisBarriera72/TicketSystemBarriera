@@ -40,6 +40,7 @@ builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
 builder.Services.AddScoped<IComplaintService, ComplaintService>();
 builder.Services.AddScoped<INotificationFeedService, NotificationFeedService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
+builder.Services.AddScoped<ITrackingService, TrackingService>();
 builder.Services.AddScoped<TokenService>();
 
 // Correo saliente: SMTP (MailKit) si hay Email:Host en user-secrets; si no, el

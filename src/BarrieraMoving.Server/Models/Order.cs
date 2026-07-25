@@ -18,6 +18,13 @@ public class Order
     public required string AuthorId { get; set; }
     public ApplicationUser? Author { get; set; }
     public string? AssignedDriverId { get; set; }
+
+    // --- Enlace público de seguimiento (sin login) ---
+    // Token aleatorio largo. Quien lo tenga ve SOLO estado y fecha: ni fotos, ni
+    // documentos, ni direcciones, ni datos de otras órdenes. Se puede revocar
+    // (poniéndolo a null) y deja de servir 30 días después de completar la orden.
+    public string? TrackingToken { get; set; }
+    public DateTime? TrackingTokenCreatedUtc { get; set; }
     public ApplicationUser? AssignedDriver { get; set; }
     public ICollection<Message> Messages { get; set; } = new List<Message>();
 }

@@ -174,6 +174,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(c => c.OrderId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Token de seguimiento público: se busca por él en cada visita al enlace,
+        // y debe ser único para que un token identifique una sola mudanza.
+        builder.Entity<Order>()
+            .HasIndex(o => o.TrackingToken)
+            .HasFilter("[TrackingToken] IS NOT NULL")
+            .IsUnique();
+
         // Una solicitud de cotización puede haberse convertido en orden. Si la
         // orden se borra, la solicitud sobrevive sin el vínculo (no se pierde el lead).
         builder.Entity<QuoteRequest>()

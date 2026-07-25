@@ -1,0 +1,121 @@
+@page "/seguimiento/{Token}"
+@layout PublicLayout
+@using BarrieraMoving.Server.Components.Public
+@using BarrieraMoving.Server.Components.Layout
+@using BarrieraMoving.Server.Services
+@using BarrieraMoving.Shared.Enums
+@inject ITrackingService Tracking
+
+<HeadContent>
+    @* Un enlace privado no debe acabar en Google *@
+    <meta name="robots" content="noindex,nofollow" />
+</HeadContent>
+<PageTitle>Seguimiento de tu mudanza | PR Transporte Caribe</PageTitle>
+
+<section class="section">
+    <div class="wrap" style="max-width:680px">
+        @if (info is null)
+        {
+            <div style="text-align:center">
+                <p class="eyebrow">Enlace no válido</p>
+                <h1 style="font-size:clamp(1.9rem,5vw,2.8rem);margin-bottom:1rem">No encontramos esa mudanza</h1>
+                <p class="lead" style="margin-inline:auto">
+                    El enlace puede haber caducado o haber sido desactivado. Llámanos y
+                    te decimos el estado al momento.
+                </p>
+                <p style="margin-top:1.75rem">
+                    <a class="btn btn-primary" href="@SiteInfo.TelHref">
+                        <Icon Name="phone" Size="18" />@SiteInfo.PhoneDisplay
+                    </a>
+                </p>
+            </div>
+        }
+        else
+        {
+            <p class="eyebrow">Seguimiento · Orden #@info.OrderId</p>
+            <h1 style="font-size:clamp(1.9rem,5vw,2.8rem);margin-bottom:.6rem">@info.Title</h1>
+            <p class="muted">Solicitada el @info.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</p>
+
+            <div class="track-now">
+                <span class="track-badge @BadgeClass(info.Status)">@Label(info.Status)</span>
+                <p>@Explain(info.Status)</p>
+                @if (!string.IsNullOrWhiteSpace(info.DriverFirstName)
+                     && info.Status is OrderStatus.EnRoute or OrderStatus.InProgress)
+                {
+                    <p class="muted" style="margin:0">
+                        Tu equipo va con <strong>@info.DriverFirstName</strong>.
+                    </p>
+                }
+            </div>
+
+            @* Línea de tiempo: sin fechas por paso, solo dónde va la mudanza *@
+            <ol class="track-steps">
+                @foreach (var step in Steps)
+                {
+                    var done = (int)info.Status >= (int)step.Status;
+                    var current = info.Status == step.Status;
+                    <li class="@(done ? "done" : "") @(current ? "current" : "")">
+                        <span class="dot">@(done ? "✓" : "")</span>
+                        <span>@step.Label</span>
+                    </li>
+                }
+            </ol>
+
+            <div class="info-callout" style="margin-top:2rem">
+                <Icon Name="phone" Size="18" />
+                <span>
+                    ¿Alguna duda con tu mudanza? Llámanos al
+                    <a href="@SiteInfo.TelHref">@SiteInfo.PhoneDisplay</a>
+                    o escríbenos por <a href="@SiteInfo.WaHref" target="_blank" rel="noopener">WhatsApp</a>.
+                </span>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Token { get; set; } = "";
+
+    private TrackingInfo? info;
+
+    protected override async Task OnInitializedAsync() => info = await Tracking.ResolveAsync(Token);
+
+    private static readonly (OrderStatus Status, string Label)[] Steps =
+    {
+        (OrderStatus.Requested, "Solicitada"),
+        (OrderStatus.Assigned, "Equipo asignado"),
+        (OrderStatus.EnRoute, "En camino"),
+        (OrderStatus.InProgress, "Mudanza en curso"),
+        (OrderStatus.PendingSignature, "Pendiente de firma"),
+        (OrderStatus.Completed, "Completada"),
+    };
+
+    private static string Label(OrderStatus s) => s switch
+    {
+        OrderStatus.Requested => "Solicitada",
+        OrderStatus.Assigned => "Equipo asignado",
+        OrderStatus.EnRoute => "En camino",
+        OrderStatus.InProgress => "Mudanza en curso",
+        OrderStatus.PendingSignature => "Pendiente de firma",
+        OrderStatus.Completed => "Completada",
+        _ => s.ToString()
+    };
+
+    private static string Explain(OrderStatus s) => s switch
+    {
+        OrderStatus.Requested => "Recibimos tu solicitud. Estamos organizando el equipo y el camión.",
+        OrderStatus.Assigned => "Ya tienes equipo asignado para tu mudanza.",
+        OrderStatus.EnRoute => "El equipo va de camino hacia ti.",
+        OrderStatus.InProgress => "Estamos con tu mudanza en este momento.",
+        OrderStatus.PendingSignature => "Terminamos el trabajo; falta la firma de conformidad.",
+        OrderStatus.Completed => "Mudanza completada. ¡Gracias por confiar en nosotros!",
+        _ => ""
+    };
+
+    private static string BadgeClass(OrderStatus s) => s switch
+    {
+        OrderStatus.Completed => "b-green",
+        OrderStatus.EnRoute or OrderStatus.InProgress => "b-amber",
+        _ => "b-navy"
+    };
+}

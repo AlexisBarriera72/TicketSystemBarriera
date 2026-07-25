@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @inject IOrderService OrderService
+@inject ITrackingService Tracking
 @inject ISignatureService SignatureService
 @inject IPaperworkService PaperworkService
 @inject NavigationManager Navigation
@@ -41,6 +42,41 @@
                         <p class="text-muted small">Fecha: @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
                         <hr />
                         <p class="fs-5">@order.Description</p>
+
+                        @if (canBypassFlow)
+                        {
+                            @* Enlace de seguimiento para el cliente (sin login).
+                               Muestra SOLO estado y fecha; se puede desactivar. *@
+                            <div class="border rounded p-3 bg-light mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong class="small text-uppercase text-muted">Enlace de seguimiento para el cliente</strong>
+                                    @if (trackingUrl is null)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="CreateTrackingAsync">
+                                            <i class="bi bi-link-45deg"></i> Generar enlace
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="RevokeTrackingAsync">
+                                            Desactivar
+                                        </button>
+                                    }
+                                </div>
+                                @if (trackingUrl is not null)
+                                {
+                                    <input class="form-control form-control-sm" readonly value="@trackingUrl" />
+                                    <div class="form-text">
+                                        Compártelo por WhatsApp. Solo muestra el estado de la mudanza —
+                                        sin fotos, documentos ni direcciones. Caduca 30 días después de completarla.
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="form-text mb-0">Aún no has generado un enlace para esta orden.</div>
+                                }
+                            </div>
+                        }
                     </div>
                     <div class="col-md-4 border-start">
                         <h6 class="text-muted small fw-bold text-uppercase">Información de Asignación</h6>
@@ -362,8 +398,24 @@
     private string feedbackMessage = "";
     private bool canBypassFlow = false; // Admin/Oficina pueden saltarse el flujo normal de estados
     private string? myRole;
+    private string? trackingUrl;
     private bool canLoadOlder;
     private System.Threading.Timer? pollTimer;
+
+    private string BuildTrackingUrl(string token) =>
+        $"{Navigation.BaseUri.TrimEnd('/')}/seguimiento/{token}";
+
+    private async Task CreateTrackingAsync()
+    {
+        var token = await Tracking.EnsureTokenAsync(OrderId);
+        trackingUrl = token is null ? null : BuildTrackingUrl(token);
+    }
+
+    private async Task RevokeTrackingAsync()
+    {
+        await Tracking.RevokeAsync(OrderId);
+        trackingUrl = null;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -374,6 +426,12 @@
         myRole = Roles.PrimaryRole(user); // se congela en cada mensaje enviado
 
         await LoadData();
+
+        if (canBypassFlow)
+        {
+            var existing = await Tracking.GetTokenAsync(OrderId);
+            trackingUrl = existing is null ? null : BuildTrackingUrl(existing);
+        }
 
         // Solo el autor (cliente), el staff (Admin/Oficina) o el conductor pueden ver la orden
         bool isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office) || user.IsInRole(Roles.Driver);
