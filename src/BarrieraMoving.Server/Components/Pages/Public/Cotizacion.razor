@@ -83,7 +83,12 @@
                 </div>
                 <div class="field">
                     <label for="q-date">Fecha aproximada</label>
-                    <InputText id="q-date" @bind-Value="Model.PreferredDate" placeholder="Ej. 15 de agosto, o «lo antes posible»" />
+                    @* type=date: el teléfono abre su propio calendario al tocarlo.
+                       min = hoy, para que nadie pida una mudanza en el pasado. *@
+                    <InputDate id="q-date" @bind-Value="Model.PreferredDate"
+                               min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <p class="field-hint">Déjala vacía si necesitas la mudanza lo antes posible.</p>
+                    <ValidationMessage For="() => Model.PreferredDate" />
                 </div>
                 <div class="field">
                     <label for="q-details">Detalles (piso, ascensor, artículos grandes…)</label>
@@ -118,7 +123,7 @@
             ServiceType = Model.ServiceType,
             OriginZone = Model.OriginZone,
             DestinationZone = Model.DestinationZone,
-            PreferredDate = Model.PreferredDate,
+            PreferredDate = Model.PreferredDate?.ToString("dd/MM/yyyy"),
             Details = Model.Details,
         };
         using (var db = DbFactory.CreateDbContext())
@@ -171,7 +176,8 @@
         public string? OriginZone { get; set; }
         [StringLength(100, ErrorMessage = "Usa un nombre de pueblo o zona más corto.")]
         public string? DestinationZone { get; set; }
-        [StringLength(100)] public string? PreferredDate { get; set; }
+        // Se elige en un calendario; se guarda como texto legible para la oficina.
+        public DateTime? PreferredDate { get; set; }
 
         [StringLength(2000, ErrorMessage = "Resume un poco más los detalles (máx. 2000 caracteres).")]
         public string? Details { get; set; }
