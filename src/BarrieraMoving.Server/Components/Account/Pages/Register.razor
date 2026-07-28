@@ -6,7 +6,9 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using BarrieraMoving.Server.Data
+@using BarrieraMoving.Server.Services
 
+@inject IGuestLookupService Guest
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
 @inject SignInManager<ApplicationUser> SignInManager
@@ -47,6 +49,29 @@
                 <label for="Input.ConfirmPassword">Confirmar contraseña</label>
                 <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
             </div>
+            @* Enlazar una cotización pedida como invitado. Se piden código Y teléfono:
+               el código circula por WhatsApp y capturas, así que por sí solo no puede
+               bastar para adueñarse de la mudanza de otra persona. *@
+            <fieldset class="border rounded p-3 mb-3">
+                <legend class="fs-6 fw-bold text-primary px-2 w-auto mb-0">
+                    ¿Ya pediste una cotización? <span class="fw-normal text-muted small">(opcional)</span>
+                </legend>
+                <p class="text-muted small">
+                    Escribe el código que te dimos y el teléfono con el que la pediste, y esa
+                    mudanza quedará enlazada a tu cuenta nueva.
+                </p>
+                <div class="form-floating mb-2">
+                    <InputText @bind-Value="Input.ReferenceCode" id="Input.ReferenceCode" class="form-control" placeholder="TC-XXXXXX" />
+                    <label for="Input.ReferenceCode">Código de cotización</label>
+                    <ValidationMessage For="() => Input.ReferenceCode" class="text-danger" />
+                </div>
+                <div class="form-floating">
+                    <InputText @bind-Value="Input.ClaimPhone" id="Input.ClaimPhone" class="form-control" autocomplete="tel" placeholder="(787) 555-1234" />
+                    <label for="Input.ClaimPhone">Teléfono de la cotización</label>
+                    <ValidationMessage For="() => Input.ClaimPhone" class="text-danger" />
+                </div>
+            </fieldset>
+
             <button type="submit" class="w-100 btn btn-lg btn-primary">Crear cuenta</button>
         </EditForm>
     </div>
@@ -75,8 +100,33 @@
         Input ??= new();
     }
 
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    // Mensaje que se arrastra hasta la página siguiente contando cómo fue el enlace
+    private string? claimMessage;
+
     public async Task RegisterUser(EditContext editContext)
     {
+        var wantsClaim = !string.IsNullOrWhiteSpace(Input.ReferenceCode);
+
+        // Se comprueba ANTES de crear la cuenta: si el cliente se equivocó al copiar
+        // el código, ve el error y lo corrige sin haberse creado ya una cuenta.
+        if (wantsClaim)
+        {
+            if (string.IsNullOrWhiteSpace(Input.ClaimPhone))
+            {
+                identityErrors = [new IdentityError {
+                    Description = "Para enlazar la cotización también hace falta el teléfono con el que la pediste." }];
+                return;
+            }
+            if (await Guest.LookupAsync(Input.ReferenceCode!, Input.ClaimPhone!) is null)
+            {
+                identityErrors = [new IdentityError {
+                    Description = "El código de cotización y el teléfono no coinciden. Revísalos, o deja ambos vacíos y enlázala más tarde." }];
+                return;
+            }
+        }
+
         var user = CreateUser();
 
         user.DisplayName = Input.DisplayName.Trim();
@@ -93,6 +143,24 @@
 
         Logger.LogInformation("User created a new account with password.");
 
+        // La cuenta YA existe: pase lo que pase con el enlace, no se tira abajo.
+        // Perder el enlace de una cotización se arregla; perder la cuenta, no.
+        if (wantsClaim)
+        {
+            var claim = await Guest.ClaimAsync(Input.ReferenceCode!, Input.ClaimPhone!, user.Id);
+            claimMessage = claim switch
+            {
+                ClaimResult.Ok => $"Listo: la cotización {Input.ReferenceCode!.Trim().ToUpperInvariant()} quedó enlazada a tu cuenta.",
+                ClaimResult.AlreadyClaimed => "Tu cuenta se creó, pero esa cotización ya está enlazada a otra cuenta. Llámanos y lo arreglamos.",
+                _ => "Tu cuenta se creó, pero no pudimos enlazar la cotización. Llámanos y lo arreglamos.",
+            };
+            if (claim != ClaimResult.Ok)
+            {
+                Logger.LogWarning("No se pudo enlazar la cotización {Code} al usuario {UserId}: {Result}",
+                    Input.ReferenceCode, user.Id, claim);
+            }
+        }
+
         var userId = await UserManager.GetUserIdAsync(user);
         var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
         code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
@@ -104,6 +172,13 @@
 
         if (UserManager.Options.SignIn.RequireConfirmedAccount)
         {
+            if (claimMessage is not null)
+            {
+                var target = NavigationManager.GetUriWithQueryParameters(
+                    NavigationManager.ToAbsoluteUri("Account/RegisterConfirmation").AbsoluteUri,
+                    new Dictionary<string, object?> { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
+                RedirectManager.RedirectToWithStatus(target, claimMessage, HttpContext);
+            }
             RedirectManager.RedirectTo(
                 "Account/RegisterConfirmation",
                 new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
@@ -111,6 +186,10 @@
         else
         {
             await SignInManager.SignInAsync(user, isPersistent: false);
+            if (claimMessage is not null)
+            {
+                RedirectManager.RedirectToWithStatus(ReturnUrl ?? "/portal", claimMessage, HttpContext);
+            }
             RedirectManager.RedirectTo(ReturnUrl);
         }
     }
@@ -161,5 +240,14 @@
         [Display(Name = "Confirmar contraseña")]
         [Compare("Password", ErrorMessage = "Las contraseñas no coinciden.")]
         public string ConfirmPassword { get; set; } = "";
+
+        // Opcionales: enlazan una cotización pedida sin cuenta (formato TC-XXXXXX).
+        [StringLength(32, ErrorMessage = "Ese código es demasiado largo.")]
+        [Display(Name = "Código de cotización")]
+        public string? ReferenceCode { get; set; }
+
+        [StringLength(40, ErrorMessage = "Ese teléfono es demasiado largo.")]
+        [Display(Name = "Teléfono de la cotización")]
+        public string? ClaimPhone { get; set; }
     }
 }

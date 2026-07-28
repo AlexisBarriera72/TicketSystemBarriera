@@ -19,6 +19,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Complaint> Complaints { get; set; }
     public DbSet<DeviceToken> DeviceTokens { get; set; }
     public DbSet<QuoteRequest> QuoteRequests { get; set; }
+    public DbSet<QuotePhoto> QuotePhotos { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

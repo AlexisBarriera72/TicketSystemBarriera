@@ -35,7 +35,9 @@ public sealed class BarrieraFirebaseMessagingService : FirebaseMessagingService
     {
         base.OnMessageReceived(message);
         var notification = message.GetNotification();
-        var title = notification?.Title ?? "Transporte Caribe";
+        // Sin título en el payload usamos la marca corta: en la bandeja de
+        // notificaciones el nombre completo se corta.
+        var title = notification?.Title ?? "TCL";
         var body = notification?.Body ?? "";
         // message.Data lleva type/orderId/conversationId: viaja al intent para
         // que al pulsar se abra la pantalla concreta, no solo la app.

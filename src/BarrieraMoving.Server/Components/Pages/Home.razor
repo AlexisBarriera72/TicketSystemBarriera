@@ -1,16 +1,23 @@
 @page "/portal"
 @using Microsoft.AspNetCore.Authorization
-<PageTitle>Inicio | Transporte Caribe</PageTitle>
+<PageTitle>Inicio | Transporte Caribe Logistic</PageTitle>
 
 <div class="container mt-4">
     <AuthorizeView>
         <Authorized Context="authCtx">
             <div class="hero-banner mb-4">
-                <span class="hero-badge"><img src="img/logo-192.png" class="hero-logo" alt="Transporte Caribe" /></span>
-                <div>
-                    <h1 class="hero-h1">Bienvenido, @Greeting(authCtx.User)</h1>
-                    <p class="hero-p">Gestiona tus mudanzas, conductores, oficina y clientes de forma rápida y eficiente.</p>
+                <span class="hero-badge"><img src="img/logo-192.png" class="hero-logo" alt="Transporte Caribe Logistic" /></span>
+                <div class="hero-main">
+                    <h1 class="hero-h1">@TimeGreeting(), @Greeting(authCtx.User)!</h1>
+                    <p class="hero-p">Aquí tienes un resumen de lo que sucede hoy.</p>
+                    <div class="hero-when">
+                        <span><i class="bi bi-calendar3"></i> @DateTime.Now.ToString("d 'de' MMMM, yyyy", Spanish)</span>
+                        <span><i class="bi bi-clock"></i> @DateTime.Now.ToString("hh:mm tt", Spanish)</span>
+                    </div>
                 </div>
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="heroStaff">
+                    <a href="/orders/create" class="hero-cta"><i class="bi bi-plus-circle"></i> Nueva Orden</a>
+                </AuthorizeView>
             </div>
 
             @* Barra de métricas operativas en tiempo real (se refresca cada 30s) *@
@@ -83,9 +90,9 @@
         </Authorized>
         <NotAuthorized>
             <div class="hero-banner mb-4">
-                <span class="hero-badge"><img src="img/logo-192.png" class="hero-logo" alt="Transporte Caribe" /></span>
+                <span class="hero-badge"><img src="img/logo-192.png" class="hero-logo" alt="Transporte Caribe Logistic" /></span>
                 <div>
-                    <h1 class="hero-h1">Transporte Caribe</h1>
+                    <h1 class="hero-h1">Transporte Caribe Logistic</h1>
                     <p class="hero-p">Plataforma de gestión de mudanzas — oficina, conductores y clientes en un solo sitio.</p>
                 </div>
             </div>
@@ -100,6 +107,17 @@
 </div>
 
 @code {
+    // La hora del SERVIDOR manda en toda la app; aquí solo se usa para saludar,
+    // así que da igual el desfase con el reloj del visitante.
+    private static readonly System.Globalization.CultureInfo Spanish = new("es-PR");
+
+    private static string TimeGreeting() => DateTime.Now.Hour switch
+    {
+        < 12 => "¡Buenos días",
+        < 19 => "¡Buenas tardes",
+        _ => "¡Buenas noches",
+    };
+
     // Nombre amable para el saludo: la parte antes de la @ del email, capitalizada
     // (admin@system.com → "Admin"). Cambia a DisplayName si prefieres el nombre real.
     private static string Greeting(System.Security.Claims.ClaimsPrincipal user)

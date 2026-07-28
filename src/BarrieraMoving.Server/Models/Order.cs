@@ -19,6 +19,13 @@ public class Order
     public ApplicationUser? Author { get; set; }
     public string? AssignedDriverId { get; set; }
 
+    // --- Datos de carga (mismo formato que la solicitud de cotización) ---
+    // Piso y ascensor ("3er piso · sin ascensor"): el conductor lo ve antes de salir.
+    public string? Floor { get; set; }
+    // Artículos del catálogo separados por "|" (ver MovingItems). Campos propios y
+    // no texto libre para que lo que marcó el cliente llegue intacto a la cuadrilla.
+    public string? Items { get; set; }
+
     // --- Enlace público de seguimiento (sin login) ---
     // Token aleatorio largo. Quien lo tenga ve SOLO estado y fecha: ni fotos, ni
     // documentos, ni direcciones, ni datos de otras órdenes. Se puede revocar

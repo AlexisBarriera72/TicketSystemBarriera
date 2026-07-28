@@ -2,31 +2,56 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
-/* Paleta de marca Transporte Caribe (del logo): navy + teal + amarillo + verde */
+/* Paleta de marca Transporte Caribe Logistic (TCL, del logo): navy + naranja.
+   --bs-primary se usa como RELLENO con texto blanco (burbujas de chat bg-primary,
+   cabeceras de tarjeta), así que va en navy: el naranja con texto blanco no pasa AA. */
 :root {
-    --bs-primary: #1f8ba0;
-    --bs-primary-rgb: 31, 139, 160;
-    --bs-link-color: #14395a;
-    --bs-link-color-rgb: 20, 57, 90;
-    --bs-link-hover-color: #1f8ba0;
+    --bs-primary: #011A43;
+    --bs-primary-rgb: 1, 26, 67;
+    --bs-link-color: #011A43;
+    --bs-link-color-rgb: 1, 26, 67;
+    --bs-link-hover-color: #C94400;
 }
 
 a, .btn-link {
-    color: #14395a;
+    color: #011A43;
 }
 
+/* Botón de acción principal: relleno naranja con texto NAVY (5.15:1).
+   Blanco sobre naranja daría 3.32:1 y no pasa AA. Al pulsar, el naranja
+   oscuro sí pide texto blanco (4.87:1). */
 .btn-primary {
-    --bs-btn-bg: #14395a;
-    --bs-btn-border-color: #14395a;
-    --bs-btn-hover-bg: #1f8ba0;
-    --bs-btn-hover-border-color: #1f8ba0;
-    --bs-btn-active-bg: #0f2c46;
-    --bs-btn-active-border-color: #0f2c46;
-    color: #fff;
+    --bs-btn-bg: #FA5400;
+    --bs-btn-border-color: #FA5400;
+    --bs-btn-color: #011A43;
+    --bs-btn-hover-bg: #FF6A1F;
+    --bs-btn-hover-border-color: #FF6A1F;
+    --bs-btn-hover-color: #011A43;
+    --bs-btn-active-bg: #C94400;
+    --bs-btn-active-border-color: #C94400;
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-bg: #FA5400;
+    --bs-btn-disabled-border-color: #FA5400;
+    --bs-btn-disabled-color: #011A43;
+    color: #011A43;
+}
+
+/* Acción secundaria ("Reintentar"): navy, para que no quede el azul de Bootstrap */
+.btn-outline-primary {
+    --bs-btn-color: #011A43;
+    --bs-btn-border-color: #011A43;
+    --bs-btn-hover-bg: #011A43;
+    --bs-btn-hover-border-color: #011A43;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: #010F2B;
+    --bs-btn-active-border-color: #010F2B;
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-color: #011A43;
+    --bs-btn-disabled-border-color: #011A43;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #1f8ba0;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #FA5400;
 }
 
 .content {
@@ -117,7 +142,7 @@ h1:focus {
     gap: 0.5rem;
 }
 
-.page-title-icon i { color: #1f8ba0; }
+.page-title-icon i { color: #FA5400; }
 
 .page-sub {
     color: #8a90a6;
@@ -159,9 +184,9 @@ h1:focus {
     color: #1e2340;
 }
 
-.detail-title i { color: #1f8ba0; }
+.detail-title i { color: #FA5400; }
 
-/* Botón de recarga tipo píldora con borde azul */
+/* Botón de recarga tipo píldora con borde naranja */
 .pill-btn {
     display: inline-flex;
     align-items: center;
@@ -169,9 +194,9 @@ h1:focus {
     height: 2.5rem;
     padding: 0 1rem;
     border-radius: 12px;
-    border: 1px solid #bcdfe6;
+    border: 1px solid #ffd0b8;
     background: #fff;
-    color: #1f8ba0;
+    color: #C94400;
     font-weight: 600;
     font-size: 0.9rem;
     font-family: inherit;
@@ -209,7 +234,7 @@ h1:focus {
     font-size: 1.25rem;
 }
 
-.card-badge.b-blue   { background: #e3f2f5; color: #1f8ba0; }
+.card-badge.b-blue   { background: #ffe9df; color: #C94400; }
 .card-badge.b-green  { background: #e6f6ee; color: #2aa768; }
 .card-badge.b-orange { background: #fdeede; color: #ef8f2b; }
 .card-badge.b-purple { background: #efeafe; color: #7b5cf0; }
@@ -243,9 +268,9 @@ h1:focus {
 
 .status-pill.s-gray   { background: #6b7280; }
 .status-pill.s-green  { background: #2aa768; }
-.status-pill.s-blue   { background: #1f8ba0; }
+.status-pill.s-blue   { background: #FA5400; color: #011A43; }
 .status-pill.s-amber  { background: #f0ad2e; color: #3a2e00; }
-.status-pill.s-info   { background: #3aa8c1; }
+.status-pill.s-info   { background: #0A2A5C; }
 
 /* Aviso informativo (sin ilustración) */
 .info-callout {
@@ -261,7 +286,7 @@ h1:focus {
     line-height: 1.35;
 }
 
-.info-callout i { color: #1f8ba0; font-size: 1.15rem; margin-top: 1px; flex: 0 0 auto; }
+.info-callout i { color: #C94400; font-size: 1.15rem; margin-top: 1px; flex: 0 0 auto; }
 
 /* Tarjeta de formulario (p.ej. nueva reclamación) */
 .form-card {
@@ -317,7 +342,7 @@ h1:focus {
     color: #1e2340;
 }
 
-.section-head i { color: #1f8ba0; }
+.section-head i { color: #FA5400; }
 
 /* Respuesta de la oficina dentro de una reclamación */
 .office-reply {
@@ -424,15 +449,15 @@ h1:focus {
     justify-content: center;
     gap: 0.4rem;
     padding: 0.6rem 0.5rem;
-    border: 1.5px solid #bcdfe6;
+    border: 1.5px solid #ffd0b8;
     border-radius: 12px;
-    background: #f2fafb;
-    color: #14395a;
+    background: #fff6f1;
+    color: #011A43;
     font-family: inherit;
     font-size: 0.86rem;
     font-weight: 700;
     cursor: pointer;
 }
 
-.stage-btn:active { background: #e3f2f5; }
+.stage-btn:active { background: #ffe9df; }
 .stage-btn:disabled { opacity: 0.55; }

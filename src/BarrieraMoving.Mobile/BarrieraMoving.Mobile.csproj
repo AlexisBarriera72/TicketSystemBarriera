@@ -30,8 +30,10 @@
                <MauiXaml Update="MyPage.xaml" Inflator="Runtime" /> (force runtime inflation) -->
         <MauiXamlInflator>SourceGen</MauiXamlInflator>
 
-        <!-- Display name -->
-        <ApplicationTitle>Transporte Caribe</ApplicationTitle>
+        <!-- Display name. El lanzador de Android recorta las etiquetas largas
+             ("Transporte Caribe Logistic" no cabe), así que bajo el icono va la
+             marca corta; el nombre completo se ve dentro de la app. -->
+        <ApplicationTitle>TCL</ApplicationTitle>
 
         <!-- App Identifier -->
         <ApplicationId>com.barrieramoving.app</ApplicationId>
@@ -51,15 +53,20 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <!-- App Icon -->
-        <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+        <!-- App Icon: camión TCL (PNG transparente, ya trae margen) sobre el navy
+             de marca. Solo Include + Color: el PNG es el primer plano y el color
+             el fondo del icono adaptativo. NO poner ForegroundFile con este mismo
+             archivo — se dibujaría el camión dos veces (capa base recortada al
+             fondo + primer plano encima) y el icono sale sucio en el lanzador.
+             El archivo DEBE llamarse appicon.png: el recurso mipmap generado toma
+             ese nombre y AndroidManifest.xml pide @mipmap/appicon en duro. -->
+        <MauiIcon Include="Resources\AppIcon\appicon.png" Color="#011A43" />
 
-        <!-- Splash Screen -->
-        <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+        <!-- Splash Screen: mismo camión sobre navy de marca -->
+        <MauiSplashScreen Include="Resources\Splash\splash.png" Color="#011A43" BaseSize="128,128" />
 
         <!-- Images -->
         <MauiImage Include="Resources\Images\*" />
-        <MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="168,208" />
 
         <!-- Custom Fonts -->
         <MauiFont Include="Resources\Fonts\*" />

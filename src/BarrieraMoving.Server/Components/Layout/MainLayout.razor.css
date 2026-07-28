@@ -11,17 +11,162 @@ main {
     background-size: cover;
 }
 
+/* Barra lateral en navy (TCL): el naranja se reserva para el enlace activo */
 .sidebar {
-    background-image: linear-gradient(180deg, #12314e 0%, #1f8ba0 70%);
+    background-image: linear-gradient(180deg, #011a43 0%, #0a2a5c 70%);
 }
 
 .top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
+    background-color: #fff;
+    border-bottom: 1px solid #e6e9ef;
     justify-content: flex-end;
-    height: 3.5rem;
+    height: 3.75rem;
     display: flex;
     align-items: center;
+    gap: 0.35rem;
+}
+
+/* ---- campana ---- */
+.top-row ::deep .tb-bell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    color: #011a43;
+    font-size: 1.15rem;
+    margin-left: 0 !important;
+}
+
+    .top-row ::deep .tb-bell:hover {
+        background: #eef1f6;
+        text-decoration: none !important;
+    }
+
+.top-row ::deep .tb-login {
+    color: #011a43;
+    font-weight: 600;
+}
+
+/* ---- menú de cuenta (details/summary, sin JS) ---- */
+.top-row ::deep .acct {
+    position: relative;
+    margin-left: 0.25rem;
+}
+
+    .top-row ::deep .acct > summary {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.3rem 0.5rem;
+        border-radius: 9px;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+    }
+
+        .top-row ::deep .acct > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .top-row ::deep .acct > summary:hover {
+            background: #eef1f6;
+        }
+
+.top-row ::deep .acct-avatar {
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #011a43, #0a2a5c);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    flex: 0 0 auto;
+}
+
+.top-row ::deep .acct-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    text-align: left;
+}
+
+.top-row ::deep .acct-name {
+    font-weight: 700;
+    font-size: 0.86rem;
+    color: #011a43;
+}
+
+.top-row ::deep .acct-role {
+    font-size: 0.7rem;
+    color: #6b7684;
+}
+
+.top-row ::deep .acct-caret {
+    font-size: 0.75rem;
+    color: #6b7684;
+}
+
+.top-row ::deep .acct[open] .acct-caret {
+    transform: rotate(180deg);
+}
+
+.top-row ::deep .acct-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.4rem);
+    min-width: 15rem;
+    background: #fff;
+    border: 1px solid #e6e9ef;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(1, 26, 67, 0.16);
+    padding: 0.4rem;
+    z-index: 20;
+}
+
+.top-row ::deep .acct-email {
+    padding: 0.45rem 0.7rem 0.6rem;
+    font-size: 0.75rem;
+    color: #6b7684;
+    border-bottom: 1px solid #eef1f6;
+    margin-bottom: 0.3rem;
+    word-break: break-all;
+}
+
+.top-row ::deep .acct-menu a,
+.top-row ::deep .acct-menu button {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: none;
+    background: none;
+    border-radius: 7px;
+    font-size: 0.88rem;
+    color: #011a43;
+    text-align: left;
+    cursor: pointer;
+    margin-left: 0 !important;
+    font-family: inherit;
+}
+
+    .top-row ::deep .acct-menu a:hover,
+    .top-row ::deep .acct-menu button:hover {
+        background: #eef1f6;
+        text-decoration: none !important;
+    }
+
+.top-row ::deep .acct-menu form {
+    margin: 0;
+}
+
+.top-row ::deep .acct-menu button {
+    color: #c94400;
 }
 
     .top-row ::deep a, .top-row ::deep .btn-link {

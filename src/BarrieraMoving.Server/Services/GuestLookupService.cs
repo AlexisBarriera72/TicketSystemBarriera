@@ -67,6 +67,41 @@ public sealed class GuestLookupService(IDbContextFactory<ApplicationDbContext> d
             DriverFirstName: firstName);
     }
 
+    public async Task<ClaimResult> ClaimAsync(string referenceCode, string phone, string userId)
+    {
+        var code = Normalize(referenceCode);
+        var digits = IGuestLookupService.NormalizePhone(phone);
+        if (code.Length < 6 || digits.Length < 7) return ClaimResult.NotFound;
+
+        using var db = dbFactory.CreateDbContext();
+        var quote = await db.QuoteRequests.FirstOrDefaultAsync(q => q.ReferenceCode == code);
+
+        // Mismo criterio que LookupAsync: no se distingue "código inexistente" de
+        // "teléfono incorrecto", para no dejar enumerar códigos ajenos.
+        if (quote is null) return ClaimResult.NotFound;
+        if (!TailMatches(IGuestLookupService.NormalizePhone(quote.Phone), digits)) return ClaimResult.NotFound;
+
+        // Reclamarla dos veces desde la misma cuenta es inofensivo; desde otra, no.
+        if (quote.ClaimedByUserId is not null && quote.ClaimedByUserId != userId)
+        {
+            return ClaimResult.AlreadyClaimed;
+        }
+
+        quote.ClaimedByUserId = userId;
+        quote.ClaimedAtUtc = DateTime.UtcNow;
+
+        // Si la oficina ya la convirtió en orden, la orden pasa a ser suya: es lo
+        // que hace que aparezca en "Mis órdenes" y que pueda usar el chat.
+        if (quote.ConvertedOrderId is not null)
+        {
+            var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == quote.ConvertedOrderId);
+            if (order is not null) order.AuthorId = userId;
+        }
+
+        await db.SaveChangesAsync();
+        return ClaimResult.Ok;
+    }
+
     private static bool TailMatches(string a, string b)
     {
         if (a.Length < 7 || b.Length < 7) return false;

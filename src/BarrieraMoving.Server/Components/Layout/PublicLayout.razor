@@ -5,9 +5,12 @@
     <div class="wrap">
         <a class="brand" href="/">
             <img src="img/logo-96.png" alt="" width="42" height="42" />
+            @* Mismo bloqueo que el logotipo real: TCL grande y el nombre completo
+               debajo. En cabecera estrecha (≤560px) el CSS oculta la línea de abajo
+               y queda solo "TCL", que es la marca corta. *@
             <span>
-                <b>Transporte Caribe</b>
-                <span>Mudanzas · Puerto Rico</span>
+                <b>@SiteInfo.ShortName</b>
+                <span>@SiteInfo.Name</span>
             </span>
         </a>
         <div class="header-actions">
@@ -29,7 +32,7 @@
             <div>
                 <div class="footer-brand">
                     <img src="img/logo-96.png" alt="" width="44" height="44" />
-                    <b>Transporte Caribe</b>
+                    <b>@SiteInfo.Name</b>
                 </div>
                 <p>¡Tu mudanza sin estrés comienza aquí! Cuidamos de tus pertenencias como si fueran nuestras. Servicio en TODO Puerto Rico.</p>
             </div>
@@ -74,7 +77,8 @@
         </div>
 
         <div class="footer-bottom">
-            <span>© @DateTime.Now.Year PR Transporte Caribe LLC. Todos los derechos reservados.</span>
+            @* Nombre REGISTRADO, no el comercial: esto es la nota legal *@
+            <span>© @DateTime.Now.Year @SiteInfo.LegalName. Todos los derechos reservados.</span>
         </div>
     </div>
 </footer>

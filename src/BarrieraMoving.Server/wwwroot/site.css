@@ -1,17 +1,20 @@
 /* ===========================================================================
-   PR Transporte Caribe — public marketing site. Original CSS.
-   Palette sampled from the truck livery / logo. Mobile-first.
+   Transporte Caribe Logistic (TCL) — public marketing site. Original CSS.
+   Palette sampled from the new TCL logo (navy + orange). Mobile-first.
    =========================================================================== */
 :root{
-  --navy:#123A5C; --navy-2:#0e2e49; --teal:#1F8BA0; --teal-d:#16697c;
-  --yellow:#F5C400;
-  /* Verde del logo (#6FAE44) SOLO como acento: sobre él, el texto blanco da 2.69:1
-     y no pasa WCAG AA. Para botones con texto blanco usamos una versión oscurecida
-     (4.66:1). Mismo criterio con el teal de bloque (--teal-cta, 5.42:1). */
+  --navy:#011A43; --navy-2:#010F2B; --navy-3:#0A2A5C;
+  /* Naranja de marca. Sobre relleno naranja el texto va SIEMPRE en navy (5.15:1);
+     en blanco daría 3.32:1 y no pasa WCAG AA. Para enlaces y texto pequeño sobre
+     fondo claro se usa --orange-d (4.87:1); --orange ahí solo vale para texto
+     grande, iconos y bordes. */
+  --orange:#FA5400; --orange-d:#C94400; --orange-h:#FF6A1F;
+  /* Verde de WhatsApp: es color de marca ajeno, NO se rebrandea. Sobre el verde
+     claro (#6FAE44) el texto blanco da 2.69:1, así que los botones usan la
+     versión oscurecida (4.66:1). */
   --green:#6FAE44; --green-btn:#498226; --green-btn-d:#3E7220;
-  --teal-cta:#197484;
   --paper:#F6F3EC; --paper-2:#efe9dd; --card:#fffdf9;
-  --ink:#172A38; --muted:#5b6a77; --line:rgba(18,58,92,.16);
+  --ink:#172A38; --muted:#5b6a77; --line:rgba(1,26,67,.16);
   --serif:'Fraunces',Georgia,'Times New Roman',serif;
   --sans:'Libre Franklin',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   --wrap:1180px;
@@ -23,14 +26,14 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
 img{max-width:100%;display:block}
 /* Nada debe desbordar horizontalmente: palabras largas y emails se parten */
 h1,h2,h3,p,q,a,li,span{overflow-wrap:break-word}
-a{color:var(--teal-d);text-decoration:none}
+a{color:var(--orange-d);text-decoration:none}
 h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.06;
   letter-spacing:-.015em;margin:0}
 p{margin:0 0 1rem}
 
 .wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:1.25rem}
 .eyebrow{font-family:var(--sans);font-weight:600;font-size:.78rem;text-transform:uppercase;
-  letter-spacing:.2em;color:var(--teal-d);margin:0 0 1rem}
+  letter-spacing:.2em;color:var(--orange-d);margin:0 0 1rem}
 .section{padding:clamp(3.5rem,9vw,7rem) 0}
 .lead{font-size:1.18rem;color:var(--muted);max-width:46ch}
 .muted{color:var(--muted)}
@@ -41,8 +44,9 @@ p{margin:0 0 1rem}
   border:1.5px solid transparent;cursor:pointer;transition:transform .12s,background .15s,color .15s;white-space:nowrap}
 .btn:active{transform:translateY(1px)}
 .btn svg{width:1.15em;height:1.15em}
-.btn-primary{background:var(--yellow);color:var(--navy);border-color:var(--yellow)}
-.btn-primary:hover{background:#ffd21f}
+/* Relleno naranja SIEMPRE con texto navy (5.15:1). En blanco no pasaría AA. */
+.btn-primary{background:var(--orange);color:var(--navy);border-color:var(--orange)}
+.btn-primary:hover{background:var(--orange-h);border-color:var(--orange-h)}
 .btn-navy{background:var(--navy);color:#fff;border-color:var(--navy)}
 .btn-navy:hover{background:var(--navy-2)}
 .btn-wa{background:var(--green-btn);color:#fff;border-color:var(--green-btn)}
@@ -63,10 +67,10 @@ p{margin:0 0 1rem}
 .brand img{width:42px;height:42px}
 .brand b{font-family:var(--serif);font-weight:600;font-size:1.15rem;letter-spacing:-.01em}
 .brand span{display:block;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--teal-d);font-weight:600}
+  color:var(--orange-d);font-weight:600}
 .header-actions{display:flex;align-items:center;gap:.75rem;flex:0 0 auto}
 .header-phone{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;color:var(--navy)}
-.header-phone svg{width:1.1em;height:1.1em;color:var(--teal)}
+.header-phone svg{width:1.1em;height:1.1em;color:var(--orange)}
 /* Tablet: cae el texto del teléfono, WhatsApp y "Consultar mudanza".
    El acceso a la consulta sigue en el hero y en el pie, así que no se pierde. */
 @media(max-width:900px){
@@ -89,9 +93,10 @@ p{margin:0 0 1rem}
 .hero-grid{display:grid}
 .hero-copy{padding:clamp(2.5rem,7vw,5rem) 1.25rem}
 .hero-copy .wrapin{max-width:36rem;margin-left:auto}
-.hero .eyebrow{color:#8fd3e2}
+/* Naranja sobre navy = 5.15:1, pasa AA incluso a este tamaño de eyebrow */
+.hero .eyebrow{color:var(--orange)}
 .hero h1{font-size:clamp(2.6rem,7vw,4.6rem);color:#fff;font-weight:600;margin-bottom:1.1rem}
-.hero h1 em{font-style:normal;color:var(--yellow)}
+.hero h1 em{font-style:normal;color:var(--orange)}
 .hero .lead{color:rgba(255,255,255,.82);font-size:1.2rem;max-width:34ch}
 .hero-cta{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}
 .hero-check{margin:1.25rem 0 0;font-size:.95rem;color:rgba(255,255,255,.78)}
@@ -122,24 +127,23 @@ p{margin:0 0 1rem}
 @media(min-width:640px){.svc-grid{grid-template-columns:1fr 1fr}}
 @media(min-width:980px){.svc-grid{grid-template-columns:1fr 1fr 1fr}}
 .svc{display:flex;gap:1rem;padding:1.4rem 0;border-top:1px solid var(--line)}
-.svc svg{width:1.9rem;height:1.9rem;color:var(--teal);flex:0 0 auto;stroke-width:1.5}
+.svc svg{width:1.9rem;height:1.9rem;color:var(--orange);flex:0 0 auto;stroke-width:1.5}
 .svc h3{font-family:var(--sans);font-weight:700;font-size:1.05rem;letter-spacing:0;margin:0 0 .15rem;color:var(--navy)}
 .svc p{font-size:.92rem;color:var(--muted);margin:0}
 
 /* ---- full-width color band ---- */
 .band{background:var(--navy);color:#fff;text-align:center;
   padding:clamp(3.5rem,8vw,6rem) 0;position:relative;overflow:hidden}
-.band .eyebrow{color:#8fd3e2}
+.band .eyebrow{color:var(--orange)}
 .band h2{font-size:clamp(2.2rem,6vw,4rem);color:#fff;max-width:16ch;margin:0 auto}
-.band .rule{width:64px;height:3px;background:var(--yellow);margin:1.5rem auto 0}
-.band.teal{background:var(--teal)}
+.band .rule{width:64px;height:3px;background:var(--orange);margin:1.5rem auto 0}
 
 /* ---- proceso (numbered) ---- */
 .steps{display:grid;gap:0;counter-reset:step}
 .step{display:grid;grid-template-columns:auto 1fr;gap:1.4rem;padding:1.6rem 0;
   border-top:1px solid var(--line);align-items:start}
 .step:last-child{border-bottom:1px solid var(--line)}
-.step .num{font-family:var(--serif);font-size:2.1rem;color:var(--teal);line-height:1;min-width:2.2rem}
+.step .num{font-family:var(--serif);font-size:2.1rem;color:var(--orange);line-height:1;min-width:2.2rem}
 .step h3{font-family:var(--sans);font-weight:700;font-size:1.15rem;color:var(--navy);margin:.2rem 0 .3rem}
 .step p{color:var(--muted);margin:0;max-width:52ch}
 
@@ -147,7 +151,7 @@ p{margin:0 0 1rem}
 .reviews{text-align:center}
 .reviews .rating{display:inline-flex;align-items:center;gap:.5rem;margin-bottom:.4rem;
   color:var(--navy);font-weight:600}
-.stars{display:inline-flex;gap:2px;color:var(--yellow)}
+.stars{display:inline-flex;gap:2px;color:var(--orange)}
 .stars svg{width:1.15rem;height:1.15rem}
 .review-list{max-width:44rem;margin:2.5rem auto 0}
 .review{padding:2.4rem 0;border-top:1px solid var(--line)}
@@ -155,7 +159,7 @@ p{margin:0 0 1rem}
 .review q{font-family:var(--serif);font-weight:400;font-size:1.32rem;line-height:1.5;
   color:var(--ink);quotes:"“" "”"}
 .review .who{margin-top:1.1rem;font-weight:600;font-size:.82rem;text-transform:uppercase;
-  letter-spacing:.14em;color:var(--teal-d)}
+  letter-spacing:.14em;color:var(--orange-d)}
 .review .when{color:var(--muted);font-weight:500;letter-spacing:.08em}
 
 /* ---- contact strip ---- */
@@ -167,11 +171,13 @@ p{margin:0 0 1rem}
   display:inline-block;margin:.5rem 0 1.2rem}
 .contact-rows{display:grid;gap:.85rem;margin-top:1.5rem}
 .contact-rows a{display:inline-flex;align-items:center;gap:.7rem;color:var(--ink);font-weight:500}
-.contact-rows svg{width:1.3rem;height:1.3rem;color:var(--teal);flex:0 0 auto}
+.contact-rows svg{width:1.3rem;height:1.3rem;color:var(--orange);flex:0 0 auto}
 .contact-cta{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.6rem}
 
 /* ---- closing CTA ---- */
-.cta{background:var(--teal-cta);color:#fff;text-align:center;padding:clamp(3.5rem,8vw,6rem) 0}
+/* Bloque en navy claro (14:1 con texto blanco), NO en naranja: el naranja de
+   marca con texto blanco da 3.32:1 y no pasa AA. El acento lo pone el botón. */
+.cta{background:var(--navy-3);color:#fff;text-align:center;padding:clamp(3.5rem,8vw,6rem) 0}
 .cta h2{color:#fff;font-size:clamp(2.2rem,5.5vw,3.6rem);max-width:18ch;margin:0 auto 1rem}
 .cta p{color:rgba(255,255,255,.9);max-width:40ch;margin:0 auto 2rem}
 .cta-btns{display:flex;flex-wrap:wrap;gap:.85rem;justify-content:center}
@@ -216,7 +222,7 @@ p{margin:0 0 1rem}
 
 /* ---- quote form ---- */
 /* ---- número de referencia para clientes sin cuenta ---- */
-.ref-box{background:#fff;border:2px dashed var(--teal);border-radius:12px;
+.ref-box{background:#fff;border:2px dashed var(--orange);border-radius:12px;
   padding:1.1rem 1.25rem;text-align:center;margin:.5rem 0}
 .ref-box span{display:block;font-size:.88rem;color:var(--muted)}
 .ref-box strong{display:block;font-family:var(--serif);font-size:2rem;
@@ -242,14 +248,53 @@ p{margin:0 0 1rem}
 .track-steps li.done{color:var(--ink)}
 .track-steps li.done .dot{background:var(--green-btn);border-color:var(--green-btn)}
 .track-steps li.current{font-weight:700;color:var(--navy)}
-.track-steps li.current .dot{box-shadow:0 0 0 4px rgba(31,139,160,.18)}
+.track-steps li.current .dot{box-shadow:0 0 0 4px rgba(250,84,0,.18)}
 
 .form-wrap{max-width:640px;margin-inline:auto}
 .field{margin-bottom:1.1rem}
 .field label{display:block;font-weight:600;font-size:.9rem;color:var(--navy);margin-bottom:.35rem}
 .field input,.field select,.field textarea{width:100%;font-family:var(--sans);font-size:1rem;
   padding:.8rem .9rem;border:1.5px solid var(--line);border-radius:3px;background:var(--card);color:var(--ink)}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--teal)}
-.form-note{background:#eaf4f6;border-left:3px solid var(--teal);padding:.9rem 1.1rem;
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--orange)}
+.form-note{background:#fdefe7;border-left:3px solid var(--orange);padding:.9rem 1.1rem;
   border-radius:3px;color:var(--navy);font-size:.95rem}
 .form-ok{background:#eef6e8;border-left:3px solid var(--green);padding:1.1rem 1.2rem;border-radius:3px}
+
+/* ---- bloques del formulario: Piso, Artículos, Fotos ---- */
+.block{border:1.5px solid var(--line);border-radius:3px;padding:1.1rem 1.2rem;margin:0 0 1.4rem;min-width:0}
+.block legend{font-weight:700;font-size:.95rem;color:var(--navy);padding:0 .4rem}
+.block legend .opt{font-weight:400;font-size:.8rem;color:var(--muted);text-transform:lowercase}
+.block-hint{margin:0 0 .9rem;font-size:.88rem;color:var(--muted);line-height:1.5}
+/* Último campo de un bloque: sin hueco inferior, para que el borde no quede suelto */
+.block .field.last{margin-bottom:0}
+.field label .opt{font-weight:400;font-size:.8rem;color:var(--muted)}
+.two-up{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+@media(max-width:520px){.two-up{grid-template-columns:1fr}}
+/* Ancho propio: este input vive fuera de un .field, que es quien da el 100% */
+.item-search{display:block;width:100%;margin-bottom:.9rem;font-family:var(--sans);font-size:1rem;
+  padding:.8rem .9rem;border:1.5px solid var(--line);border-radius:3px;background:var(--card);color:var(--ink)}
+.item-search:focus{outline:none;border-color:var(--orange)}
+
+/* <details> como desplegable nativo: cero JavaScript */
+.itemgroup{border:1.5px solid var(--line);border-radius:3px;margin-bottom:.6rem;background:var(--card)}
+.itemgroup[open]{border-color:var(--orange)}
+.itemgroup summary{cursor:pointer;padding:.85rem 1rem;list-style:none;
+  display:flex;flex-direction:column;gap:.15rem;min-height:44px;justify-content:center}
+.itemgroup summary::-webkit-details-marker{display:none}
+/* Flecha propia: la nativa no se puede colorear de forma fiable entre navegadores */
+.itemgroup summary::after{content:"";position:absolute;right:1.1rem;width:.55rem;height:.55rem;
+  border-right:2px solid var(--navy);border-bottom:2px solid var(--navy);
+  transform:rotate(45deg);transition:transform .15s}
+.itemgroup[open] summary::after{transform:rotate(-135deg)}
+.itemgroup summary{position:relative;padding-right:2.6rem}
+.itemgroup summary:hover{background:var(--paper-2)}
+.ig-name{font-weight:700;color:var(--navy);font-size:1rem}
+.ig-hint{font-size:.82rem;color:var(--muted);line-height:1.35}
+.ig-grid{display:grid;grid-template-columns:1fr 1fr;gap:.15rem;padding:.3rem .7rem 1rem}
+@media(max-width:560px){.ig-grid{grid-template-columns:1fr}}
+/* Fila entera pulsable: en el móvil, apuntar a la casilla sola es incómodo */
+.ig-item{display:flex;align-items:center;gap:.6rem;min-height:44px;padding:.35rem .4rem;
+  border-radius:3px;cursor:pointer;font-size:.94rem;color:var(--ink);line-height:1.35}
+.ig-item:hover{background:var(--paper-2)}
+.ig-item input{width:1.15rem;height:1.15rem;flex:none;accent-color:var(--orange);cursor:pointer}
+.ig-item span{min-width:0;overflow-wrap:break-word}

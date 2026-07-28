@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
 <div class="page">
     <div class="sidebar">
@@ -8,9 +8,38 @@
     <main>
         <div class="top-row px-4">
             <AuthorizeView>
-                <a href="notifications" title="Notificaciones">
-                    <span class="bi bi-bell" aria-hidden="true"></span> Notificaciones
-                </a>
+                <Authorized>
+                    <a class="tb-bell" href="notifications" title="Notificaciones" aria-label="Notificaciones">
+                        <i class="bi bi-bell"></i>
+                    </a>
+
+                    @* Menú de cuenta con <details>: no hay JS de Bootstrap cargado en
+                       la app, y así funciona igual en páginas interactivas y en SSR
+                       estático. Aquí vive el cierre de sesión (antes en la barra
+                       lateral, donde ocupaba espacio de navegación). *@
+                    <details class="acct">
+                        <summary>
+                            <span class="acct-avatar">@Initials(context.User)</span>
+                            <span class="acct-meta">
+                                <span class="acct-name">@ShortName(context.User)</span>
+                                <span class="acct-role">@RoleLabel(context.User)</span>
+                            </span>
+                            <i class="bi bi-chevron-down acct-caret"></i>
+                        </summary>
+                        <div class="acct-menu">
+                            <div class="acct-email">@context.User.Identity?.Name</div>
+                            <a href="Account/Manage"><i class="bi bi-person-gear"></i> Mi cuenta</a>
+                            <form action="Account/Logout" method="post">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="ReturnUrl" value="" />
+                                <button type="submit"><i class="bi bi-box-arrow-left"></i> Cerrar sesión</button>
+                            </form>
+                        </div>
+                    </details>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="tb-login" href="Account/Login"><i class="bi bi-box-arrow-in-right"></i> Entrar</a>
+                </NotAuthorized>
             </AuthorizeView>
         </div>
 
@@ -25,3 +54,35 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    // El email es lo único que Identity garantiza; de ahí sale el nombre corto y
+    // las iniciales del avatar (admin@system.com → "Admin" / "A").
+    private static string LocalPart(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var name = user.Identity?.Name ?? "";
+        return name.Contains('@') ? name[..name.IndexOf('@')] : name;
+    }
+
+    private static string ShortName(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var local = LocalPart(user);
+        return string.IsNullOrWhiteSpace(local) ? "Usuario" : char.ToUpper(local[0]) + local[1..];
+    }
+
+    private static string Initials(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var local = LocalPart(user);
+        return string.IsNullOrWhiteSpace(local) ? "?" : char.ToUpper(local[0]).ToString();
+    }
+
+    // Etiqueta en español del rol principal; el resto de la app usa los nombres
+    // internos (Admin/Office/Driver/Client), que no se tocan.
+    private static string RoleLabel(System.Security.Claims.ClaimsPrincipal user)
+    {
+        if (user.IsInRole(Roles.Admin)) return "Administrador";
+        if (user.IsInRole(Roles.Office)) return "Oficina";
+        if (user.IsInRole(Roles.Driver)) return "Conductor";
+        return "Cliente";
+    }
+}

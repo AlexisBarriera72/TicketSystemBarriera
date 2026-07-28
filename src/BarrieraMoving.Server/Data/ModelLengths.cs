@@ -41,6 +41,8 @@ public static class ModelLengths
             e.Property(x => x.AuthorId).HasMaxLength(Id);
             e.Property(x => x.AssignedDriverId).HasMaxLength(Id);
             e.Property(x => x.TrackingToken).HasMaxLength(Idem); // 32 bytes en Base64url = 43
+            e.Property(x => x.Floor).HasMaxLength(Short);
+            e.Property(x => x.Items).HasMaxLength(Text);
         });
 
         b.Entity<Message>(e =>
@@ -134,6 +136,21 @@ public static class ModelLengths
             e.Property(x => x.PreferredDate).HasMaxLength(Short);
             e.Property(x => x.Details).HasMaxLength(Text);
             e.Property(x => x.ReferenceCode).HasMaxLength(Role);
+            e.Property(x => x.Floor).HasMaxLength(Short);
+            // Lista de artículos separados por "|": el catálogo entero cabe de sobra
+            e.Property(x => x.Items).HasMaxLength(Text);
+            e.Property(x => x.ClaimedByUserId).HasMaxLength(Id);
+        });
+
+        b.Entity<QuotePhoto>(e =>
+        {
+            e.Property(x => x.FilePath).HasMaxLength(Path);
+            e.Property(x => x.ThumbPath).HasMaxLength(Path);
+            // Si se borra la solicitud, sus fotos se van con ella
+            e.HasOne(x => x.QuoteRequest)
+             .WithMany(q => q.Photos)
+             .HasForeignKey(x => x.QuoteRequestId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -7,7 +7,7 @@
 @attribute [Authorize(Roles = Roles.Admin + "," + Roles.Office)]
 @rendermode InteractiveServer
 
-<PageTitle>Cotizaciones | Transporte Caribe</PageTitle>
+<PageTitle>Cotizaciones | Transporte Caribe Logistic</PageTitle>
 
 <div class="container mt-4" style="max-width: 900px;">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -48,6 +48,48 @@
                                 @if (!string.IsNullOrWhiteSpace(q.PreferredDate)){ <span>· @q.PreferredDate</span> }
                                 · @q.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                             </div>
+                            @if (!string.IsNullOrWhiteSpace(q.Floor))
+                            {
+                                <div class="mt-2">
+                                    <span class="badge bg-secondary"><i class="bi bi-building"></i> @q.Floor</span>
+                                </div>
+                            }
+
+                            @{ var groups = MovingItems.GroupPacked(q.Items); }
+                            @if (groups.Count > 0)
+                            {
+                                var total = groups.Sum(g => g.Items.Count);
+                                <div class="mt-2">
+                                    <div class="small fw-bold text-primary mb-1">
+                                        <i class="bi bi-box-seam"></i> @total @(total == 1 ? "artículo" : "artículos")
+                                    </div>
+                                    @foreach (var g in groups)
+                                    {
+                                        <div class="mb-1">
+                                            <span class="text-muted small me-1">@g.Category:</span>
+                                            @foreach (var it in g.Items)
+                                            {
+                                                <span class="badge bg-light text-dark border me-1 mb-1">@it</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (q.Photos.Count > 0)
+                            {
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    @foreach (var p in q.Photos)
+                                    {
+                                        @* Miniatura servida por el endpoint con ACL: nunca desde wwwroot *@
+                                        <a href="/quote-photos/@p.Id" target="_blank" rel="noopener" title="Ver foto completa">
+                                            <img src="/quote-photos/@p.Id/thumb" alt="Foto de la cotización"
+                                                 class="rounded border" style="width:88px;height:88px;object-fit:cover" />
+                                        </a>
+                                    }
+                                </div>
+                            }
+
                             @if (!string.IsNullOrWhiteSpace(q.Details))
                             {
                                 <p class="mb-0 mt-2" style="white-space:pre-wrap">@q.Details</p>
@@ -103,6 +145,7 @@
         StateHasChanged();
         using var db = DbFactory.CreateDbContext();
         items = await db.QuoteRequests
+            .Include(q => q.Photos)
             .OrderByDescending(q => !q.Handled).ThenByDescending(q => q.CreatedAtUtc)
             .ToListAsync();
         loading = false;

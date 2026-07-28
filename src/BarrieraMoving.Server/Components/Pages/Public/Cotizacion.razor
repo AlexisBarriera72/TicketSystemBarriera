@@ -7,16 +7,18 @@
 @using BarrieraMoving.Server.Data
 @using BarrieraMoving.Server.Models
 @using BarrieraMoving.Server.Services
+@using BarrieraMoving.Shared
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IAppEmailSender Email
 @inject IGuestLookupService Guest
+@inject IPhotoStorage PhotoStore
 @inject ILogger<Cotizacion> Logger
 
 <HeadContent>
-    <meta name="description" content="Solicita tu cotización GRATIS para mudanzas en todo Puerto Rico con PR Transporte Caribe. Sin compromiso." />
+    <meta name="description" content="Solicita tu cotización GRATIS para mudanzas en todo Puerto Rico con Transporte Caribe Logistic (TCL). Sin compromiso." />
     <meta name="robots" content="index,follow" />
 </HeadContent>
-<PageTitle>Cotización GRATIS | PR Transporte Caribe</PageTitle>
+<PageTitle>Cotización GRATIS | Transporte Caribe Logistic</PageTitle>
 
 <section class="section">
     <div class="wrap form-wrap">
@@ -27,7 +29,14 @@
         {
             <div class="form-ok">
                 <h3 style="font-family:var(--sans);font-weight:700;color:var(--navy);margin:0 0 .4rem">¡Gracias! Recibimos tu solicitud.</h3>
-                <p style="margin:0 0 1rem">Te contactaremos pronto para darte el precio. Si es urgente, llámanos o escríbenos por WhatsApp ahora mismo.</p>
+                <p style="margin:0 0 1rem">
+                    Te contactaremos pronto para darte el precio.
+                    @if (sentPhotos > 0)
+                    {
+                        <span>Recibimos @sentPhotos @(sentPhotos == 1 ? "foto" : "fotos"). </span>
+                    }
+                    Si es urgente, llámanos o escríbenos por WhatsApp ahora mismo.
+                </p>
 
                 <div class="ref-box">
                     <span>Guarda este número de referencia</span>
@@ -44,74 +53,209 @@
         {
             <p class="lead" style="margin-bottom:1.8rem">Cuéntanos de tu mudanza y te damos precio sin compromiso. También puedes <a href="@SiteInfo.TelHref">llamar</a> o escribir por <a href="@SiteInfo.WaHref" target="_blank" rel="noopener">WhatsApp</a>.</p>
 
-            <EditForm Model="Model" FormName="quote" OnValidSubmit="SubmitAsync">
+            @* enctype: el formulario ahora lleva fotos. Sigue siendo un POST HTML
+               normal — esta página no carga el runtime de Blazor. *@
+            <EditForm Model="Model" FormName="quote" OnValidSubmit="SubmitAsync" enctype="multipart/form-data">
                 <DataAnnotationsValidator />
 
-                <div class="field">
-                    <label for="q-name">Nombre *</label>
-                    <InputText id="q-name" class="input" @bind-Value="Model.Name" autocomplete="name" />
-                    <ValidationMessage For="() => Model.Name" />
-                </div>
-                <div class="field">
-                    <label for="q-phone">Teléfono *</label>
-                    <InputText id="q-phone" type="tel" @bind-Value="Model.Phone" autocomplete="tel" />
-                    <ValidationMessage For="() => Model.Phone" />
-                </div>
-                <div class="field">
-                    <label for="q-email">Email (opcional)</label>
-                    <InputText id="q-email" type="email" @bind-Value="Model.Email" autocomplete="email" />
-                </div>
-                <div class="field">
-                    <label for="q-service">Tipo de servicio</label>
-                    <InputSelect id="q-service" @bind-Value="Model.ServiceType">
-                        <option value="">Selecciona…</option>
-                        <option>Mudanza residencial</option>
-                        <option>Mudanza comercial</option>
-                        <option>Alquiler de camión con chofer</option>
-                        <option>Entrega y recogido</option>
-                        <option>Transportación de mercancía</option>
-                        <option>Otro</option>
-                    </InputSelect>
-                </div>
-                <div class="field">
-                    <label for="q-from">¿Desde qué pueblo/zona?</label>
-                    <InputText id="q-from" @bind-Value="Model.OriginZone" />
-                </div>
-                <div class="field">
-                    <label for="q-to">¿Hasta qué pueblo/zona?</label>
-                    <InputText id="q-to" @bind-Value="Model.DestinationZone" />
-                </div>
-                <div class="field">
-                    <label for="q-date">Fecha aproximada</label>
-                    @* type=date: el teléfono abre su propio calendario al tocarlo.
-                       min = hoy, para que nadie pida una mudanza en el pasado. *@
-                    <InputDate id="q-date" @bind-Value="Model.PreferredDate"
-                               min="@DateTime.Today.ToString("yyyy-MM-dd")" />
-                    <p class="field-hint">Déjala vacía si necesitas la mudanza lo antes posible.</p>
-                    <ValidationMessage For="() => Model.PreferredDate" />
-                </div>
-                <div class="field">
-                    <label for="q-details">Detalles (piso, ascensor, artículos grandes…)</label>
-                    <InputTextArea id="q-details" rows="4" @bind-Value="Model.Details" />
-                </div>
+                <fieldset class="block">
+                    <legend>Tus datos</legend>
+                    <div class="field">
+                        <label for="q-name">Nombre *</label>
+                        <InputText id="q-name" class="input" @bind-Value="Model.Name" autocomplete="name" />
+                        <ValidationMessage For="() => Model.Name" />
+                    </div>
+                    <div class="field">
+                        <label for="q-phone">Teléfono *</label>
+                        <InputText id="q-phone" type="tel" @bind-Value="Model.Phone" autocomplete="tel" />
+                        <ValidationMessage For="() => Model.Phone" />
+                    </div>
+                    <div class="field last">
+                        <label for="q-email">Email <span class="opt">opcional</span></label>
+                        <InputText id="q-email" type="email" @bind-Value="Model.Email" autocomplete="email" />
+                    </div>
+                </fieldset>
+
+                <fieldset class="block">
+                    <legend>La mudanza</legend>
+                    <div class="field">
+                        <label for="q-service">Tipo de servicio</label>
+                        <InputSelect id="q-service" @bind-Value="Model.ServiceType">
+                            <option value="">Selecciona…</option>
+                            <option>Mudanza residencial</option>
+                            <option>Mudanza comercial</option>
+                            <option>Alquiler de camión con chofer</option>
+                            <option>Entrega y recogido</option>
+                            <option>Transportación de mercancía</option>
+                            <option>Otro</option>
+                        </InputSelect>
+                    </div>
+                    <div class="two-up">
+                        <div class="field" style="margin:0">
+                            <label for="q-from">¿Desde qué pueblo/zona?</label>
+                            <InputText id="q-from" @bind-Value="Model.OriginZone" />
+                        </div>
+                        <div class="field" style="margin:0">
+                            <label for="q-to">¿Hasta qué pueblo/zona?</label>
+                            <InputText id="q-to" @bind-Value="Model.DestinationZone" />
+                        </div>
+                    </div>
+                    <div class="field last" style="margin-top:1.1rem">
+                        <label for="q-date">Fecha aproximada</label>
+                        @* type=date: el teléfono abre su propio calendario al tocarlo.
+                           min = hoy, para que nadie pida una mudanza en el pasado. *@
+                        <InputDate id="q-date" @bind-Value="Model.PreferredDate"
+                                   min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <p class="field-hint">Déjala vacía si necesitas la mudanza lo antes posible.</p>
+                        <ValidationMessage For="() => Model.PreferredDate" />
+                    </div>
+                </fieldset>
+
+                @* ---------- PISO ----------
+                   Un tercer piso sin ascensor cambia el personal, el tiempo y el
+                   precio: por eso se pregunta aparte y no enterrado en "detalles". *@
+                <fieldset class="block">
+                    <legend>Piso</legend>
+                    <p class="block-hint">¿En qué nivel está la mudanza? Si recoges y entregas en pisos distintos, dilo en los detalles.</p>
+                    <div class="two-up">
+                        <div class="field" style="margin:0">
+                            <label for="q-floor">Nivel</label>
+                            <select id="q-floor" name="floor">
+                                <option value="">Selecciona…</option>
+                                @foreach (var f in MovingItems.Floors)
+                                {
+                                    <option value="@f">@f</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="margin:0">
+                            <label for="q-elev">Ascensor</label>
+                            <select id="q-elev" name="elevator">
+                                <option value="">Selecciona…</option>
+                                @foreach (var e in MovingItems.Elevators)
+                                {
+                                    <option value="@e">@e</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+
+                @* ---------- ARTÍCULOS ----------
+                   <details> nativo = desplegable sin una línea de JavaScript. Los
+                   checkbox comparten name="items" y viajan como array en el POST. *@
+                <fieldset class="block">
+                    <legend>Artículos</legend>
+                    <p class="block-hint">Marca lo que haya que mover. No tiene que ser exacto, nos sirve para calcular el camión y el personal.</p>
+
+                    @* El buscador nace oculto y el script lo destapa: sin JavaScript
+                       no aparece, y las casillas siguen funcionando igual. *@
+                    <input type="search" id="item-search" class="input item-search" hidden
+                           placeholder="Buscar artículo… (ej. nevera, colchón)" autocomplete="off" />
+                    <p id="item-empty" class="block-hint" hidden>No encontramos ese artículo. Escríbelo en los detalles más abajo.</p>
+
+                    @foreach (var cat in MovingItems.Categories)
+                    {
+                        <details class="itemgroup" data-itemgroup>
+                            <summary>
+                                <span class="ig-name">@cat.Name</span>
+                                <span class="ig-hint">@cat.Hint</span>
+                            </summary>
+                            <div class="ig-grid">
+                                @foreach (var item in cat.Items)
+                                {
+                                    <label class="ig-item" data-item="@item.ToLowerInvariant()">
+                                        <input type="checkbox" name="items" value="@item" />
+                                        <span>@item</span>
+                                    </label>
+                                }
+                            </div>
+                        </details>
+                    }
+                </fieldset>
+
+                @* ---------- FOTOS (opcional) ---------- *@
+                <fieldset class="block">
+                    <legend>Fotos <span class="opt">opcional</span></legend>
+                    <p class="block-hint">
+                        Una foto de los muebles o del acceso nos ayuda a darte un precio más exacto.
+                        Hasta @MaxPhotos fotos, @MaxPhotoMb MB cada una.
+                    </p>
+                    <input type="file" id="q-photos" name="fotos" multiple accept="image/*" class="input" />
+                </fieldset>
+
+                <fieldset class="block">
+                    <legend>Detalles <span class="opt">opcional</span></legend>
+                    <p class="block-hint">Cualquier cosa que debamos saber: acceso difícil, escaleras estrechas, artículos delicados, horarios.</p>
+                    <div class="field last">
+                        <InputTextArea id="q-details" rows="4" @bind-Value="Model.Details" />
+                    </div>
+                </fieldset>
 
                 <button class="btn btn-primary" type="submit">Enviar solicitud<Icon Name="arrow" Size="18" /></button>
             </EditForm>
 
             <p class="form-note" style="margin-top:1.5rem"><Icon Name="shield" Size="18" /> Tus datos solo se usan para contactarte sobre tu cotización.</p>
+
+            @* MEJORA PROGRESIVA, no requisito: filtra las casillas por texto. Si el
+               visitante no tiene JavaScript, el buscador nunca se muestra y el
+               formulario funciona entero igual. *@
+            <script>
+                (function () {
+                    var box = document.getElementById('item-search');
+                    if (!box) return;
+                    box.hidden = false;
+                    var groups = Array.prototype.slice.call(document.querySelectorAll('[data-itemgroup]'));
+                    var empty = document.getElementById('item-empty');
+                    box.addEventListener('input', function () {
+                        var q = box.value.trim().toLowerCase();
+                        var total = 0;
+                        groups.forEach(function (g) {
+                            var shown = 0;
+                            Array.prototype.forEach.call(g.querySelectorAll('label[data-item]'), function (l) {
+                                var hit = !q || l.getAttribute('data-item').indexOf(q) !== -1;
+                                l.style.display = hit ? '' : 'none';
+                                if (hit) shown++;
+                            });
+                            g.hidden = !!q && shown === 0;
+                            g.open = q ? shown > 0 : false;
+                            total += shown;
+                        });
+                        if (empty) empty.hidden = !(q && total === 0);
+                    });
+                })();
+            </script>
         }
     </div>
 </section>
 
 @code {
+    private const int MaxPhotos = 5;
+    private const int MaxPhotoMb = 10;
+    private const long MaxPhotoBytes = MaxPhotoMb * 1024L * 1024L;
+
     [SupplyParameterFromForm] private QuoteForm Model { get; set; } = new();
+
+    // Los checkbox y los ficheros se leen del POST en crudo: el binder de
+    // formularios de Blazor en SSR estático no cubre bien ni un array de casillas
+    // ni multipart. HttpContext sí está disponible porque esta página no es interactiva.
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
     private bool sent;
     private string? sentCode;
+    private int sentPhotos;
 
     private async Task SubmitAsync()
     {
+        var form = HttpContext.Request.Form;
+
+        // Pack() descarta lo que no esté en el catálogo: el formulario es público
+        // y anónimo, así que nada de lo que llega por POST se guarda a ciegas.
+        var chosenItems = MovingItems.Pack(
+            form["items"].Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!));
+        var floor = MovingItems.PackFloor(form["floor"].ToString(), form["elevator"].ToString());
+
         // 1) SIEMPRE se guarda en la BD — nunca se pierde un cliente aunque falle el correo
-        // Código de consulta para clientes SIN cuenta
         var reference = await Guest.GenerateReferenceCodeAsync();
 
         var request = new QuoteRequest
@@ -125,6 +269,8 @@
             DestinationZone = Model.DestinationZone,
             PreferredDate = Model.PreferredDate?.ToString("dd/MM/yyyy"),
             Details = Model.Details,
+            Floor = string.IsNullOrEmpty(floor) ? null : floor,
+            Items = string.IsNullOrEmpty(chosenItems) ? null : chosenItems,
         };
         using (var db = DbFactory.CreateDbContext())
         {
@@ -132,7 +278,12 @@
             await db.SaveChangesAsync();
         }
 
-        // 2) Aviso por email a la oficina — SOLO si el SMTP está configurado (best-effort)
+        // 2) Fotos: hace falta el Id de la solicitud, así que van después de guardar.
+        //    Una foto que falle NO puede tumbar la solicitud: perder una foto se
+        //    aguanta, perder el cliente no.
+        sentPhotos = await SavePhotosAsync(request.Id, form.Files);
+
+        // 3) Aviso por email a la oficina — SOLO si el SMTP está configurado (best-effort)
         if (Email.IsConfigured)
         {
             try
@@ -141,7 +292,9 @@
                     $"Nueva solicitud de cotización\n\n" +
                     $"Nombre: {request.Name}\nTeléfono: {request.Phone}\nEmail: {request.Email}\n" +
                     $"Servicio: {request.ServiceType}\nDesde: {request.OriginZone}\nHasta: {request.DestinationZone}\n" +
-                    $"Fecha: {request.PreferredDate}\n\nDetalles:\n{request.Details}";
+                    $"Fecha: {request.PreferredDate}\nPiso: {request.Floor}\n" +
+                    $"Artículos: {string.Join(", ", MovingItems.Unpack(request.Items))}\n" +
+                    $"Fotos adjuntas: {sentPhotos}\n\nDetalles:\n{request.Details}";
                 await Email.SendAsync(SiteInfo.Email, "Nueva cotización desde la web", body);
             }
             catch (Exception ex)
@@ -153,6 +306,52 @@
         sentCode = reference;
         sent = true;
         Model = new();
+    }
+
+    private async Task<int> SavePhotosAsync(int quoteId, IFormFileCollection files)
+    {
+        if (files.Count == 0) return 0;
+
+        var saved = new List<QuotePhoto>();
+        foreach (var file in files.Where(f => f.Length > 0).Take(MaxPhotos))
+        {
+            if (file.Length > MaxPhotoBytes) continue; // demasiado grande: se salta en silencio
+            try
+            {
+                // Re-codificar SIEMPRE: valida que sea una imagen de verdad y borra
+                // los EXIF — incluida la geolocalización de la casa del cliente.
+                await using var input = file.OpenReadStream();
+                var processed = PhotoProcessor.ReencodeAsJpeg(input);
+                if (processed is null) continue;
+
+                var (jpeg, thumb) = processed.Value;
+                var name = Guid.NewGuid().ToString("N"); // nombre no adivinable
+                saved.Add(new QuotePhoto
+                {
+                    QuoteRequestId = quoteId,
+                    FilePath = await PhotoStore.SaveQuoteAsync(quoteId, $"{name}.jpg", jpeg),
+                    ThumbPath = await PhotoStore.SaveQuoteAsync(quoteId, $"{name}_thumb.jpg", thumb),
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "No se pudo guardar una foto de la cotización {QuoteId}.", quoteId);
+            }
+        }
+
+        if (saved.Count == 0) return 0;
+        try
+        {
+            using var db = DbFactory.CreateDbContext();
+            db.QuotePhotos.AddRange(saved);
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "No se pudieron registrar las fotos de la cotización {QuoteId}.", quoteId);
+            return 0;
+        }
+        return saved.Count;
     }
 
     // Los límites coinciden con los de la BD (ver Data/ModelLengths): así el

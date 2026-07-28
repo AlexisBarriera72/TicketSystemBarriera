@@ -43,6 +43,33 @@
                         <hr />
                         <p class="fs-5">@order.Description</p>
 
+                        @* Piso y artículos: lo que la cuadrilla necesita saber ANTES de
+                           salir (cuánta gente, qué camión, si hay escaleras). *@
+                        @if (!string.IsNullOrWhiteSpace(order.Floor))
+                        {
+                            <p class="mb-2"><span class="badge bg-secondary"><i class="bi bi-building"></i> @order.Floor</span></p>
+                        }
+                        @{ var itemGroups = MovingItems.GroupPacked(order.Items); }
+                        @if (itemGroups.Count > 0)
+                        {
+                            var totalItems = itemGroups.Sum(g => g.Items.Count);
+                            <div class="mb-3">
+                                <div class="small fw-bold text-primary mb-1">
+                                    <i class="bi bi-box-seam"></i> @totalItems @(totalItems == 1 ? "artículo" : "artículos") a mover
+                                </div>
+                                @foreach (var g in itemGroups)
+                                {
+                                    <div class="mb-1">
+                                        <span class="text-muted small me-1">@g.Category:</span>
+                                        @foreach (var it in g.Items)
+                                        {
+                                            <span class="badge bg-light text-dark border me-1 mb-1">@it</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+
                         @* Documentación de daños: antes (recogida) vs después (entrega) *@
                         @if (pickupPhotos.Count > 0 || deliveryPhotos.Count > 0)
                         {

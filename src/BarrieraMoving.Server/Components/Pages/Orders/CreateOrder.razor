@@ -61,6 +61,34 @@
 			</InputSelect>
 		</div>
 
+		<div class="row g-3 mb-3">
+			<div class="col-12 col-md-6">
+				<label class="form-label">Piso</label>
+				<select class="form-select" @bind="floor">
+					<option value="">-- Sin indicar --</option>
+					@foreach (var f in MovingItems.Floors)
+					{
+						<option value="@f">@f</option>
+					}
+				</select>
+			</div>
+			<div class="col-12 col-md-6">
+				<label class="form-label">Ascensor</label>
+				<select class="form-select" @bind="elevator">
+					<option value="">-- Sin indicar --</option>
+					@foreach (var e in MovingItems.Elevators)
+					{
+						<option value="@e">@e</option>
+					}
+				</select>
+			</div>
+		</div>
+
+		<div class="mb-3">
+			<label class="form-label">Artículos a mover</label>
+			<ItemPicker @bind-Value="newOrder.Items" />
+		</div>
+
 		<div class="mb-3">
 			<label class="form-label">Descripción (direcciones, fechas, detalles)</label>
 			<InputTextArea @bind-Value="newOrder.Description" class="form-control" rows="4" />
@@ -74,6 +102,8 @@
 @code {
 	private Order newOrder = new() { AuthorId = "", Title = "", Description = "" };
 	private List<Category> categories = new();
+	private string floor = string.Empty;
+	private string elevator = string.Empty;
 
 	// Conversión de una solicitud de cotización del sitio público en una orden.
 	[SupplyParameterFromQuery(Name = "fromQuote")]
@@ -108,11 +138,34 @@
 		if (!string.IsNullOrWhiteSpace(quote.PreferredDate)) lines.Add($"Fecha deseada: {quote.PreferredDate}");
 		if (!string.IsNullOrWhiteSpace(quote.Details)) lines.Add($"\nDetalles del cliente:\n{quote.Details}");
 		newOrder.Description = string.Join("\n", lines);
+
+		// Piso y artículos van a sus CAMPOS PROPIOS, no solo a la descripción: es lo
+		// que marcó el cliente y la cuadrilla tiene que verlo estructurado.
+		newOrder.Items = quote.Items;
+		newOrder.Floor = quote.Floor;
+
+		// Si el cliente ya se creó cuenta y reclamó esta cotización con su código,
+		// la orden nace A SU NOMBRE: así le aparece en "Mis órdenes" y puede usar el
+		// chat desde el primer momento, sin que la oficina tenga que reasignarla.
+		if (!string.IsNullOrEmpty(quote.ClaimedByUserId))
+		{
+			newOrder.AuthorId = quote.ClaimedByUserId;
+		}
+		// Repuebla los desplegables a partir del texto guardado ("piso · ascensor"),
+		// para que la oficina pueda corregirlo sin volver a teclearlo.
+		foreach (var part in (quote.Floor ?? string.Empty).Split('·', StringSplitOptions.TrimEntries))
+		{
+			if (MovingItems.Floors.Contains(part)) floor = part;
+			else if (MovingItems.Elevators.Contains(part)) elevator = part;
+		}
 	}
 
 	private async Task HandleSubmit()
 	{
 		if (newOrder.CategoryId == 0) return; // Validación simple de tipo de mudanza
+		// Piso y ascensor se guardan juntos en una línea legible ("3er piso · Sin ascensor")
+		var packedFloor = MovingItems.PackFloor(floor, elevator);
+		newOrder.Floor = string.IsNullOrEmpty(packedFloor) ? null : packedFloor;
 		await OrderService.CreateOrderAsync(newOrder);
 
 		// Cierra el círculo: la solicitud queda gestionada y enlazada a su orden

@@ -3,8 +3,13 @@ namespace BarrieraMoving.Server.Components.Public;
 // Datos de contacto REALES de la empresa (una sola fuente para todo el sitio público).
 public static class SiteInfo
 {
-    public const string Name = "PR Transporte Caribe";
-    public const string ShortName = "Transporte Caribe";
+    // Nombre comercial y marca corta (lo que ve el visitante).
+    public const string Name = "Transporte Caribe Logistic";
+    public const string ShortName = "TCL";
+    // Nombre REGISTRADO de la empresa: solo para copyright, textos legales y PDFs
+    // de firma. No se cambia por estética — si algún día cambia el registro,
+    // confirmarlo con la empresa antes de tocarlo.
+    public const string LegalName = "PR Transporte Caribe LLC";
     public const string PhoneDisplay = "(787) 598-9433";
     public const string TelHref = "tel:+17875989433";
     // WhatsApp con mensaje pre-rellenado (en PR suele convertir mejor que la llamada)

@@ -6,7 +6,7 @@
 
 /* ---- cabecera ---- */
 .login-hero {
-    background: linear-gradient(135deg, #0f2f4d 0%, #14395a 45%, #1f8ba0 100%);
+    background: linear-gradient(135deg, #010F2B 0%, #011A43 45%, #0A2A5C 100%);
     padding-bottom: 3.25rem;
     color: #fff;
 }
@@ -55,7 +55,7 @@
     border-radius: 26px 26px 0 0;
     margin-top: -2rem;
     padding: 1.75rem 1.25rem 2.5rem;
-    box-shadow: 0 -6px 24px rgba(15, 47, 77, 0.12);
+    box-shadow: 0 -6px 24px rgba(1, 26, 67, 0.14);
     min-height: 60vh;
 }
 
@@ -72,7 +72,7 @@
     height: 54px;
     border-radius: 50%;
     background: #e7f1fb;
-    color: #14395a;
+    color: #011A43;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -83,7 +83,7 @@
     margin: 0;
     font-size: 1.6rem;
     font-weight: 800;
-    color: #14395a;
+    color: #011A43;
     letter-spacing: -0.4px;
 }
 
@@ -98,7 +98,7 @@
     display: block;
     font-weight: 700;
     font-size: 0.92rem;
-    color: #14395a;
+    color: #011A43;
     margin: 0 0 0.4rem;
 }
 
@@ -114,14 +114,14 @@
 }
 
 .fld:focus-within {
-    border-color: #1f8ba0;
-    box-shadow: 0 0 0 3px rgba(31, 139, 160, 0.15);
+    border-color: #FA5400;
+    box-shadow: 0 0 0 3px rgba(250, 84, 0, 0.18);
 }
 
 .fld-ico {
     flex: 0 0 auto;
     padding: 0 0.65rem 0 0.9rem;
-    color: #2f6bd8;
+    color: #0A2A5C;
     font-size: 1.15rem;
 }
 
@@ -149,7 +149,7 @@
     cursor: pointer;
 }
 
-/* ---- botón ---- */
+/* ---- botón (acción principal: naranja con texto navy, 5.15:1) ---- */
 .login-btn {
     width: 100%;
     display: flex;
@@ -158,15 +158,15 @@
     gap: 0.55rem;
     border: 0;
     border-radius: 14px;
-    background: #14395a;
-    color: #fff;
+    background: #FA5400;
+    color: #011A43;
     font-family: inherit;
     font-size: 1.08rem;
     font-weight: 700;
     padding: 1.05rem 1rem;
     margin-top: 0.35rem;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(20, 57, 90, 0.28);
+    box-shadow: 0 8px 20px rgba(250, 84, 0, 0.32);
 }
 
 .login-btn:active { transform: translateY(1px); }
@@ -209,7 +209,7 @@
     height: 38px;
     border-radius: 50%;
     background: #e7f1fb;
-    color: #2f6bd8;
+    color: #0A2A5C;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -258,7 +258,7 @@
     margin: 0 0.75rem;
     border-radius: 50%;
     background: #e7f1fb;
-    color: #2f6bd8;
+    color: #0A2A5C;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -270,7 +270,7 @@
 }
 
 .login-terms a {
-    color: #2f6bd8;
+    color: #C94400;
     font-weight: 600;
     text-decoration: underline;
 }
@@ -288,13 +288,13 @@
 .login-safe > i {
     flex: 0 0 auto;
     font-size: 1.9rem;
-    color: #14395a;
+    color: #011A43;
     line-height: 1;
 }
 
 .login-safe b {
     display: block;
-    color: #14395a;
+    color: #011A43;
     font-size: 1rem;
     margin-bottom: 0.15rem;
 }

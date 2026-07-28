@@ -79,9 +79,10 @@
 }
 
 /* --- Paletas por métrica: círculo tenue + icono + línea del sparkline --- */
-.sc-blue .stat-badge   { background: #e3f2f5; color: #1f8ba0; }
-.sc-blue .stat-link    { color: #1f8ba0; }
-.sc-blue .stat-spark path { stroke: #1f8ba0; }
+/* azul y naranja = colores de marca TCL */
+.sc-blue .stat-badge   { background: #e6ecf7; color: #011a43; }
+.sc-blue .stat-link    { color: #011a43; }
+.sc-blue .stat-spark path { stroke: #011a43; }
 
 .sc-green .stat-badge  { background: #e6f6ee; color: #2aa768; }
 .sc-green .stat-link   { color: #2aa768; }
@@ -91,6 +92,7 @@
 .sc-purple .stat-link  { color: #7b5cf0; }
 .sc-purple .stat-spark path { stroke: #7b5cf0; }
 
-.sc-orange .stat-badge { background: #fdeede; color: #ef8f2b; }
-.sc-orange .stat-link  { color: #ef8f2b; }
-.sc-orange .stat-spark path { stroke: #ef8f2b; }
+/* el enlace es texto pequeño: naranja oscuro (4.87:1). La línea es gráfico: #fa5400 */
+.sc-orange .stat-badge { background: #ffe9dd; color: #c94400; }
+.sc-orange .stat-link  { color: #c94400; }
+.sc-orange .stat-spark path { stroke: #fa5400; }

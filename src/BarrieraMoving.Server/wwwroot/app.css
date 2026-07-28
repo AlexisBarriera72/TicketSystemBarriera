@@ -2,39 +2,55 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
-/* Paleta de marca Transporte Caribe (del logo): navy + teal + amarillo + verde */
+/* Paleta de marca Transporte Caribe Logistic (TCL, del logo): navy + naranja */
+/* --bs-primary es navy porque Bootstrap lo usa a la vez como relleno (.bg-primary
+   text-white) y como texto (.text-primary): el naranja #FA5400 no pasa AA con
+   texto blanco (3.32:1). El naranja se reserva para acentos y estados activos. */
 :root {
-    --bs-primary: #1f8ba0;
-    --bs-primary-rgb: 31, 139, 160;
-    --bs-link-color: #14395a;
-    --bs-link-color-rgb: 20, 57, 90;
-    --bs-link-hover-color: #1f8ba0;
+    --bs-primary: #011a43;
+    --bs-primary-rgb: 1, 26, 67;
+    --bs-link-color: #011a43;
+    --bs-link-color-rgb: 1, 26, 67;
+    --bs-link-hover-color: #c94400;
 }
 
 a, .btn-link {
-    color: #14395a;
+    color: #011a43;
 }
 
 .btn-primary {
-    --bs-btn-bg: #14395a;
-    --bs-btn-border-color: #14395a;
-    --bs-btn-hover-bg: #1f8ba0;
-    --bs-btn-hover-border-color: #1f8ba0;
-    --bs-btn-active-bg: #0f2c46;
-    --bs-btn-active-border-color: #0f2c46;
+    --bs-btn-bg: #011a43;
+    --bs-btn-border-color: #011a43;
+    --bs-btn-hover-bg: #fa5400;
+    --bs-btn-hover-border-color: #fa5400;
+    /* sobre naranja el texto va en navy (5.15:1); en blanco daría 3.32:1 */
+    --bs-btn-hover-color: #011a43;
+    --bs-btn-active-bg: #010f2b;
+    --bs-btn-active-border-color: #010f2b;
+    /* Sin esto, un botón deshabilitado cae al azul #0d6efd de Bootstrap y rompe
+       la marca justo donde más se nota (formularios a medio rellenar). */
+    --bs-btn-disabled-bg: #011a43;
+    --bs-btn-disabled-border-color: #011a43;
+    --bs-btn-disabled-color: #fff;
     color: #fff;
 }
 
 .btn-outline-primary {
-    --bs-btn-color: #1f8ba0;
-    --bs-btn-border-color: #1f8ba0;
-    --bs-btn-hover-bg: #1f8ba0;
-    --bs-btn-hover-border-color: #1f8ba0;
-    --bs-btn-active-bg: #1f8ba0;
+    /* texto naranja oscuro sobre fondo claro (4.87:1); el borde sí puede ir en #fa5400 */
+    --bs-btn-color: #c94400;
+    --bs-btn-border-color: #fa5400;
+    --bs-btn-hover-bg: #fa5400;
+    --bs-btn-hover-border-color: #fa5400;
+    --bs-btn-hover-color: #011a43;
+    --bs-btn-active-bg: #fa5400;
+    --bs-btn-active-border-color: #fa5400;
+    --bs-btn-active-color: #011a43;
+    --bs-btn-disabled-color: #c94400;
+    --bs-btn-disabled-border-color: #fa5400;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #1f8ba0;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #fa5400;
 }
 
 .content {

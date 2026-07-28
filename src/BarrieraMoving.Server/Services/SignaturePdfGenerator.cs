@@ -23,14 +23,16 @@ public static class SignaturePdfGenerator
         var page = document.AddPage();
         using var gfx = XGraphics.FromPdfPage(page);
 
-        var title = new XFont("Arial", 18, XFontStyleEx.Bold);
+        // 16 y no 18: el nombre comercial nuevo es más largo y a 18 la cabecera
+        // se salía del margen derecho (DrawString con XRect no ajusta, recorta).
+        var title = new XFont("Arial", 16, XFontStyleEx.Bold);
         var heading = new XFont("Arial", 11, XFontStyleEx.Bold);
         var body = new XFont("Arial", 10, XFontStyleEx.Regular);
         var small = new XFont("Arial", 8, XFontStyleEx.Regular);
 
         double left = 50, y = 50, width = page.Width.Point - 100;
 
-        gfx.DrawString("Transporte Caribe — Conformidad de Servicio", title, XBrushes.Black,
+        gfx.DrawString("Transporte Caribe Logistic — Conformidad de Servicio", title, XBrushes.Black,
             new XRect(left, y, width, 26), XStringFormats.TopLeft);
         y += 34;
 
@@ -99,7 +101,8 @@ public static class SignaturePdfGenerator
             ? $"Ubicación GPS en la firma: {latitude}, {longitude}"
             : "Ubicación GPS: no disponible en el momento de la firma");
         Meta($"Huella SHA-256 del contenido firmado (orden + papeleo + firma): {contentHash}");
-        Meta("Documento generado automáticamente por Transporte Caribe al recibir la firma.");
+        // Nombre LEGAL de la entidad: esto es el registro probatorio, no un rótulo de marca
+        Meta("Documento generado automáticamente por PR Transporte Caribe LLC (Transporte Caribe Logistic) al recibir la firma.");
 
         // Manifiesto del papeleo: ata cada documento adjunto (por hash) a ESTA firma
         if (paperwork is { Count: > 0 })

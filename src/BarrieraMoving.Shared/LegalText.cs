@@ -8,14 +8,15 @@ public static class LegalText
     public const string TermsVersion = "borrador-2026-07";
 
     public const string TermsOfService = """
-        TÉRMINOS DE SERVICIO — BARRIERA MOVING (BORRADOR)
+        TÉRMINOS DE SERVICIO — TRANSPORTE CARIBE LOGISTIC (BORRADOR)
 
         Este texto es un marcador de posición. Sustitúyelo por los términos reales
         revisados por el cliente antes de usar la app en producción.
 
         1. Objeto
-        Transporte Caribe presta servicios de mudanza y transporte de bienes. Al usar
-        esta aplicación, el cliente acepta los presentes términos.
+        PR Transporte Caribe LLC (Transporte Caribe Logistic) presta servicios de
+        mudanza y transporte de bienes. Al usar esta aplicación, el cliente acepta
+        los presentes términos.
 
         2. Reservas y presupuestos
         Los presupuestos son estimaciones. El precio final puede variar según el
@@ -35,7 +36,7 @@ public static class LegalText
         aplicación y se responden en un plazo razonable.
 
         6. Modificaciones
-        Transporte Caribe puede actualizar estos términos; la versión vigente se muestra
-        siempre en la aplicación.
+        PR Transporte Caribe LLC puede actualizar estos términos; la versión vigente se
+        muestra siempre en la aplicación.
         """;
 }

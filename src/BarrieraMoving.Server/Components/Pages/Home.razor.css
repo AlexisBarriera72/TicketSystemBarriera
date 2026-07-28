@@ -6,8 +6,9 @@
     padding: 1.5rem 1.75rem;
     border-radius: 18px;
     color: #fff;
-    background: linear-gradient(120deg, #14395a 0%, #1f8ba0 60%, #1f8ba0 100%);
-    box-shadow: 0 10px 26px rgba(31, 139, 160, 0.28);
+    /* degradado navy (lleva texto blanco: 14:1); el naranja entra como halo */
+    background: linear-gradient(120deg, #011a43 0%, #0a2a5c 60%, #0a2a5c 100%);
+    box-shadow: 0 10px 26px rgba(250, 84, 0, 0.28);
 }
 
 .hero-badge {
@@ -43,12 +44,70 @@
     max-width: 680px;
 }
 
+/* Ocupa el espacio libre para que el botón quede pegado a la derecha */
+.hero-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Fecha y hora: contexto de un vistazo, en tono apagado para no competir
+   con el saludo. */
+.hero-when {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.4rem;
+    margin-top: 0.85rem;
+    font-size: 0.86rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+    .hero-when i {
+        margin-right: 0.4rem;
+        opacity: 0.85;
+    }
+
+/* CTA sobre el banner: naranja de marca con texto navy (5.15:1).
+   En blanco daría 3.32:1 y no pasaría AA. */
+.hero-cta {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.15rem;
+    border-radius: 10px;
+    background: #fa5400;
+    color: #011a43;
+    font-weight: 700;
+    font-size: 0.92rem;
+    text-decoration: none;
+    box-shadow: 0 6px 16px rgba(250, 84, 0, 0.35);
+    white-space: nowrap;
+}
+
+    .hero-cta:hover {
+        background: #ff6a1f;
+        color: #011a43;
+    }
+
+@media (max-width: 720px) {
+    .hero-banner {
+        flex-wrap: wrap;
+    }
+
+    .hero-cta {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 .section-head {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     margin: 0.25rem 0 1rem;
-    color: #1f8ba0;
+    /* texto pequeño sobre fondo claro: naranja oscuro (4.87:1) */
+    color: #c94400;
     font-weight: 700;
 }
 
@@ -139,15 +198,16 @@
     transform: rotate(-8deg);
 }
 
-/* --- Paletas por tarjeta --- */
-.ac-blue .access-badge   { background: #e3f2f5; color: #1f8ba0; }
-.ac-blue:hover .access-chevron   { background: #1f8ba0; color: #fff; }
+/* --- Paletas por tarjeta (azul y naranja = colores de marca TCL) --- */
+.ac-blue .access-badge   { background: #e6ecf7; color: #011a43; }
+.ac-blue:hover .access-chevron   { background: #011a43; color: #fff; }
 
 .ac-purple .access-badge { background: #efeafe; color: #7b5cf0; }
 .ac-purple:hover .access-chevron { background: #7b5cf0; color: #fff; }
 
-.ac-orange .access-badge { background: #fdeede; color: #ef8f2b; }
-.ac-orange:hover .access-chevron { background: #ef8f2b; color: #fff; }
+/* sobre el relleno naranja, el icono va en navy — nunca en blanco */
+.ac-orange .access-badge { background: #ffe9dd; color: #c94400; }
+.ac-orange:hover .access-chevron { background: #fa5400; color: #011a43; }
 
 .ac-green .access-badge  { background: #e6f6ee; color: #2aa768; }
 .ac-green:hover .access-chevron  { background: #2aa768; color: #fff; }

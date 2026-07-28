@@ -152,6 +152,14 @@ builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>("db");
 
+// El formulario público de cotización acepta hasta 5 fotos de 10 MB. El límite por
+// defecto de multipart (128 MB) es más de lo que necesitamos: bajarlo reduce lo que
+// un anónimo puede hacernos tragar antes de que el código llegue a validar nada.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 60L * 1024 * 1024; // 5 × 10 MB + holgura de cabeceras
+});
+
 // LÍMITE DE PETICIONES en el formulario público de cotización: es anónimo y
 // escribe en la BD, así que sin esto un script puede inundar QuoteRequests.
 // 5 envíos por IP cada 10 minutos; el resto recibe 429 con mensaje amable.
@@ -239,6 +247,11 @@ app.MapAdditionalIdentityEndpoints();
 
 // Descargas del dashboard (cookie de Identity, no JWT)
 app.MapReportDownloads();
+
+// Fotos adjuntas a una cotización: solo oficina/admin, con cookie del panel.
+// Va FUERA del bloque JWT: no las mira el móvil, así que no depende de que la
+// API esté configurada.
+app.MapQuotePhotoApi();
 
 // API REST /api/v1 para los clientes (MAUI en Fase 2)
 if (!string.IsNullOrEmpty(jwtKey))

@@ -1,0 +1,101 @@
+@* Selector de artículos para las páginas INTERACTIVAS del portal.
+   El sitio público hace lo mismo con <details> y casillas sin JavaScript; aquí sí
+   hay circuito, así que el filtrado y los contadores se resuelven en C#. Ambos
+   leen el MISMO catálogo (MovingItems), que es lo que evita que oficina y cliente
+   acaben hablando de artículos distintos. *@
+@using BarrieraMoving.Shared
+
+<div class="border rounded p-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <div class="input-group input-group-sm" style="max-width:320px">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input class="form-control" placeholder="Buscar artículo…" value="@search"
+                   @oninput="e => search = e.Value?.ToString() ?? string.Empty" />
+        </div>
+        <span class="badge bg-primary">@selected.Count seleccionados</span>
+        @if (selected.Count > 0)
+        {
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearAsync">
+                <i class="bi bi-x-lg"></i> Limpiar
+            </button>
+        }
+    </div>
+
+    @{ var anyVisible = false; }
+    @foreach (var cat in MovingItems.Categories)
+    {
+        var visible = cat.Items.Where(Matches).ToList();
+        if (visible.Count == 0) { continue; }
+        anyVisible = true;
+        var chosen = cat.Items.Count(selected.Contains);
+
+        <details class="mb-2" open="@(!string.IsNullOrWhiteSpace(search) || chosen > 0)">
+            <summary class="fw-bold text-primary py-2" style="cursor:pointer">
+                @cat.Name
+                @if (chosen > 0)
+                {
+                    <span class="badge bg-primary ms-1">@chosen</span>
+                }
+                <div class="fw-normal text-muted small">@cat.Hint</div>
+            </summary>
+            <div class="row g-1 ps-2 pb-2">
+                @foreach (var item in visible)
+                {
+                    <div class="col-12 col-md-6">
+                        <label class="d-flex align-items-center gap-2 py-1" style="cursor:pointer">
+                            <input type="checkbox" class="form-check-input mt-0 flex-shrink-0"
+                                   checked="@selected.Contains(item)"
+                                   @onchange="e => ToggleAsync(item, e)" />
+                            <span class="small">@item</span>
+                        </label>
+                    </div>
+                }
+            </div>
+        </details>
+    }
+
+    @if (!anyVisible)
+    {
+        <p class="text-muted small mb-0">Ningún artículo coincide con «@search».</p>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private HashSet<string> selected = new(StringComparer.Ordinal);
+    private string search = string.Empty;
+    // Recuerda lo último que emitimos: sin esto, OnParametersSet pisaría la
+    // selección del usuario cada vez que el padre vuelve a renderizar.
+    private string? lastPacked;
+
+    protected override void OnParametersSet()
+    {
+        if (Value == lastPacked) { return; }
+        lastPacked = Value;
+        selected = new HashSet<string>(MovingItems.Unpack(Value), StringComparer.Ordinal);
+    }
+
+    private bool Matches(string item) =>
+        string.IsNullOrWhiteSpace(search)
+        || item.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private async Task ToggleAsync(string item, ChangeEventArgs e)
+    {
+        if (e.Value is true) { selected.Add(item); } else { selected.Remove(item); }
+        await EmitAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        selected.Clear();
+        await EmitAsync();
+    }
+
+    private async Task EmitAsync()
+    {
+        lastPacked = MovingItems.Pack(selected);
+        await ValueChanged.InvokeAsync(lastPacked);
+    }
+}

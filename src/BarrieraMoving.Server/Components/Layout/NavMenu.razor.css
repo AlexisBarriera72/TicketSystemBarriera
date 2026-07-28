@@ -24,7 +24,7 @@
     font-size: 1.1rem;
 }
 
-/* Logo de Transporte Caribe en la barra lateral (círculo blanco sobre el degradado) */
+/* Logo de Transporte Caribe Logistic en la barra lateral (círculo blanco sobre el degradado) */
 .brand-logo {
     width: 34px;
     height: 34px;
@@ -77,36 +77,56 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-arrow-bar-left' viewBox='0 0 16 16'%3E%3Cpath d='M12.5 15a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 1 0v13a.5.5 0 0 1-.5.5ZM10 8a.5.5 0 0 1-.5.5H3.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L3.707 7.5H9.5a.5.5 0 0 1 .5.5Z'/%3E%3C/svg%3E");
 }
 
+/* Cabecera de grupo: separa la navegación en bloques legibles de un vistazo.
+   Va en mayúsculas pequeñas y apagada — es una etiqueta, no un enlace. */
+.nav-section {
+    padding: 1.15rem 1.7rem 0.35rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.42);
+}
+
 .nav-item {
     font-size: 0.9rem;
-    padding-bottom: 0.5rem;
+    padding-bottom: 0.18rem;
 }
 
     .nav-item:first-of-type {
-        padding-top: 1rem;
+        padding-top: 0.7rem;
     }
 
     .nav-item:last-of-type {
-        padding-bottom: 1rem;
+        padding-bottom: 1.2rem;
     }
 
     .nav-item ::deep .nav-link {
         color: #d7d7d7;
         background: none;
         border: none;
-        border-radius: 10px;
-        height: 2.9rem;
+        border-radius: 9px;
+        height: 2.6rem;
         display: flex;
         align-items: center;
-        line-height: 2.9rem;
+        line-height: 2.6rem;
         width: 100%;
         padding: 0 0.85rem;
     }
 
+    /* El badge se pega al borde derecho (ms-auto en el marcado); sin esto quedaría
+       pegado al texto y la lista se vería descuadrada. */
+    .nav-item ::deep .nav-link .badge {
+        font-size: 0.68rem;
+        font-weight: 700;
+    }
+
+    /* Estado activo en naranja de marca; el texto va en navy (5.15:1),
+       en blanco daría 3.32:1 y no pasaría AA. */
     .nav-item ::deep a.active {
-        background-color: #1f8ba0;
-        color: white;
-        box-shadow: 0 4px 12px rgba(31, 139, 160, 0.35);
+        background-color: #fa5400;
+        color: #011a43;
+        box-shadow: 0 4px 12px rgba(250, 84, 0, 0.35);
     }
 
     .nav-item ::deep .nav-link:hover {
@@ -114,8 +134,10 @@
         color: white;
     }
 
+    /* el color hay que repetirlo: .nav-link:hover (más específico) lo pondría blanco */
     .nav-item ::deep a.active:hover {
-        background-color: #1f8ba0;
+        background-color: #fa5400;
+        color: #011a43;
     }
 
     .nav-item form {

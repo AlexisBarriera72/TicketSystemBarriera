@@ -13,9 +13,15 @@ public class LocalPhotoStorage : IPhotoStorage
         Directory.CreateDirectory(_root);
     }
 
-    public async Task<string> SaveAsync(int orderId, string fileName, byte[] content)
+    public Task<string> SaveAsync(int orderId, string fileName, byte[] content) =>
+        SaveUnderAsync(orderId.ToString(), fileName, content);
+
+    public Task<string> SaveQuoteAsync(int quoteId, string fileName, byte[] content) =>
+        SaveUnderAsync(Path.Combine("quotes", quoteId.ToString()), fileName, content);
+
+    private async Task<string> SaveUnderAsync(string folder, string fileName, byte[] content)
     {
-        var relative = Path.Combine(orderId.ToString(), fileName);
+        var relative = Path.Combine(folder, fileName);
         var full = SafeFullPath(relative);
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         await File.WriteAllBytesAsync(full, content);
