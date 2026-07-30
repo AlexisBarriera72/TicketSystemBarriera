@@ -1,0 +1,166 @@
+@page "/orders/{OrderId:int}/gallery"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using BarrieraMoving.Server.Api
+@inject IOrderService OrderService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Galería de la orden #@OrderId | Transporte Caribe Logistic</PageTitle>
+
+<div class="container mt-4">
+    @if (loading)
+    {
+        <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else if (order is null)
+    {
+        <div class="alert alert-warning">No encontramos esa orden.</div>
+    }
+    else
+    {
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+            <h3 class="mb-0"><i class="bi bi-images text-primary"></i> Galería — Orden #@order.Id</h3>
+            <a class="btn btn-outline-primary btn-sm" href="/orders/manage/@order.Id">
+                <i class="bi bi-arrow-left"></i> Volver a la orden
+            </a>
+        </div>
+        <p class="text-muted">@order.Title</p>
+
+        @if (photos.Count == 0)
+        {
+            <div class="alert alert-light border">
+                <i class="bi bi-camera"></i> Todavía no hay fotos en esta mudanza.
+                Las que envíe el equipo desde el chat aparecerán aquí.
+            </div>
+        }
+        else
+        {
+            <p class="text-muted small">
+                @photos.Count @(photos.Count == 1 ? "foto" : "fotos") en total.
+                La hora que se muestra es la del <strong>servidor</strong>, no la del teléfono.
+            </p>
+
+            @* El daño previo va PRIMERO: si hay una reclamación, es lo que se
+               mira antes que nada. *@
+            @RenderGroup("Daño previo — ya estaba así antes de recoger", "bi-exclamation-triangle",
+                         "danger", m => m.Stage == PhotoStage.PreExistingDamage,
+                         "Evidencia de que el artículo ya venía dañado cuando el equipo llegó.")
+            @RenderGroup("Recogida (antes)", "bi-box-arrow-up", "primary",
+                         m => m.Stage == PhotoStage.Pickup,
+                         "Estado de los artículos antes de moverlos.")
+            @RenderGroup("Entrega (después)", "bi-box-arrow-in-down", "success",
+                         m => m.Stage == PhotoStage.Delivery,
+                         "Estado al dejarlos en el destino.")
+            @* Cajón de sastre A PROPÓSITO: Message.Stage es nullable, así que las
+               fotos anteriores a la función de etapas (o enviadas sin etapa) tienen
+               Stage = null. Comparando por igualdad se perderían, y una galería que
+               esconde fotos no sirve como prueba. Aquí entra todo lo demás. *@
+            @RenderGroup("Otras fotos del chat", "bi-chat-dots", "secondary",
+                         m => m.Stage is not (PhotoStage.PreExistingDamage or PhotoStage.Pickup or PhotoStage.Delivery),
+                         "Fotos sueltas enviadas durante la mudanza.")
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+
+    private Order? order;
+    private List<Message> photos = [];
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+
+        order = await OrderService.GetOrderByIdAsync(OrderId);
+        if (order is null) { loading = false; return; }
+
+        // La MISMA regla que usa el endpoint que sirve las fotos, llamada desde su
+        // única definición: si se copia, tarde o temprano las dos se desincronizan.
+        if (!OrderAccess.CanAccess(user, order))
+        {
+            Navigation.NavigateTo("/orders/my-list");
+            return;
+        }
+
+        // take alto a propósito: una galería sin todas las fotos no sirve de prueba.
+        var all = await OrderService.GetMessagesAsync(OrderId, take: 500);
+        photos = all.Where(m => m.AttachmentPath is not null)
+                    .OrderBy(m => m.CreatedAt)
+                    .ToList();
+        loading = false;
+    }
+
+    private RenderFragment RenderGroup(string title, string icon, string tone,
+                                       Func<Message, bool> match, string hint) => __builder =>
+    {
+        var items = photos.Where(match).ToList();
+        if (items.Count == 0) { return; }
+
+        <div class="card mb-3 border-@tone">
+            <div class="card-header bg-white">
+                <span class="fw-bold text-@tone"><i class="bi @icon"></i> @title</span>
+                <span class="badge bg-@tone ms-2">@items.Count</span>
+                <div class="text-muted small">@hint</div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    @foreach (var p in items)
+                    {
+                        <div class="col-6 col-md-4 col-xl-3">
+                            <div class="gal-item">
+                                <a href="/api/v1/photos/@p.Id" target="_blank" rel="noopener" title="Ver foto completa">
+                                    <img src="/api/v1/photos/@p.Id/thumb" alt="@Caption(p)" class="gal-img" />
+                                </a>
+                                <div class="gal-caption">
+                                    @* La descripción es el texto del mensaje con el que se envió *@
+                                    <div class="gal-text">@Caption(p)</div>
+                                    <div class="gal-meta">
+                                        @p.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        @if (!string.IsNullOrWhiteSpace(p.SenderRole))
+                                        {
+                                            <span>· @RoleLabel(p.SenderRole)</span>
+                                        }
+                                        @if (p.Latitude is not null && p.Longitude is not null)
+                                        {
+                                            <span title="Ubicación registrada con la foto">
+                                                · <i class="bi bi-geo-alt-fill"></i> GPS
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    };
+
+    // El texto del mensaje hace de descripción. Las fotos de etapa llevan un
+    // texto automático ("📷 Foto — Recogida"), que aquí no aporta nada.
+    private static string Caption(Message m)
+    {
+        var c = (m.Content ?? "").Trim();
+        if (string.IsNullOrEmpty(c) || c.StartsWith("📷", StringComparison.Ordinal))
+        {
+            return "Sin descripción";
+        }
+        return c;
+    }
+
+    private static string RoleLabel(string role) => role switch
+    {
+        var r when r == Roles.Admin => "Administrador",
+        var r when r == Roles.Office => "Oficina",
+        var r when r == Roles.Driver => "Conductor",
+        var r when r == Roles.Client => "Cliente",
+        _ => role,
+    };
+}

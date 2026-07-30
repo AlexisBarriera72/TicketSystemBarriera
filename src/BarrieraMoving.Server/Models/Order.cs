@@ -19,6 +19,21 @@ public class Order
     public ApplicationUser? Author { get; set; }
     public string? AssignedDriverId { get; set; }
 
+    // --- Datos del cliente ---
+    // Muchas mudanzas las pide alguien que NO tiene cuenta (llama por teléfono o
+    // llega por el formulario web). Antes esos datos se metían a mano dentro de
+    // Description; en campos propios se pueden buscar, exportar y mostrar bien.
+    public string? ClientName { get; set; }
+    public string? ClientPhone { get; set; }
+    public string? ClientEmail { get; set; }
+
+    // --- Ruta y fecha ---
+    public string? OriginZone { get; set; }
+    public string? DestinationZone { get; set; }
+    // DateTime (y no texto como en QuoteRequest): aquí sí hace falta ordenar y
+    // filtrar por fecha ("mudanzas de hoy"), que con una cadena no se puede.
+    public DateTime? ScheduledDate { get; set; }
+
     // --- Datos de carga (mismo formato que la solicitud de cotización) ---
     // Piso y ascensor ("3er piso · sin ascensor"): el conductor lo ve antes de salir.
     public string? Floor { get; set; }

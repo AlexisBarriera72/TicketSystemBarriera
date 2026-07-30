@@ -1,0 +1,70 @@
+/* Mismo lenguaje visual que el formulario público de cotización, pero con Bootstrap:
+   cada grupo de preguntas dentro de un recuadro con su título. El objetivo es que
+   quien recoge una mudanza por teléfono vea la MISMA estructura que ve el cliente
+   en la web, y no tenga que traducir de un formulario a otro. */
+.form-page {
+    max-width: 780px;
+}
+
+.eyebrow {
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #c94400; /* naranja oscurecido: 4.87:1 sobre blanco, pasa AA */
+    margin-bottom: 0.4rem;
+}
+
+.page-h1 {
+    font-weight: 800;
+    color: #011a43;
+    letter-spacing: -0.5px;
+    margin-bottom: 1.6rem;
+}
+
+.block {
+    border: 1.5px solid #e6e9ef;
+    border-radius: 10px;
+    padding: 1.15rem 1.25rem;
+    margin-bottom: 1.4rem;
+    min-width: 0;
+}
+
+    .block legend {
+        float: none; /* Bootstrap deja legend a 100%; aquí queremos que se ajuste */
+        width: auto;
+        padding: 0 0.45rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #011a43;
+        margin-bottom: 0;
+    }
+
+.block-hint {
+    margin: 0 0 0.9rem;
+    font-size: 0.86rem;
+    color: #6b7684;
+    line-height: 1.5;
+}
+
+/* Aviso del recargo por urgencia: ámbar, visible, pegado al desplegable */
+.urgent-note {
+    margin-top: 0.45rem;
+    padding: 0.45rem 0.6rem;
+    background: #fff8e1;
+    border-left: 3px solid #f0ad00;
+    border-radius: 0 5px 5px 0;
+    font-size: 0.82rem;
+    color: #6b5200;
+}
+
+    .urgent-note i {
+        margin-right: 0.3rem;
+    }
+
+.opt {
+    font-weight: 400;
+    font-size: 0.78rem;
+    color: #6b7684;
+    text-transform: lowercase;
+}

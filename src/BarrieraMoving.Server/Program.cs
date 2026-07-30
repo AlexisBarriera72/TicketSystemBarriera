@@ -293,4 +293,17 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Carga de datos de DEMOSTRACIÓN por línea de comandos:
+//     dotnet run --project src/BarrieraMoving.Server -- --seed-demo
+// Va por argumento y no por endpoint HTTP a propósito: borra órdenes y cuentas, y
+// una ruta capaz de eso — aunque pida rol de admin — es un objetivo de CSRF que no
+// merece la pena tener abierto. Termina el proceso sin levantar el servidor.
+if (args.Contains("--seed-demo"))
+{
+    using var demoScope = app.Services.CreateScope();
+    var summary = await DemoSeeder.ResetAndSeedAsync(demoScope.ServiceProvider, app.Configuration, app.Logger);
+    app.Logger.LogInformation("Datos de demostración listos: {Summary}", summary);
+    return;
+}
+
 app.Run();

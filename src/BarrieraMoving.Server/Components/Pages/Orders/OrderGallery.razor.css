@@ -1,0 +1,41 @@
+/* Tarjeta de foto: la imagen manda, la descripción va debajo y siempre visible
+   (no en un tooltip) — es la que explica qué se está mirando en una reclamación. */
+.gal-item {
+    border: 1px solid #e6e9ef;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.gal-img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    display: block;
+    background: #f2f4f8;
+}
+
+    .gal-img:hover {
+        opacity: 0.92;
+    }
+
+.gal-caption {
+    padding: 0.55rem 0.65rem 0.6rem;
+    border-top: 1px solid #eef1f6;
+}
+
+.gal-text {
+    font-size: 0.85rem;
+    color: #14202e;
+    line-height: 1.35;
+    overflow-wrap: break-word;
+}
+
+.gal-meta {
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    color: #6b7684;
+}

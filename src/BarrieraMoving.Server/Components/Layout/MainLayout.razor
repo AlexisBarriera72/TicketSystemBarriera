@@ -29,9 +29,12 @@
                         <div class="acct-menu">
                             <div class="acct-email">@context.User.Identity?.Name</div>
                             <a href="Account/Manage"><i class="bi bi-person-gear"></i> Mi cuenta</a>
+                            @* Al salir se vuelve a /portal, no a la landing pública:
+                               quien usa el portal quiere volver a entrar, no leerse
+                               la página de marketing entera para encontrar el login. *@
                             <form action="Account/Logout" method="post">
                                 <AntiforgeryToken />
-                                <input type="hidden" name="ReturnUrl" value="" />
+                                <input type="hidden" name="ReturnUrl" value="portal" />
                                 <button type="submit"><i class="bi bi-box-arrow-left"></i> Cerrar sesión</button>
                             </form>
                         </div>

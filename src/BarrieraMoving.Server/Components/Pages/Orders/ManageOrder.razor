@@ -1,6 +1,7 @@
 @page "/orders/manage/{OrderId:int}"
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
+@using BarrieraMoving.Server.Api
 @inject IOrderService OrderService
 @inject ITrackingService Tracking
 @inject ISignatureService SignatureService
@@ -11,7 +12,9 @@
 @rendermode InteractiveServer
 @implements IDisposable
 
-<div class="container mt-4">
+<div class="order-page">
+    <a class="back-link" href="/orders/my-list"><i class="bi bi-arrow-left"></i> Volver a órdenes</a>
+
     @* ---Alertas --- *@
     @if (!string.IsNullOrEmpty(feedbackMessage))
     {
@@ -30,43 +33,169 @@
     }
     else
     {
-        <div class="card shadow border-0 mb-4">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h4 class="mb-0 text-white">Orden #@order.Id: @order.Title</h4>
-                <span class="badge rounded-pill bg-light text-dark px-3 shadow-sm">@order.Status</span>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-8">
-                        <p class="text-muted small mb-1">Cliente: <strong>@(order.Author?.DisplayName ?? order.Author?.Email)</strong></p>
-                        <p class="text-muted small">Fecha: @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
-                        <hr />
-                        <p class="fs-5">@order.Description</p>
+        @* La cabecera ocupa TODO el ancho, también por encima del chat: el estado de
+           la mudanza es lo que manda en esta pantalla, y el chat arranca debajo. *@
+        <div class="hero-card">
+            <div class="order-hero">
+                <div class="oh-top">
+                    <div class="min-w-0">
+                        <span class="oh-num">Orden #@order.Id</span>
+                        <h4 class="oh-title">@order.Title</h4>
+                    </div>
+                    <span class="oh-status">@OrderLabels.Status(order.Status)</span>
+                </div>
+                <p class="oh-hint">@OrderLabels.StatusHint(order.Status)</p>
 
-                        @* Piso y artículos: lo que la cuadrilla necesita saber ANTES de
-                           salir (cuánta gente, qué camión, si hay escaleras). *@
-                        @if (!string.IsNullOrWhiteSpace(order.Floor))
-                        {
-                            <p class="mb-2"><span class="badge bg-secondary"><i class="bi bi-building"></i> @order.Floor</span></p>
-                        }
-                        @{ var itemGroups = MovingItems.GroupPacked(order.Items); }
-                        @if (itemGroups.Count > 0)
-                        {
-                            var totalItems = itemGroups.Sum(g => g.Items.Count);
-                            <div class="mb-3">
-                                <div class="small fw-bold text-primary mb-1">
-                                    <i class="bi bi-box-seam"></i> @totalItems @(totalItems == 1 ? "artículo" : "artículos") a mover
+                @* Progreso de la mudanza. Es lo primero que mira todo el mundo —
+                   cliente incluido — y antes había que deducirlo de una etiqueta
+                   suelta que además salía en inglés ("Requested"). *@
+                <ol class="stepper">
+                    @foreach (var step in OrderLabels.Flow)
+                    {
+                        var done = (int)order.Status > (int)step;
+                        var current = order.Status == step;
+                        <li class="@(done ? "done" : current ? "current" : "todo")">
+                            <span class="dot">@(done ? "✓" : "")</span>
+                            <span class="lbl">@OrderLabels.Status(step)</span>
+                        </li>
+                    }
+                </ol>
+            </div>
+        </div>
+
+        @* Dos columnas: la operación a la izquierda, el chat fijo a la derecha.
+           Antes el chat quedaba enterrado a mitad de página y había que bajar
+           hasta él cada vez que llegaba un mensaje. *@
+        <div class="order-grid">
+            <div class="order-main">
+
+                @* Tira de datos rápidos: los cuatro que se miran siempre *@
+                <div class="quick-strip">
+                    <div class="qs-item">
+                        <i class="bi bi-person-badge"></i>
+                        <div><span class="qs-k">Cuenta</span><span class="qs-v">@(order.Author?.DisplayName ?? order.Author?.Email ?? "—")</span></div>
+                    </div>
+                    <div class="qs-item">
+                        <i class="bi bi-calendar3"></i>
+                        <div><span class="qs-k">Creada</span><span class="qs-v">@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div>
+                    </div>
+                    <div class="qs-item">
+                        <i class="bi bi-tag"></i>
+                        <div><span class="qs-k">Tipo de servicio</span><span class="qs-v">@(order.Category?.Name ?? "—")</span></div>
+                    </div>
+                    <div class="qs-item">
+                        <i class="bi bi-speedometer2"></i>
+                        <div>
+                            <span class="qs-k">Prioridad</span>
+                            <span class="qs-v"><span class="badge @PriorityClass(order.Priority)">@OrderLabels.Priority(order.Priority)</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                @* ---------- CLIENTE Y SOLICITUD ---------- *@
+                <section class="info-card">
+                    <header class="ic-head">
+                        <span><i class="bi bi-person-vcard"></i> Cliente y solicitud</span>
+                        <a class="btn btn-sm btn-outline-primary" href="/orders/@OrderId/gallery">
+                            <i class="bi bi-images"></i> Ver galería de fotos
+                        </a>
+                    </header>
+                    <div class="ic-body">
+                        <div class="facts">
+                            @if (!string.IsNullOrWhiteSpace(order.ClientName))
+                            {
+                                <div class="fact"><i class="bi bi-person"></i><span>Cliente: @order.ClientName</span></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(order.ClientPhone))
+                            {
+                                <div class="fact"><i class="bi bi-telephone"></i><a href="tel:@order.ClientPhone">@order.ClientPhone</a></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(order.ClientEmail))
+                            {
+                                <div class="fact"><i class="bi bi-envelope"></i><a href="mailto:@order.ClientEmail">@order.ClientEmail</a></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(order.OriginZone) || !string.IsNullOrWhiteSpace(order.DestinationZone))
+                            {
+                                <div class="fact">
+                                    <i class="bi bi-signpost-2"></i>
+                                    <span>
+                                        @(string.IsNullOrWhiteSpace(order.OriginZone) ? "—" : order.OriginZone)
+                                        <i class="bi bi-arrow-right mx-1"></i>
+                                        @(string.IsNullOrWhiteSpace(order.DestinationZone) ? "—" : order.DestinationZone)
+                                    </span>
                                 </div>
-                                @foreach (var g in itemGroups)
-                                {
-                                    <div class="mb-1">
-                                        <span class="text-muted small me-1">@g.Category:</span>
+                            }
+                            @if (order.ScheduledDate is not null)
+                            {
+                                <div class="fact"><i class="bi bi-calendar-event"></i><span>Fecha deseada: @order.ScheduledDate.Value.ToString("dd/MM/yyyy")</span></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(order.Floor))
+                            {
+                                <div class="fact"><i class="bi bi-building"></i><span>@order.Floor</span></div>
+                            }
+                            <div class="fact">
+                                <i class="bi bi-person-workspace"></i>
+                                <span>Conductor: <strong>@(order.AssignedDriver?.DisplayName ?? order.AssignedDriver?.Email ?? "No asignado")</strong></span>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(order.Description))
+                        {
+                            <p class="order-notes mt-3 mb-0">@order.Description</p>
+                        }
+                    </div>
+                </section>
+
+                @* ---------- ARTÍCULOS A MOVER ---------- *@
+                @{ var itemGroups = MovingItems.GroupPacked(order.Items); }
+                @if (itemGroups.Count > 0)
+                {
+                    var totalItems = itemGroups.Sum(g => g.Items.Count);
+                    <section class="info-card">
+                        <header class="ic-head">
+                            <span><i class="bi bi-box-seam"></i> Artículos a mover</span>
+                            <span class="badge bg-light text-dark border">@totalItems artículos</span>
+                        </header>
+                        <div class="ic-body">
+                            @foreach (var g in itemGroups)
+                            {
+                                <div class="item-row">
+                                    <span class="item-cat">@g.Category:</span>
+                                    <span class="item-tags">
                                         @foreach (var it in g.Items)
                                         {
-                                            <span class="badge bg-light text-dark border me-1 mb-1">@it</span>
+                                            <span class="badge bg-light text-dark border">@it</span>
                                         }
-                                    </div>
-                                }
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                }
+
+                        @* Daño PREVIO: va antes que nada. Si hay reclamación, esto es
+                           lo primero que mira la oficina, porque prueba que el
+                           artículo ya venía así cuando llegó el equipo. *@
+                        @if (preDamagePhotos.Count > 0)
+                        {
+                            <div class="alert alert-danger mt-3 mb-0">
+                                <div class="fw-bold mb-2">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    Daño previo documentado — @preDamagePhotos.Count @(preDamagePhotos.Count == 1 ? "foto" : "fotos")
+                                </div>
+                                <div class="small mb-2">
+                                    El equipo dejó constancia de que estos artículos <strong>ya estaban dañados
+                                    antes de recogerlos</strong>. Sirve como prueba si más adelante hay una reclamación.
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var p in preDamagePhotos)
+                                    {
+                                        <a href="/api/v1/photos/@p.Id" target="_blank" title="@p.CreatedAt.ToLocalTime()">
+                                            <img src="/api/v1/photos/@p.Id/thumb" alt="Daño previo"
+                                                 style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:2px solid #b04a4a" />
+                                        </a>
+                                    }
+                                </div>
                             </div>
                         }
 
@@ -107,13 +236,17 @@
                             </div>
                         }
 
-                        @if (canBypassFlow)
-                        {
-                            @* Enlace de seguimiento para el cliente (sin login).
-                               Muestra SOLO estado y fecha; se puede desactivar. *@
-                            <div class="border rounded p-3 bg-light mt-3">
+                @if (canBypassFlow)
+                {
+                    @* Enlace de seguimiento para el cliente (sin login).
+                       Muestra SOLO estado y fecha; se puede desactivar. *@
+                    <section class="info-card">
+                        <header class="ic-head">
+                            <span><i class="bi bi-link-45deg"></i> Enlace de seguimiento para el cliente</span>
+                        </header>
+                        <div class="ic-body">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <strong class="small text-uppercase text-muted">Enlace de seguimiento para el cliente</strong>
+                                    <strong class="small text-muted">Comparte el estado sin dar acceso a la orden</strong>
                                     @if (trackingUrl is null)
                                     {
                                         <button class="btn btn-sm btn-outline-primary" @onclick="CreateTrackingAsync">
@@ -139,19 +272,237 @@
                                 {
                                     <div class="form-text mb-0">Aún no has generado un enlace para esta orden.</div>
                                 }
+                        </div>
+                    </section>
+                }
+
+                @* --- PAPELEO OBLIGATORIO (parte del paquete firmado; sin borrado) --- *@
+                <section class="info-card">
+                    <header class="ic-head">
+                        <span><i class="bi bi-clipboard-check"></i> Papeleo obligatorio</span>
+                        <span class="badge bg-light text-dark border">@paperworkState.Count(p => p.Doc?.Status == PaperworkStatus.Attached)/@paperworkState.Count</span>
+                    </header>
+                    <div class="ic-body">
+                    @foreach (var (slot, doc) in paperworkState)
+                    {
+                        <div class="border rounded-3 p-2 mb-2 bg-white shadow-sm d-flex justify-content-between align-items-center flex-wrap">
+                            <span class="small">
+                                <strong>@slot.Label</strong>
+                                @if (doc is null)
+                                {
+                                    <span class="badge bg-secondary ms-2">Pendiente</span>
+                                }
+                                else if (doc.Status == PaperworkStatus.Attached)
+                                {
+                                    <span class="badge bg-success ms-2">Adjunto</span>
+                                    <span class="text-muted ms-2">@doc.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                                }
+                                else if (doc.Status == PaperworkStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger ms-2">Rechazado</span>
+                                    <span class="text-danger ms-2">@doc.RejectReason</span>
+                                }
+                            </span>
+                            <span>
+                                @if (doc is not null)
+                                {
+                                    <a class="btn btn-sm btn-outline-primary me-1" target="_blank"
+                                       href="/api/v1/paperwork/@doc.Id/file">Ver</a>
+                                }
+                                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="pwCtx">
+                                    @if (doc?.Status == PaperworkStatus.Attached)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => RejectPaperworkAsync(doc.Id, slot.Label)">✖ Rechazar</button>
+                                    }
+                                </AuthorizeView>
+                            </span>
+                        </div>
+                    }
+                    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="pwReasonCtx">
+                        <input class="form-control form-control-sm mt-1" style="max-width: 420px;"
+                               placeholder="Motivo del rechazo de papeleo (obligatorio antes de pulsar Rechazar)"
+                               @bind="pwRejectReason" />
+                    </AuthorizeView>
+                    </div>
+                </section>
+
+                @* --- DOCUMENTOS DE FIRMA (registros legales; sin borrado) --- *@
+                <section class="info-card">
+                    <header class="ic-head">
+                        <span><i class="bi bi-pen-fill"></i> Documentos de firma</span>
+                        @if (documents.Any())
+                        {
+                            <span class="badge bg-light text-dark border">@documents.Count</span>
+                        }
+                    </header>
+                    <div class="ic-body">
+                    @if (!documents.Any())
+                    {
+                        <div class="doc-empty">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>Aún no hay documentos de firma en esta orden.</span>
+                            <span class="doc-empty-hint">Cuando el cliente firme, el documento aparece aquí solo.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var doc in documents)
+                        {
+                            <div class="border rounded-3 p-3 mb-2 bg-white shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                    <span>
+                                        <span class="badge @DocBadgeClass(doc.Status)">@DocStatusLabel(doc.Status)</span>
+                                        @if (doc.IsProvisional)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-1"
+                                                  title="Firmado en el dispositivo sin conexión — evidencia provisional, verificar con especial cuidado">PROVISIONAL</span>
+                                        }
+                                        <span class="ms-2 small">@(doc.SignerName ?? "—")</span>
+                                        @if (doc.SignedAtUtc is not null)
+                                        {
+                                            <span class="text-muted small ms-2">firmado @doc.SignedAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                                        }
+                                    </span>
+                                    <span>
+                                        @if (doc.PdfPath is not null)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary me-1" target="_blank"
+                                               href="/api/v1/documents/@doc.Id/pdf">📄 Ver PDF</a>
+                                        }
+                                    </span>
+                                </div>
+                                @if (doc.Status == SignatureDocStatus.Rejected)
+                                {
+                                    <div class="alert alert-danger py-1 px-2 mt-2 mb-0 small">
+                                        Rechazado por @(doc.ReviewedBy?.DisplayName ?? doc.ReviewedBy?.Email):
+                                        <strong>@doc.RejectReason</strong> — el conductor debe repetir la firma.
+                                    </div>
+                                }
+                                @if (doc.Status == SignatureDocStatus.Approved)
+                                {
+                                    <div class="text-success small mt-1">
+                                        ✔ Aprobado por @(doc.ReviewedBy?.DisplayName ?? doc.ReviewedBy?.Email)
+                                        el @doc.ReviewedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm")
+                                    </div>
+                                }
+                                <div class="small text-muted mt-1">
+                                    Copia al cliente:
+                                    @(doc.EmailStatus switch
+                                    {
+                                        EmailDeliveryStatus.Sent => "✔ enviada",
+                                        EmailDeliveryStatus.Failed => $"❌ fallo: {doc.EmailError}",
+                                        EmailDeliveryStatus.NotConfigured => "⚠ sin servicio de correo configurado",
+                                        _ => "no enviada"
+                                    })
+                                    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="emailCtx">
+                                        @if (doc.EmailStatus != EmailDeliveryStatus.Sent && doc.PdfPath is not null)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary py-0 ms-2"
+                                                    @onclick="() => ResendEmailAsync(doc.Id)">Reenviar</button>
+                                        }
+                                    </AuthorizeView>
+                                </div>
+                                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="reviewCtx">
+                                    @if (doc.Status == SignatureDocStatus.Signed)
+                                    {
+                                        <div class="mt-2 d-flex gap-2 flex-wrap align-items-center">
+                                            <button class="btn btn-sm btn-success" @onclick="() => ApproveDocAsync(doc.Id)">
+                                                ✔ Aprobar
+                                            </button>
+                                            <input class="form-control form-control-sm" style="max-width: 320px;"
+                                                   placeholder="Motivo del rechazo (obligatorio)" @bind="rejectReason" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RejectDocAsync(doc.Id)">
+                                                ✖ Rechazar
+                                            </button>
+                                        </div>
+                                    }
+                                </AuthorizeView>
                             </div>
                         }
+                    }
                     </div>
-                    <div class="col-md-4 border-start">
-                        <h6 class="text-muted small fw-bold text-uppercase">Información de Asignación</h6>
-                        <p class="mb-1">Conductor: <strong>@(order.AssignedDriver?.DisplayName ?? order.AssignedDriver?.Email ?? "No asignado")</strong></p>
-                        <p class="mb-1">Tipo: <span class="badge bg-light text-dark border">@order.Category?.Name</span></p>
-                        <p>Prioridad: <span class="badge bg-secondary">@order.Priority</span></p>
-                    </div>
-                </div>
+                </section>
 
-                @* --- Chat de la orden --- *@
-                <div class="mt-5">
+                @* --- ACCIONES DE STAFF (PROTEGIDAS) --- *@
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office},{Roles.Driver}")">
+                    <Authorized>
+                        <div class="row mt-5 bg-light p-4 rounded-3 border">
+                            <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staffCtx">
+                                <div class="col-md-5 border-end">
+                                    <h6 class="text-uppercase small fw-bold text-muted mb-3">
+                                        Oficina: Asignación de Conductor
+                                    </h6>
+                                    <select class="form-select mb-2 shadow-sm" @bind="selectedDriverId">
+                                        <option value="">-- Seleccionar Conductor --</option>
+                                        @foreach (var driver in drivers)
+                                        {
+                                            <option value="@driver.Id">@(driver.DisplayName ?? driver.Email)</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-success w-100 shadow-sm" @onclick="AssignDriver">
+                                        <i class="bi bi-person-check"></i> Confirmar Asignación
+                                    </button>
+                                </div>
+                            </AuthorizeView>
+
+                            <div class="col-md-7 ps-4">
+                                <h6 class="text-uppercase small fw-bold text-muted mb-3">
+                                    Control de Estados (Conductor)
+                                </h6>
+                                <div class="btn-group w-100 shadow-sm">
+                                    @if (order.Status == OrderStatus.Requested)
+                                    {
+                                        <div class="alert alert-secondary w-100 mb-0 py-2 text-center">
+                                            <i class="bi bi-hourglass-split"></i> Esperando asignación de conductor.
+                                        </div>
+                                    }
+                                    @if (order.Status == OrderStatus.Assigned)
+                                    {
+                                        <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(OrderStatus.EnRoute)">
+                                            <i class="bi bi-truck"></i> Salir en Camino
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.EnRoute)
+                                    {
+                                        <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(OrderStatus.InProgress)">
+                                            <i class="bi bi-play-fill"></i> Llegué — Iniciar Trabajo
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.InProgress)
+                                    {
+                                        <button class="btn btn-primary py-2" @onclick="() => UpdateStatus(OrderStatus.PendingSignature)">
+                                            <i class="bi bi-pen"></i> Solicitar Firma del Cliente
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.PendingSignature)
+                                    {
+                                        @* Fase 6 añadirá el gate: no se puede completar sin documento firmado y aprobado *@
+                                        <button class="btn btn-success py-2" @onclick="() => UpdateStatus(OrderStatus.Completed)">
+                                            <i class="bi bi-check-all"></i> Marcar como Completada
+                                        </button>
+                                    }
+                                    @if (order.Status == OrderStatus.Completed)
+                                    {
+                                        <div class="alert alert-info w-100 mb-0 py-2 text-center">
+                                            <i class="bi bi-lock-fill"></i> La orden está completada.
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+            </div>
+
+            @* Chat fijo a la derecha, arrancando justo debajo de la cabecera.
+               Es el canal que mas se usa: tenerlo siempre visible evita bajar
+               media pantalla cada vez que entra un mensaje. *@
+            <aside class="order-chat">
+                <header class="chat-head">
+                    <span><i class="bi bi-chat-square-text-fill"></i> Canal de comunicacion</span>
+                </header>
                     <h6 class="text-muted text-uppercase small fw-bold mb-3">
                         <i class="bi bi-chat-square-text-fill me-1"></i> Canal de Comunicación
                     </h6>
@@ -240,214 +591,7 @@
                             Enviar <i class="bi bi-send-fill ms-1"></i>
                         </button>
                     </div>
-                </div>
-
-                @* --- PAPELEO OBLIGATORIO (parte del paquete firmado; sin borrado) --- *@
-                <div class="mt-5">
-                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
-                        <i class="bi bi-clipboard-check me-1"></i> Papeleo Obligatorio
-                    </h6>
-                    @foreach (var (slot, doc) in paperworkState)
-                    {
-                        <div class="border rounded-3 p-2 mb-2 bg-white shadow-sm d-flex justify-content-between align-items-center flex-wrap">
-                            <span class="small">
-                                <strong>@slot.Label</strong>
-                                @if (doc is null)
-                                {
-                                    <span class="badge bg-secondary ms-2">Pendiente</span>
-                                }
-                                else if (doc.Status == PaperworkStatus.Attached)
-                                {
-                                    <span class="badge bg-success ms-2">Adjunto</span>
-                                    <span class="text-muted ms-2">@doc.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
-                                }
-                                else if (doc.Status == PaperworkStatus.Rejected)
-                                {
-                                    <span class="badge bg-danger ms-2">Rechazado</span>
-                                    <span class="text-danger ms-2">@doc.RejectReason</span>
-                                }
-                            </span>
-                            <span>
-                                @if (doc is not null)
-                                {
-                                    <a class="btn btn-sm btn-outline-primary me-1" target="_blank"
-                                       href="/api/v1/paperwork/@doc.Id/file">Ver</a>
-                                }
-                                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="pwCtx">
-                                    @if (doc?.Status == PaperworkStatus.Attached)
-                                    {
-                                        <button class="btn btn-sm btn-outline-danger"
-                                                @onclick="() => RejectPaperworkAsync(doc.Id, slot.Label)">✖ Rechazar</button>
-                                    }
-                                </AuthorizeView>
-                            </span>
-                        </div>
-                    }
-                    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="pwReasonCtx">
-                        <input class="form-control form-control-sm mt-1" style="max-width: 420px;"
-                               placeholder="Motivo del rechazo de papeleo (obligatorio antes de pulsar Rechazar)"
-                               @bind="pwRejectReason" />
-                    </AuthorizeView>
-                </div>
-
-                @* --- DOCUMENTOS DE FIRMA (registros legales; sin borrado) --- *@
-                <div class="mt-4">
-                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
-                        <i class="bi bi-pen-fill me-1"></i> Documentos de Firma
-                    </h6>
-                    @if (!documents.Any())
-                    {
-                        <p class="text-muted small">Aún no hay documentos de firma en esta orden.</p>
-                    }
-                    else
-                    {
-                        @foreach (var doc in documents)
-                        {
-                            <div class="border rounded-3 p-3 mb-2 bg-white shadow-sm">
-                                <div class="d-flex justify-content-between align-items-center flex-wrap">
-                                    <span>
-                                        <span class="badge @DocBadgeClass(doc.Status)">@DocStatusLabel(doc.Status)</span>
-                                        @if (doc.IsProvisional)
-                                        {
-                                            <span class="badge bg-warning text-dark ms-1"
-                                                  title="Firmado en el dispositivo sin conexión — evidencia provisional, verificar con especial cuidado">PROVISIONAL</span>
-                                        }
-                                        <span class="ms-2 small">@(doc.SignerName ?? "—")</span>
-                                        @if (doc.SignedAtUtc is not null)
-                                        {
-                                            <span class="text-muted small ms-2">firmado @doc.SignedAtUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")</span>
-                                        }
-                                    </span>
-                                    <span>
-                                        @if (doc.PdfPath is not null)
-                                        {
-                                            <a class="btn btn-sm btn-outline-primary me-1" target="_blank"
-                                               href="/api/v1/documents/@doc.Id/pdf">📄 Ver PDF</a>
-                                        }
-                                    </span>
-                                </div>
-                                @if (doc.Status == SignatureDocStatus.Rejected)
-                                {
-                                    <div class="alert alert-danger py-1 px-2 mt-2 mb-0 small">
-                                        Rechazado por @(doc.ReviewedBy?.DisplayName ?? doc.ReviewedBy?.Email):
-                                        <strong>@doc.RejectReason</strong> — el conductor debe repetir la firma.
-                                    </div>
-                                }
-                                @if (doc.Status == SignatureDocStatus.Approved)
-                                {
-                                    <div class="text-success small mt-1">
-                                        ✔ Aprobado por @(doc.ReviewedBy?.DisplayName ?? doc.ReviewedBy?.Email)
-                                        el @doc.ReviewedAtUtc?.ToLocalTime().ToString("dd/MM HH:mm")
-                                    </div>
-                                }
-                                <div class="small text-muted mt-1">
-                                    Copia al cliente:
-                                    @(doc.EmailStatus switch
-                                    {
-                                        EmailDeliveryStatus.Sent => "✔ enviada",
-                                        EmailDeliveryStatus.Failed => $"❌ fallo: {doc.EmailError}",
-                                        EmailDeliveryStatus.NotConfigured => "⚠ sin servicio de correo configurado",
-                                        _ => "no enviada"
-                                    })
-                                    <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="emailCtx">
-                                        @if (doc.EmailStatus != EmailDeliveryStatus.Sent && doc.PdfPath is not null)
-                                        {
-                                            <button class="btn btn-sm btn-outline-secondary py-0 ms-2"
-                                                    @onclick="() => ResendEmailAsync(doc.Id)">Reenviar</button>
-                                        }
-                                    </AuthorizeView>
-                                </div>
-                                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="reviewCtx">
-                                    @if (doc.Status == SignatureDocStatus.Signed)
-                                    {
-                                        <div class="mt-2 d-flex gap-2 flex-wrap align-items-center">
-                                            <button class="btn btn-sm btn-success" @onclick="() => ApproveDocAsync(doc.Id)">
-                                                ✔ Aprobar
-                                            </button>
-                                            <input class="form-control form-control-sm" style="max-width: 320px;"
-                                                   placeholder="Motivo del rechazo (obligatorio)" @bind="rejectReason" />
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RejectDocAsync(doc.Id)">
-                                                ✖ Rechazar
-                                            </button>
-                                        </div>
-                                    }
-                                </AuthorizeView>
-                            </div>
-                        }
-                    }
-                </div>
-
-                @* --- ACCIONES DE STAFF (PROTEGIDAS) --- *@
-                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office},{Roles.Driver}")">
-                    <Authorized>
-                        <div class="row mt-5 bg-light p-4 rounded-3 border">
-                            <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="staffCtx">
-                                <div class="col-md-5 border-end">
-                                    <h6 class="text-uppercase small fw-bold text-muted mb-3">
-                                        Oficina: Asignación de Conductor
-                                    </h6>
-                                    <select class="form-select mb-2 shadow-sm" @bind="selectedDriverId">
-                                        <option value="">-- Seleccionar Conductor --</option>
-                                        @foreach (var driver in drivers)
-                                        {
-                                            <option value="@driver.Id">@(driver.DisplayName ?? driver.Email)</option>
-                                        }
-                                    </select>
-                                    <button class="btn btn-success w-100 shadow-sm" @onclick="AssignDriver">
-                                        <i class="bi bi-person-check"></i> Confirmar Asignación
-                                    </button>
-                                </div>
-                            </AuthorizeView>
-
-                            <div class="col-md-7 ps-4">
-                                <h6 class="text-uppercase small fw-bold text-muted mb-3">
-                                    Control de Estados (Conductor)
-                                </h6>
-                                <div class="btn-group w-100 shadow-sm">
-                                    @if (order.Status == OrderStatus.Requested)
-                                    {
-                                        <div class="alert alert-secondary w-100 mb-0 py-2 text-center">
-                                            <i class="bi bi-hourglass-split"></i> Esperando asignación de conductor.
-                                        </div>
-                                    }
-                                    @if (order.Status == OrderStatus.Assigned)
-                                    {
-                                        <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(OrderStatus.EnRoute)">
-                                            <i class="bi bi-truck"></i> Salir en Camino
-                                        </button>
-                                    }
-                                    @if (order.Status == OrderStatus.EnRoute)
-                                    {
-                                        <button class="btn btn-warning py-2" @onclick="() => UpdateStatus(OrderStatus.InProgress)">
-                                            <i class="bi bi-play-fill"></i> Llegué — Iniciar Trabajo
-                                        </button>
-                                    }
-                                    @if (order.Status == OrderStatus.InProgress)
-                                    {
-                                        <button class="btn btn-primary py-2" @onclick="() => UpdateStatus(OrderStatus.PendingSignature)">
-                                            <i class="bi bi-pen"></i> Solicitar Firma del Cliente
-                                        </button>
-                                    }
-                                    @if (order.Status == OrderStatus.PendingSignature)
-                                    {
-                                        @* Fase 6 añadirá el gate: no se puede completar sin documento firmado y aprobado *@
-                                        <button class="btn btn-success py-2" @onclick="() => UpdateStatus(OrderStatus.Completed)">
-                                            <i class="bi bi-check-all"></i> Marcar como Completada
-                                        </button>
-                                    }
-                                    @if (order.Status == OrderStatus.Completed)
-                                    {
-                                        <div class="alert alert-info w-100 mb-0 py-2 text-center">
-                                            <i class="bi bi-lock-fill"></i> La orden está completada.
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </Authorized>
-                </AuthorizeView>
-
-            </div>
+            </aside>
         </div>
     }
 </div>
@@ -464,6 +608,9 @@
     private List<Message> deliveryPhotos =>
         messages.Where(m => m.AttachmentPath is not null && m.Stage == PhotoStage.Delivery)
                 .OrderBy(m => m.CreatedAt).ToList();
+    private List<Message> preDamagePhotos =>
+        messages.Where(m => m.AttachmentPath is not null && m.Stage == PhotoStage.PreExistingDamage)
+                .OrderBy(m => m.CreatedAt).ToList();
     private string selectedDriverId = "";
     private string newMessageContent = "";
     private string currentUserId = "";
@@ -473,6 +620,15 @@
     private string? trackingUrl;
     private bool canLoadOlder;
     private System.Threading.Timer? pollTimer;
+
+    // La urgencia tiene que verse de un vistazo; en gris todas parecían iguales.
+    private static string PriorityClass(OrderPriority p) => p switch
+    {
+        OrderPriority.Urgent => "bg-danger",
+        OrderPriority.High => "bg-warning text-dark",
+        OrderPriority.Low => "bg-light text-dark border",
+        _ => "bg-secondary",
+    };
 
     private string BuildTrackingUrl(string token) =>
         $"{Navigation.BaseUri.TrimEnd('/')}/seguimiento/{token}";
@@ -505,9 +661,12 @@
             trackingUrl = existing is null ? null : BuildTrackingUrl(existing);
         }
 
-        // Solo el autor (cliente), el staff (Admin/Oficina) o el conductor pueden ver la orden
-        bool isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office) || user.IsInRole(Roles.Driver);
-        if (!isStaff && order?.AuthorId != currentUserId)
+        // UNA sola definición de "quién puede ver una orden": la misma que aplican los
+        // endpoints de la API y el de fotos (Api/OrderAccess.CanAccess).
+        // Antes aquí bastaba con TENER el rol de conductor, así que cualquier conductor
+        // podía abrir la orden de cualquier otro — y sus fotos, su chat y los datos del
+        // cliente. Ahora hace falta ser el conductor ASIGNADO, el autor, o ser oficina.
+        if (order is null || !OrderAccess.CanAccess(user, order))
         {
             Navigation.NavigateTo("/orders/my-list");
             return;
@@ -592,19 +751,62 @@
     {
         try
         {
+            var changed = false;
+
             var lastId = messages.Count > 0 ? messages[^1].Id : 0;
             var fresh = await OrderService.GetMessagesAsync(OrderId, take: 200, afterId: lastId);
             if (fresh.Count > 0)
             {
                 messages.AddRange(fresh);
-                StateHasChanged();
+                changed = true;
             }
+
+            // El documento firmado tiene que APARECER SOLO en su sitio. El conductor
+            // firma en el teléfono y la oficina, que ya tiene la orden abierta, antes
+            // no se enteraba: seguía leyendo "Aún no hay documentos" hasta recargar a
+            // mano. Se compara por conteo y por estado porque una firma puede además
+            // pasar de Firmada a Aprobada/Rechazada sin que cambie el número.
+            var freshDocs = await SignatureService.GetForOrderAsync(OrderId);
+            if (freshDocs.Count != documents.Count || DocSignature(freshDocs) != DocSignature(documents))
+            {
+                documents = freshDocs;
+                changed = true;
+            }
+
+            // Mismo motivo para el papeleo: el conductor lo adjunta desde el móvil.
+            var currentPw = await PaperworkService.GetCurrentBySlotAsync(OrderId);
+            var freshPw = PaperworkService.GetSlots()
+                .Select(s => (Slot: s, Doc: currentPw.GetValueOrDefault(s.Key)))
+                .ToList();
+            if (PwSignature(freshPw) != PwSignature(paperworkState))
+            {
+                paperworkState = freshPw;
+                changed = true;
+            }
+
+            // El estado de la orden puede cambiarlo el conductor desde el móvil
+            var freshOrder = await OrderService.GetOrderByIdAsync(OrderId);
+            if (freshOrder is not null && order is not null &&
+                (freshOrder.Status != order.Status || freshOrder.AssignedDriverId != order.AssignedDriverId))
+            {
+                order = freshOrder;
+                changed = true;
+            }
+
+            if (changed) StateHasChanged();
         }
         catch (Exception)
         {
             // fallo transitorio: el siguiente tick lo reintenta
         }
     }
+
+    // Huellas baratas para detectar cambios sin comparar objeto por objeto
+    private static string DocSignature(List<SignatureDocument> docs) =>
+        string.Join(",", docs.Select(d => $"{d.Id}:{(int)d.Status}:{(d.PdfPath is null ? 0 : 1)}"));
+
+    private static string PwSignature(List<(PaperworkSlot Slot, PaperworkDocument? Doc)> pw) =>
+        string.Join(",", pw.Select(p => $"{p.Slot.Key}:{(p.Doc is null ? "-" : $"{p.Doc.Id}:{(int)p.Doc.Status}")}"));
 
     private async Task LoadOlderAsync()
     {

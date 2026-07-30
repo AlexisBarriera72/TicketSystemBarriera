@@ -43,6 +43,11 @@ public static class ModelLengths
             e.Property(x => x.TrackingToken).HasMaxLength(Idem); // 32 bytes en Base64url = 43
             e.Property(x => x.Floor).HasMaxLength(Short);
             e.Property(x => x.Items).HasMaxLength(Text);
+            e.Property(x => x.ClientName).HasMaxLength(Name);
+            e.Property(x => x.ClientPhone).HasMaxLength(Phone);
+            e.Property(x => x.ClientEmail).HasMaxLength(Email);
+            e.Property(x => x.OriginZone).HasMaxLength(Short);
+            e.Property(x => x.DestinationZone).HasMaxLength(Short);
         });
 
         b.Entity<Message>(e =>

@@ -165,6 +165,14 @@ else
         </button>
     </div>
 
+    @* Daño PREVIO: el artículo ya venía roto. Botón aparte y en rojo porque es la
+       prueba de que no lo rompió el equipo, y hay que sacarla ANTES de cargar. *@
+    <div class="stage-row">
+        <button class="stage-btn stage-damage" @onclick="() => SendPhotoAsync(true, PhotoStage.PreExistingDamage)" disabled="@sending">
+            <i class="bi bi-exclamation-triangle"></i> Ya venía dañado
+        </button>
+    </div>
+
     <div class="input-group chat-compose">
         <button class="btn btn-outline-secondary px-3" @onclick="() => SendPhotoAsync(fromCamera: true)"
                 disabled="@sending" title="Cámara"><i class="bi bi-camera"></i></button>

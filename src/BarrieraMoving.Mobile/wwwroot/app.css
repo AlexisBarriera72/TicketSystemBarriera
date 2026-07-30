@@ -461,3 +461,13 @@ h1:focus {
 
 .stage-btn:active { background: #ffe9df; }
 .stage-btn:disabled { opacity: 0.55; }
+
+/* Daño previo: rojo para que no se confunda con las fotos normales de recogida.
+   Es la foto que protege al conductor de una reclamación, así que debe destacar. */
+.stage-damage {
+    border-color: #b04a4a;
+    color: #8f2f2f;
+    background: #fdf3f3;
+}
+
+.stage-damage:active { background: #f8e3e3; }

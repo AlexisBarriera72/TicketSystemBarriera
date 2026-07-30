@@ -1,0 +1,90 @@
+@page "/admin/demo-data"
+@using Microsoft.AspNetCore.Authorization
+@using BarrieraMoving.Server.Data
+@inject IServiceProvider Services
+@inject IConfiguration Config
+@inject ILogger<DemoData> Logger
+@attribute [Authorize(Roles = Roles.Admin)]
+@rendermode InteractiveServer
+
+<PageTitle>Datos de demostración | Transporte Caribe Logistic</PageTitle>
+
+<div class="container mt-4" style="max-width:760px">
+    <h3 class="mb-3"><i class="bi bi-database-fill-gear text-primary"></i> Datos de demostración</h3>
+
+    <div class="alert alert-danger">
+        <strong><i class="bi bi-exclamation-triangle-fill"></i> Esto BORRA datos.</strong>
+        <ul class="mb-0 mt-2 small">
+            <li>Se eliminan <strong>todas</strong> las órdenes, mensajes, fotos, fichajes,
+                documentos, reclamaciones y cotizaciones.</li>
+            <li>Se eliminan <strong>todas</strong> las cuentas excepto las tres de desarrollo
+                (administrador, conductor y cliente configuradas en <code>Seed:*</code>).</li>
+            <li>Se crean en su lugar una plantilla completa y un día de trabajo a medias.</li>
+        </ul>
+    </div>
+
+    <p class="text-muted">
+        Sirve para enseñar la aplicación como si llevara meses funcionando. Todas las
+        cuentas nuevas usan la contraseña <code>@DemoSeeder.Password</code>.
+    </p>
+
+    @if (result is not null)
+    {
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle-fill"></i> Listo. @result
+        </div>
+    }
+    @if (error is not null)
+    {
+        <div class="alert alert-danger"><i class="bi bi-x-octagon-fill"></i> @error</div>
+    }
+
+    @* Doble confirmación a propósito: un clic accidental aquí se lleva la base entera *@
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="ack" @bind="acknowledged" />
+        <label class="form-check-label" for="ack">
+            Entiendo que se borrarán las órdenes y las cuentas que no sean de desarrollo.
+        </label>
+    </div>
+
+    <button class="btn btn-danger" disabled="@(!acknowledged || running)" @onclick="RunAsync">
+        @if (running)
+        {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            <span>Regenerando…</span>
+        }
+        else
+        {
+            <span><i class="bi bi-arrow-repeat"></i> Borrar y regenerar datos de demostración</span>
+        }
+    </button>
+</div>
+
+@code {
+    private bool acknowledged;
+    private bool running;
+    private string? result;
+    private string? error;
+
+    private async Task RunAsync()
+    {
+        running = true;
+        result = null;
+        error = null;
+        try
+        {
+            // Ámbito propio: el sembrador usa DbContext y UserManager, que son scoped
+            using var scope = Services.CreateScope();
+            result = await DemoSeeder.ResetAndSeedAsync(scope.ServiceProvider, Config, Logger);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Fallo al sembrar los datos de demostración.");
+            error = ex.Message;
+        }
+        finally
+        {
+            running = false;
+        }
+    }
+}

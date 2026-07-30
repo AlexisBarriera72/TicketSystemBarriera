@@ -1,0 +1,400 @@
+/* ---- Rejilla de la página ----
+   Cabecera a todo lo ancho (también por encima del chat) y debajo dos columnas:
+   la operación a la izquierda y el chat fijo a la derecha. */
+.order-page {
+    max-width: 1500px;
+    margin-inline: auto;
+    padding: 1.1rem 1.25rem 2rem;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: #44505e;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.9rem;
+}
+
+    .back-link:hover {
+        color: #011a43;
+    }
+
+.hero-card {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 22px rgba(1, 26, 67, 0.14);
+    margin-bottom: 1rem;
+}
+
+.order-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 1rem;
+    align-items: start;
+}
+
+.order-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Por debajo de 1100px el chat no cabe al lado: pasa debajo, a ancho completo */
+@media (max-width: 1100px) {
+    .order-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---- Tira de datos rápidos ---- */
+.quick-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.25rem;
+    background: #fff;
+    border: 1px solid #e6e9ef;
+    border-radius: 10px;
+    padding: 0.85rem 0.5rem;
+}
+
+.qs-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 0.7rem;
+    border-right: 1px solid #eef1f6;
+    min-width: 0;
+}
+
+    .qs-item:last-child {
+        border-right: none;
+    }
+
+    .qs-item i {
+        font-size: 1.15rem;
+        color: #8894a2;
+        flex: none;
+    }
+
+.qs-k {
+    display: block;
+    font-size: 0.7rem;
+    color: #8894a2;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.qs-v {
+    display: block;
+    font-weight: 700;
+    color: #011a43;
+    font-size: 0.88rem;
+    overflow-wrap: break-word;
+}
+
+/* ---- Tarjeta de sección ---- */
+.info-card {
+    background: #fff;
+    border: 1px solid #e6e9ef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ic-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid #eef1f6;
+    font-weight: 700;
+    color: #011a43;
+    font-size: 0.95rem;
+}
+
+    .ic-head i {
+        color: #fa5400;
+        margin-right: 0.35rem;
+    }
+
+.ic-body {
+    padding: 0.9rem 1rem;
+}
+
+/* ---- Artículos ---- */
+.item-row {
+    display: flex;
+    gap: 0.6rem;
+    align-items: baseline;
+    margin-bottom: 0.45rem;
+}
+
+.item-cat {
+    flex: 0 0 5.5rem;
+    font-size: 0.82rem;
+    color: #8894a2;
+    text-align: right;
+}
+
+.item-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    min-width: 0;
+}
+
+/* ---- Chat en columna fija ---- */
+.order-chat {
+    background: #fff;
+    border: 1px solid #e6e9ef;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    /* Se queda a la vista al bajar; 100vh menos la barra superior y el margen */
+    position: sticky;
+    top: 4.5rem;
+    max-height: calc(100vh - 5.5rem);
+}
+
+.chat-head {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid #eef1f6;
+    font-weight: 700;
+    color: #011a43;
+    font-size: 0.95rem;
+    flex: none;
+}
+
+    .chat-head i {
+        color: #fa5400;
+        margin-right: 0.35rem;
+    }
+
+/* Los hijos del chat cuelgan DIRECTAMENTE del aside (el <div class="mt-5"> que
+   los envolvía desapareció al mover el bloque). Sin ::deep a propósito: ese
+   selector solo alcanza marcado de componentes HIJOS, y esto se escribe aquí. */
+
+/* El h6 "Canal de Comunicación" ya está en la cabecera del aside */
+.order-chat > h6 {
+    display: none;
+}
+
+/* Lista de mensajes: ocupa el alto sobrante y hace scroll ella sola */
+.order-chat > .bg-light {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none !important;
+    overflow-y: auto;
+    margin: 0.7rem 0.7rem 0.5rem !important;
+}
+
+/* Barra de escribir: siempre abajo, sin scroll */
+.order-chat > .input-group {
+    flex: none;
+    margin: 0 0.7rem 0.7rem;
+    width: auto;
+}
+
+/* ---- Estado vacío de documentos ---- */
+.doc-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 1.8rem 1rem;
+    border: 1px dashed #d6dbe3;
+    border-radius: 8px;
+    color: #6b7684;
+    font-size: 0.88rem;
+    text-align: center;
+}
+
+    .doc-empty i {
+        font-size: 1.8rem;
+        color: #b6bfca;
+    }
+
+.doc-empty-hint {
+    font-size: 0.78rem;
+    color: #8894a2;
+}
+
+/* ---- Cabecera de la orden ---- */
+.order-hero {
+    background: linear-gradient(120deg, #011a43 0%, #0a2a5c 100%);
+    color: #fff;
+    padding: 1.1rem 1.3rem 1.25rem;
+}
+
+.oh-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.oh-num {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.oh-title {
+    margin: 0.15rem 0 0;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+    overflow-wrap: break-word;
+}
+
+/* Naranja de marca con texto navy: 5.15:1. En blanco daría 3.32:1 (falla AA). */
+.oh-status {
+    flex: none;
+    background: #fa5400;
+    color: #011a43;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.oh-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.86rem;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+/* ---- Progreso de la mudanza ---- */
+.stepper {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 1.1rem 0 0;
+    gap: 0.25rem;
+    overflow-x: auto;
+}
+
+    .stepper li {
+        flex: 1 1 0;
+        min-width: 92px;
+        text-align: center;
+        position: relative;
+        font-size: 0.68rem;
+        line-height: 1.25;
+    }
+
+    /* Línea que une los pasos; se dibuja detrás del punto */
+    .stepper li::before {
+        content: "";
+        position: absolute;
+        top: 0.6rem;
+        left: -50%;
+        width: 100%;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.22);
+    }
+
+    .stepper li:first-child::before {
+        display: none;
+    }
+
+    .stepper li.done::before,
+    .stepper li.current::before {
+        background: #fa5400;
+    }
+
+.stepper .dot {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 1.25rem;
+    height: 1.25rem;
+    line-height: 1.25rem;
+    margin: 0 auto 0.35rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
+    color: #011a43;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.stepper li.done .dot {
+    background: #fa5400;
+}
+
+.stepper li.current .dot {
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(250, 84, 0, 0.55);
+}
+
+.stepper .lbl {
+    color: rgba(255, 255, 255, 0.6);
+    overflow-wrap: break-word;
+}
+
+.stepper li.done .lbl {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.stepper li.current .lbl {
+    color: #fff;
+    font-weight: 700;
+}
+
+/* Ficha de datos de la orden. Mismo lenguaje que las badges de artículos: filas
+   cortas con icono, sin tabla. La página ya es larga; cada bloque tiene que poder
+   leerse de un vistazo o el usuario se pierde. */
+.facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.35rem 1.2rem;
+}
+
+.fact {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #44505e;
+    min-width: 0;
+}
+
+    .fact i {
+        color: #8894a2;
+        flex: none;
+    }
+
+    .fact span,
+    .fact a {
+        overflow-wrap: break-word;
+        min-width: 0;
+    }
+
+    .fact a {
+        color: #c94400; /* naranja oscurecido: 4.87:1 sobre blanco, pasa AA */
+        text-decoration: none;
+    }
+
+        .fact a:hover {
+            text-decoration: underline;
+        }
+
+/* Las notas ya no cargan con los datos del cliente (ahora tienen campos propios),
+   así que se pueden mostrar como lo que son: texto libre. */
+.order-notes {
+    white-space: pre-wrap;
+    background: #f7f9fc;
+    border-left: 3px solid #e6e9ef;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0 6px 6px 0;
+    color: #44505e;
+    margin-bottom: 1rem;
+}

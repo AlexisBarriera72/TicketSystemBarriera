@@ -37,9 +37,15 @@
                         <span class="bi bi-box-seam" aria-hidden="true"></span> Nueva Orden
                     </NavLink>
                 </div>
+                @* Para oficina/admin la pantalla lista TODAS las órdenes, no solo las
+                   suyas, así que el rótulo cambia para no prometer otra cosa. *@
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="orders/my-list">
-                        <span class="bi bi-clipboard-check" aria-hidden="true"></span> Mis Órdenes
+                        <span class="bi bi-clipboard-check" aria-hidden="true"></span>
+                        <AuthorizeView Roles="@($"{Roles.Admin},{Roles.Office}")" Context="ordersCtx">
+                            <Authorized>Órdenes</Authorized>
+                            <NotAuthorized>Mis Órdenes</NotAuthorized>
+                        </AuthorizeView>
                     </NavLink>
                 </div>
 
@@ -69,6 +75,11 @@
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="admin/users">
                             <span class="bi bi-people-fill" aria-hidden="true"></span> Usuarios
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/demo-data">
+                            <span class="bi bi-database-fill-gear" aria-hidden="true"></span> Datos demo
                         </NavLink>
                     </div>
                 </AuthorizeView>

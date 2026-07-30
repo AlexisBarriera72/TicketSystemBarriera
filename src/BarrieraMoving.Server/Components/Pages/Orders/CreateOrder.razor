@@ -1,6 +1,8 @@
 @page "/orders/create"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
 @using System.Security.Claims
 @using BarrieraMoving.Server.Data
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
@@ -10,178 +12,344 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 
-<PageTitle>Nueva Orden de Mudanza</PageTitle>
+<PageTitle>Nueva Orden | Transporte Caribe Logistic</PageTitle>
 
-<div class="container mt-4">
-	<h2>Solicitar una Mudanza</h2>
-	<hr />
+@* Mismo recorrido que el formulario público de cotización (Public/Cotizacion.razor):
+   los mismos bloques, en el mismo orden y con los mismos textos de ayuda. Así la
+   oficina que recoge una mudanza por teléfono pregunta exactamente lo mismo que el
+   formulario web le pregunta al cliente, y los datos llegan al mismo sitio. *@
+<div class="container form-page mt-4">
+    <p class="eyebrow">Registrar una mudanza</p>
+    <h2 class="page-h1">Nueva orden</h2>
 
-	@if (quote is not null)
-	{
-		<div class="alert alert-info d-flex align-items-start gap-2">
-			<i class="bi bi-envelope-paper-fill"></i>
-			<div>
-				<strong>Creando la orden desde la solicitud web #@quote.Id</strong>
-				<div class="small">
-					@quote.Name · <a href="tel:@quote.Phone">@quote.Phone</a>
-					@if (!string.IsNullOrWhiteSpace(quote.Email)) { <span> · @quote.Email</span> }
-					— revisa los datos antes de guardar.
-				</div>
-			</div>
-		</div>
-	}
+    @if (quote is not null)
+    {
+        <div class="alert alert-info d-flex align-items-start gap-2">
+            <i class="bi bi-envelope-paper-fill"></i>
+            <div>
+                <strong>Creando la orden desde la solicitud web #@quote.Id</strong>
+                <div class="small">
+                    Ya rellenamos lo que envió el cliente — revísalo antes de guardar.
+                    @if (quote.Photos.Count > 0)
+                    {
+                        <span>
+                            Adjuntó @quote.Photos.Count @(quote.Photos.Count == 1 ? "foto" : "fotos"):
+                            <a href="/admin/cotizaciones">verlas en cotizaciones</a>.
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 
-	<EditForm Model="newOrder" OnValidSubmit="HandleSubmit" FormName="CreateOrderForm">
-		<DataAnnotationsValidator />
-		<ValidationSummary class="text-danger" />
+    <EditForm Model="Model" OnValidSubmit="HandleSubmit" FormName="CreateOrderForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
 
-		<div class="mb-3">
-			<label class="form-label">Título</label>
-			<InputText @bind-Value="newOrder.Title" class="form-control" placeholder="Resumen breve de la mudanza" />
-		</div>
+        @* ---------- DATOS DEL CLIENTE ---------- *@
+        <fieldset class="block">
+            <legend>Datos del cliente</legend>
+            <p class="block-hint">
+                Para mudanzas de alguien que <strong>no tiene cuenta</strong> (llamó por teléfono
+                o llegó por la web). Si el cliente ya tiene cuenta, con el nombre basta.
+            </p>
+            <div class="mb-3">
+                <label class="form-label">Nombre del cliente</label>
+                <InputText @bind-Value="Model.ClientName" class="form-control" autocomplete="off" placeholder="Nombre y apellido" />
+                <ValidationMessage For="() => Model.ClientName" class="text-danger" />
+            </div>
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Teléfono</label>
+                    <InputText @bind-Value="Model.ClientPhone" type="tel" class="form-control" placeholder="(787) 555-1234" />
+                    <ValidationMessage For="() => Model.ClientPhone" class="text-danger" />
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Email <span class="opt">opcional</span></label>
+                    <InputText @bind-Value="Model.ClientEmail" type="email" class="form-control" />
+                    <ValidationMessage For="() => Model.ClientEmail" class="text-danger" />
+                </div>
+            </div>
+        </fieldset>
 
-		<div class="mb-3">
-			<label class="form-label">Tipo de mudanza</label>
-			<InputSelect @bind-Value="newOrder.CategoryId" class="form-select">
-				<option value="0">-- Seleccionar tipo --</option>
-				@foreach (var cat in categories)
-				{
-					<option value="@cat.Id">@cat.Name</option>
-				}
-			</InputSelect>
-		</div>
+        @* ---------- LA MUDANZA ---------- *@
+        <fieldset class="block">
+            <legend>La mudanza</legend>
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Tipo de mudanza *</label>
+                    <InputSelect @bind-Value="Model.CategoryId" class="form-select">
+                        <option value="0">Selecciona…</option>
+                        @foreach (var cat in categories)
+                        {
+                            <option value="@cat.Id">@cat.Name</option>
+                        }
+                    </InputSelect>
+                    @if (categoryError)
+                    {
+                        <div class="text-danger small mt-1">Escoge el tipo de mudanza.</div>
+                    }
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Prioridad</label>
+                    @* La opción urgente lleva el recargo escrito al lado: si sale solo
+                       en la factura, la discusión llega después y con el cliente enfadado. *@
+                    <InputSelect @bind-Value="Model.Priority" class="form-select">
+                        @foreach (var priority in Enum.GetValues<OrderPriority>())
+                        {
+                            <option value="@priority">@OrderLabels.PriorityWithNote(priority)</option>
+                        }
+                    </InputSelect>
+                    @if (Model.Priority == OrderPriority.Urgent)
+                    {
+                        <div class="urgent-note">
+                            <i class="bi bi-info-circle-fill"></i>
+                            Se añade un cargo de <strong>$@OrderLabels.UrgentSurcharge.ToString("0.00")</strong> por urgencia.
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label">¿Desde qué pueblo/zona?</label>
+                    <InputText @bind-Value="Model.OriginZone" class="form-control" />
+                    <ValidationMessage For="() => Model.OriginZone" class="text-danger" />
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label">¿Hasta qué pueblo/zona?</label>
+                    <InputText @bind-Value="Model.DestinationZone" class="form-control" />
+                    <ValidationMessage For="() => Model.DestinationZone" class="text-danger" />
+                </div>
+            </div>
+            <div>
+                <label class="form-label">Fecha de la mudanza</label>
+                <InputDate @bind-Value="Model.ScheduledDate" class="form-control" />
+                <div class="form-text">Déjala vacía si todavía no hay fecha cerrada.</div>
+            </div>
+        </fieldset>
 
-		<div class="mb-3">
-			<label class="form-label">Prioridad</label>
-			<InputSelect @bind-Value="newOrder.Priority" class="form-select">
-				@foreach (var priority in Enum.GetValues<OrderPriority>())
-				{
-					<option value="@priority">@priority</option>
-				}
-			</InputSelect>
-		</div>
+        @* ---------- PISO ----------
+           Un tercer piso sin ascensor cambia el personal, el tiempo y el precio. *@
+        <fieldset class="block">
+            <legend>Piso</legend>
+            <p class="block-hint">¿En qué nivel está la mudanza? Si recoge y entrega en pisos distintos, dilo en los detalles.</p>
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Nivel</label>
+                    <select class="form-select" @bind="floor">
+                        <option value="">Sin indicar</option>
+                        @foreach (var f in MovingItems.Floors)
+                        {
+                            <option value="@f">@f</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label">Ascensor</label>
+                    <select class="form-select" @bind="elevator">
+                        <option value="">Sin indicar</option>
+                        @foreach (var e in MovingItems.Elevators)
+                        {
+                            <option value="@e">@e</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </fieldset>
 
-		<div class="row g-3 mb-3">
-			<div class="col-12 col-md-6">
-				<label class="form-label">Piso</label>
-				<select class="form-select" @bind="floor">
-					<option value="">-- Sin indicar --</option>
-					@foreach (var f in MovingItems.Floors)
-					{
-						<option value="@f">@f</option>
-					}
-				</select>
-			</div>
-			<div class="col-12 col-md-6">
-				<label class="form-label">Ascensor</label>
-				<select class="form-select" @bind="elevator">
-					<option value="">-- Sin indicar --</option>
-					@foreach (var e in MovingItems.Elevators)
-					{
-						<option value="@e">@e</option>
-					}
-				</select>
-			</div>
-		</div>
+        @* ---------- ARTÍCULOS ---------- *@
+        <fieldset class="block">
+            <legend>Artículos</legend>
+            <p class="block-hint">Marca lo que haya que mover. No tiene que ser exacto — sirve para calcular el camión y el personal.</p>
+            <ItemPicker @bind-Value="Model.Items" />
+        </fieldset>
 
-		<div class="mb-3">
-			<label class="form-label">Artículos a mover</label>
-			<ItemPicker @bind-Value="newOrder.Items" />
-		</div>
+        @* ---------- DETALLES ---------- *@
+        <fieldset class="block">
+            <legend>Detalles</legend>
+            <div class="mb-3">
+                <label class="form-label">Título de la orden <span class="opt">opcional</span></label>
+                <InputText @bind-Value="Model.Title" class="form-control" placeholder="Resumen breve de la mudanza" />
+                <div class="form-text">Si lo dejas vacío lo componemos con el tipo y el nombre del cliente.</div>
+            </div>
+            <div>
+                <label class="form-label">Notas (acceso, escaleras, artículos delicados, horarios…)</label>
+                <InputTextArea @bind-Value="Model.Description" class="form-control" rows="4" />
+                <ValidationMessage For="() => Model.Description" class="text-danger" />
+            </div>
+        </fieldset>
 
-		<div class="mb-3">
-			<label class="form-label">Descripción (direcciones, fechas, detalles)</label>
-			<InputTextArea @bind-Value="newOrder.Description" class="form-control" rows="4" />
-		</div>
-
-		<button type="submit" class="btn btn-primary">Crear Orden</button>
-		<a href="/" class="btn btn-secondary">Cancelar</a>
-	</EditForm>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                <i class="bi bi-check2-circle"></i> @(saving ? "Guardando…" : "Crear orden")
+            </button>
+            <a href="/orders/my-list" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </EditForm>
 </div>
 
 @code {
-	private Order newOrder = new() { AuthorId = "", Title = "", Description = "" };
-	private List<Category> categories = new();
-	private string floor = string.Empty;
-	private string elevator = string.Empty;
+    private OrderForm Model { get; set; } = new();
+    private List<Category> categories = new();
+    private string floor = string.Empty;
+    private string elevator = string.Empty;
+    private string authorId = "";
+    private bool categoryError;
+    private bool saving;
 
-	// Conversión de una solicitud de cotización del sitio público en una orden.
-	[SupplyParameterFromQuery(Name = "fromQuote")]
-	private int? FromQuote { get; set; }
+    // Conversión de una solicitud de cotización del sitio público en una orden.
+    [SupplyParameterFromQuery(Name = "fromQuote")]
+    private int? FromQuote { get; set; }
 
-	private QuoteRequest? quote;
+    private QuoteRequest? quote;
 
-	protected override async Task OnInitializedAsync()
-	{
-		categories = await OrderService.GetCategoriesAsync();
-		// Obtener el ID del usuario actual autenticado
-		var authState = await AuthProvider.GetAuthenticationStateAsync();
-		var user = authState.User;
-		newOrder.AuthorId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await OrderService.GetCategoriesAsync();
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        authorId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
 
-		if (FromQuote is null) return;
+        if (FromQuote is null) return;
 
-		// El solicitante no tiene cuenta: la orden la crea la oficina (autor) y los
-		// datos de contacto quedan escritos en la descripción, no inventamos usuarios.
-		using var db = DbFactory.CreateDbContext();
-		quote = await db.QuoteRequests.FindAsync(FromQuote.Value);
-		if (quote is null || quote.ConvertedOrderId is not null) return;
+        using var db = DbFactory.CreateDbContext();
+        quote = await db.QuoteRequests
+            .Include(q => q.Photos)
+            .FirstOrDefaultAsync(q => q.Id == FromQuote.Value);
+        if (quote is null || quote.ConvertedOrderId is not null) { quote = null; return; }
 
-		newOrder.Title = string.IsNullOrWhiteSpace(quote.ServiceType)
-			? $"Mudanza — {quote.Name}"
-			: $"{quote.ServiceType} — {quote.Name}";
+        // Cada dato del cliente va a SU campo. Antes se volcaba todo dentro de la
+        // descripción como texto: no se podía buscar, ni exportar, ni mostrar bien.
+        Model.ClientName = quote.Name;
+        Model.ClientPhone = quote.Phone;
+        Model.ClientEmail = quote.Email;
+        Model.OriginZone = quote.OriginZone;
+        Model.DestinationZone = quote.DestinationZone;
+        Model.Items = quote.Items;
+        Model.Title = string.IsNullOrWhiteSpace(quote.ServiceType)
+            ? $"Mudanza — {quote.Name}"
+            : $"{quote.ServiceType} — {quote.Name}";
 
-		var lines = new List<string> { $"Solicitud web #{quote.Id}", $"Cliente: {quote.Name}", $"Teléfono: {quote.Phone}" };
-		if (!string.IsNullOrWhiteSpace(quote.Email)) lines.Add($"Email: {quote.Email}");
-		if (!string.IsNullOrWhiteSpace(quote.OriginZone) || !string.IsNullOrWhiteSpace(quote.DestinationZone))
-			lines.Add($"Ruta: {quote.OriginZone} → {quote.DestinationZone}");
-		if (!string.IsNullOrWhiteSpace(quote.PreferredDate)) lines.Add($"Fecha deseada: {quote.PreferredDate}");
-		if (!string.IsNullOrWhiteSpace(quote.Details)) lines.Add($"\nDetalles del cliente:\n{quote.Details}");
-		newOrder.Description = string.Join("\n", lines);
+        // La cotización guarda la fecha como texto "dd/MM/yyyy" (legible para la
+        // oficina); aquí sí interesa como fecha real para poder ordenar y filtrar.
+        if (!string.IsNullOrWhiteSpace(quote.PreferredDate))
+        {
+            if (DateTime.TryParseExact(quote.PreferredDate, "dd/MM/yyyy",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+            {
+                Model.ScheduledDate = parsed;
+            }
+            else
+            {
+                // No se pierde: si no parsea, se anota para que alguien la lea
+                Model.Description = $"Fecha deseada (sin interpretar): {quote.PreferredDate}\n";
+            }
+        }
 
-		// Piso y artículos van a sus CAMPOS PROPIOS, no solo a la descripción: es lo
-		// que marcó el cliente y la cuadrilla tiene que verlo estructurado.
-		newOrder.Items = quote.Items;
-		newOrder.Floor = quote.Floor;
+        if (!string.IsNullOrWhiteSpace(quote.Details))
+        {
+            Model.Description += $"Detalles del cliente:\n{quote.Details}\n";
+        }
+        Model.Description += $"\n(Desde la solicitud web #{quote.Id})";
 
-		// Si el cliente ya se creó cuenta y reclamó esta cotización con su código,
-		// la orden nace A SU NOMBRE: así le aparece en "Mis órdenes" y puede usar el
-		// chat desde el primer momento, sin que la oficina tenga que reasignarla.
-		if (!string.IsNullOrEmpty(quote.ClaimedByUserId))
-		{
-			newOrder.AuthorId = quote.ClaimedByUserId;
-		}
-		// Repuebla los desplegables a partir del texto guardado ("piso · ascensor"),
-		// para que la oficina pueda corregirlo sin volver a teclearlo.
-		foreach (var part in (quote.Floor ?? string.Empty).Split('·', StringSplitOptions.TrimEntries))
-		{
-			if (MovingItems.Floors.Contains(part)) floor = part;
-			else if (MovingItems.Elevators.Contains(part)) elevator = part;
-		}
-	}
+        // Repuebla los desplegables a partir del texto guardado ("piso · ascensor")
+        foreach (var part in (quote.Floor ?? string.Empty).Split('·', StringSplitOptions.TrimEntries))
+        {
+            if (MovingItems.Floors.Contains(part)) floor = part;
+            else if (MovingItems.Elevators.Contains(part)) elevator = part;
+        }
+    }
 
-	private async Task HandleSubmit()
-	{
-		if (newOrder.CategoryId == 0) return; // Validación simple de tipo de mudanza
-		// Piso y ascensor se guardan juntos en una línea legible ("3er piso · Sin ascensor")
-		var packedFloor = MovingItems.PackFloor(floor, elevator);
-		newOrder.Floor = string.IsNullOrEmpty(packedFloor) ? null : packedFloor;
-		await OrderService.CreateOrderAsync(newOrder);
+    private async Task HandleSubmit()
+    {
+        categoryError = Model.CategoryId == 0;
+        if (categoryError) return;
 
-		// Cierra el círculo: la solicitud queda gestionada y enlazada a su orden
-		if (quote is not null)
-		{
-			using var db = DbFactory.CreateDbContext();
-			var row = await db.QuoteRequests.FindAsync(quote.Id);
-			if (row is not null)
-			{
-				row.Handled = true;
-				row.ConvertedOrderId = newOrder.Id;
-				await db.SaveChangesAsync();
-			}
-			Navigation.NavigateTo($"/orders/manage/{newOrder.Id}");
-			return;
-		}
-		Navigation.NavigateTo("/orders/my-list");
-	}
+        saving = true;
+        try
+        {
+            var packedFloor = MovingItems.PackFloor(floor, elevator);
+
+            var order = new Order
+            {
+                // Title es obligatorio en el modelo: si el usuario no puso nada,
+                // lo componemos en vez de reventar con un error de validación feo.
+                Title = string.IsNullOrWhiteSpace(Model.Title)
+                    ? $"Mudanza — {(string.IsNullOrWhiteSpace(Model.ClientName) ? "sin nombre" : Model.ClientName)}"
+                    : Model.Title.Trim(),
+                Description = Model.Description?.Trim() ?? "",
+                AuthorId = authorId,
+                CategoryId = Model.CategoryId,
+                Priority = Model.Priority,
+                ClientName = Blank(Model.ClientName),
+                ClientPhone = Blank(Model.ClientPhone),
+                ClientEmail = Blank(Model.ClientEmail),
+                OriginZone = Blank(Model.OriginZone),
+                DestinationZone = Blank(Model.DestinationZone),
+                ScheduledDate = Model.ScheduledDate,
+                Floor = string.IsNullOrEmpty(packedFloor) ? null : packedFloor,
+                Items = Blank(Model.Items),
+            };
+
+            // Si el cliente ya se creó cuenta y reclamó esta cotización con su código,
+            // la orden nace A SU NOMBRE: le aparece en "Mis órdenes" y puede usar el chat.
+            if (quote is not null && !string.IsNullOrEmpty(quote.ClaimedByUserId))
+            {
+                order.AuthorId = quote.ClaimedByUserId;
+            }
+
+            await OrderService.CreateOrderAsync(order);
+
+            if (quote is not null)
+            {
+                using var db = DbFactory.CreateDbContext();
+                var row = await db.QuoteRequests.FindAsync(quote.Id);
+                if (row is not null)
+                {
+                    row.Handled = true;
+                    row.ConvertedOrderId = order.Id;
+                    await db.SaveChangesAsync();
+                }
+            }
+            Navigation.NavigateTo($"/orders/manage/{order.Id}");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    // Los límites coinciden con Data/ModelLengths: el usuario ve un mensaje claro
+    // en vez de un error de truncamiento de SQL Server.
+    private sealed class OrderForm
+    {
+        [StringLength(200, ErrorMessage = "El título es demasiado largo.")]
+        public string? Title { get; set; }
+
+        [StringLength(2000, ErrorMessage = "Resume un poco más las notas (máx. 2000 caracteres).")]
+        public string? Description { get; set; }
+
+        public int CategoryId { get; set; }
+        public OrderPriority Priority { get; set; } = OrderPriority.Medium;
+
+        [StringLength(120, ErrorMessage = "El nombre es demasiado largo.")]
+        public string? ClientName { get; set; }
+
+        [StringLength(40, ErrorMessage = "El teléfono es demasiado largo.")]
+        public string? ClientPhone { get; set; }
+
+        [EmailAddress(ErrorMessage = "Ese email no parece válido.")]
+        [StringLength(256, ErrorMessage = "El email es demasiado largo.")]
+        public string? ClientEmail { get; set; }
+
+        [StringLength(100, ErrorMessage = "Usa un nombre de pueblo o zona más corto.")]
+        public string? OriginZone { get; set; }
+
+        [StringLength(100, ErrorMessage = "Usa un nombre de pueblo o zona más corto.")]
+        public string? DestinationZone { get; set; }
+
+        public DateTime? ScheduledDate { get; set; }
+        public string? Items { get; set; }
+    }
 }

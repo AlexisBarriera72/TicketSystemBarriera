@@ -1,0 +1,236 @@
+/* Tarjetas en vez de tabla: la oficina y los conductores entran casi siempre desde
+   el teléfono, y una tabla de 5 columnas ahí obliga a hacer scroll horizontal. */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.search-box {
+    max-width: 340px;
+    flex: 1 1 220px;
+}
+
+.order-card {
+    border: 1px solid #e6e9ef;
+    border-left: 4px solid #fa5400; /* franja de marca; identifica la tarjeta de un vistazo */
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.9rem 1rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    transition: box-shadow 0.15s, transform 0.12s;
+}
+
+    .order-card:hover {
+        box-shadow: 0 8px 20px rgba(1, 26, 67, 0.1);
+        transform: translateY(-1px);
+    }
+
+    /* Las completadas se apagan: siguen consultables pero no compiten por atención */
+    .order-card.is-done {
+        border-left-color: #9aa4b1;
+        opacity: 0.78;
+    }
+
+.oc-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.oc-num {
+    font-weight: 700;
+    color: #6b7684;
+    font-size: 0.82rem;
+    margin-right: 0.35rem;
+}
+
+.oc-title {
+    font-weight: 700;
+    color: #011a43;
+    overflow-wrap: break-word;
+}
+
+.oc-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+}
+
+.oc-row {
+    font-size: 0.86rem;
+    color: #44505e;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+    .oc-row i {
+        width: 1.15rem;
+        color: #8894a2;
+        flex: none;
+    }
+
+.oc-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    border-top: 1px solid #eef1f6;
+    padding-top: 0.6rem;
+    margin-top: auto;
+}
+
+.oc-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7684;
+    background: #f2f4f8;
+    border-radius: 20px;
+    padding: 0.15rem 0.55rem;
+}
+
+.oc-when {
+    font-size: 0.74rem;
+    color: #8894a2;
+}
+
+/* ---- Vista "Por conductor" ----
+   Una caja por conductor con sus órdenes debajo: responde "¿quién lleva qué?" y
+   "¿a quién le puedo asignar esto?" sin abrir orden por orden. */
+.driver-card {
+    border: 1px solid #e6e9ef;
+    border-radius: 10px;
+    background: #fff;
+    height: 100%;
+    overflow: hidden;
+}
+
+    /* Las que no tienen conductor son el problema a resolver: se marcan en rojo */
+    .driver-card.is-unassigned {
+        border-color: #f0c2c2;
+    }
+
+.dc-head {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.8rem 1rem;
+    background: #f7f9fc;
+    border-bottom: 1px solid #eef1f6;
+}
+
+.dc-avatar {
+    width: 2.3rem;
+    height: 2.3rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #011a43, #0a2a5c);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex: none;
+}
+
+    .dc-avatar.dc-warn {
+        background: #b04a4a;
+    }
+
+.dc-name {
+    font-weight: 700;
+    color: #011a43;
+    overflow-wrap: break-word;
+}
+
+.dc-sub {
+    font-size: 0.78rem;
+}
+
+.dc-orders {
+    padding: 0.45rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    max-height: 15rem;
+    overflow-y: auto;
+}
+
+.dc-order {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: 7px;
+    text-decoration: none;
+    color: #44505e;
+    font-size: 0.84rem;
+}
+
+    .dc-order:hover {
+        background: #f2f4f8;
+        color: #011a43;
+    }
+
+.dc-order-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.dc-order-date {
+    font-size: 0.74rem;
+    color: #8894a2;
+    flex: none;
+}
+
+.dc-empty {
+    padding: 0.8rem 0.6rem;
+    font-size: 0.82rem;
+    color: #8894a2;
+    text-align: center;
+}
+
+/* Las pestañas son <button>, no <a>: sin JS de Bootstrap el estado lo lleva C#. */
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: #6b7684;
+    font-weight: 600;
+}
+
+    .nav-tabs .nav-link.active {
+        color: #011a43;
+        border-bottom-color: #fa5400;
+        background: none;
+    }
+
+.empty-state {
+    text-align: center;
+    padding: 3.5rem 1rem;
+    border: 1px dashed #d6dbe3;
+    border-radius: 12px;
+    background: #fff;
+}
+
+    .empty-state i {
+        font-size: 2.6rem;
+        color: #b6bfca;
+    }
+
+    .empty-state h4 {
+        margin-top: 0.8rem;
+        color: #011a43;
+        font-weight: 700;
+    }

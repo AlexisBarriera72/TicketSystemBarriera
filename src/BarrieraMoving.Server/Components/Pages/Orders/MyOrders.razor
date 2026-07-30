@@ -2,102 +2,327 @@
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @inject IOrderService OrderService
-@inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
 @attribute [Authorize]
 @rendermode InteractiveServer
 
-<PageTitle>Mis Órdenes</PageTitle>
+<PageTitle>@(isStaff ? "Órdenes" : "Mis Órdenes") | Transporte Caribe Logistic</PageTitle>
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-truck text-primary"></i> Mis Órdenes</h3>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="mb-0">
+            <i class="bi bi-truck text-primary"></i>
+            @* Para oficina/admin esta pantalla es TODAS las órdenes, no solo las suyas:
+               llamarla "Mis Órdenes" sería mentir sobre lo que muestra. *@
+            @(isStaff ? "Órdenes" : "Mis Órdenes")
+        </h3>
         <a href="/orders/create" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Nueva Orden
         </a>
     </div>
 
-    @if (userOrders == null)
+    @if (all is null)
     {
         <div class="text-center p-5">
             <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Cargando...</p>
+            <p class="mt-2 text-muted">Cargando…</p>
         </div>
     }
-    else if (!userOrders.Any())
+    else if (all.Count == 0)
     {
-        <div class="alert alert-light border text-center p-5 shadow-sm">
-            <i class="bi bi-emoji-smile fs-1 text-muted"></i>
-            <h4 class="mt-3">No tienes órdenes todavía</h4>
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <h4>No hay órdenes todavía</h4>
+            <p class="text-muted">Cuando se registre una mudanza aparecerá aquí.</p>
+            <a href="/orders/create" class="btn btn-primary btn-sm">Crear la primera</a>
         </div>
     }
     else
     {
-        <div class="card shadow-sm border-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light">
-                        <tr>
-                            <th class="ps-4">Título</th>
-                            <th>Estado</th>
-                            <th>Prioridad</th>
-                            <th>Creado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var order in userOrders)
-                        {
-                            <tr>
-                                <td>
-                                    <div class="fw-bold">@order.Title</div>
-                                    @if (order.AuthorId == userId && order.AssignedDriverId == userId)
+        @if (isStaff)
+        {
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                    <button class="nav-link @(view == View.List ? "active" : "")" @onclick="() => view = View.List">
+                        <i class="bi bi-list-ul"></i> Todas las órdenes
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @(view == View.Drivers ? "active" : "")" @onclick="() => view = View.Drivers">
+                        <i class="bi bi-person-badge"></i> Por conductor
+                    </button>
+                </li>
+            </ul>
+        }
+
+        @if (view == View.Drivers && isStaff)
+        {
+            @* Vista de reparto: quién lleva qué. Responde de un vistazo "¿a quién le
+               puedo asignar esto?" sin abrir orden por orden. *@
+            <div class="row g-3">
+                @foreach (var d in drivers)
+                {
+                    var mine = all.Where(o => o.AssignedDriverId == d.Id).ToList();
+                    var active = mine.Count(o => o.Status != OrderStatus.Completed);
+                    <div class="col-12 col-lg-6">
+                        <div class="driver-card">
+                            <div class="dc-head">
+                                <span class="dc-avatar">@Initial(d)</span>
+                                <div class="min-w-0">
+                                    <div class="dc-name">@(d.DisplayName ?? d.Email)</div>
+                                    <div class="dc-sub">
+                                        @if (active > 0)
+                                        {
+                                            <span class="text-success fw-bold">@active activa@(active == 1 ? "" : "s")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Sin órdenes activas</span>
+                                        }
+                                        <span class="text-muted"> · @mine.Count en total</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="dc-orders">
+                                @if (mine.Count == 0)
+                                {
+                                    <div class="dc-empty">Este conductor no tiene órdenes asignadas.</div>
+                                }
+                                else
+                                {
+                                    @foreach (var o in mine.OrderBy(o => o.Status == OrderStatus.Completed)
+                                                           .ThenBy(o => o.ScheduledDate ?? DateTime.MaxValue))
                                     {
-                                        <span class="badge bg-dark small" style="font-size: 0.6rem;">AUTOR Y CONDUCTOR</span>
+                                        <a class="dc-order" href="/orders/manage/@o.Id">
+                                            <span class="badge @StatusClass(o.Status)">@OrderLabels.Status(o.Status)</span>
+                                            <span class="dc-order-title">#@o.Id · @o.Title</span>
+                                            @if (o.ScheduledDate is not null)
+                                            {
+                                                <span class="dc-order-date">@o.ScheduledDate.Value.ToString("dd/MM")</span>
+                                            }
+                                        </a>
                                     }
-                                    else if (order.AuthorId == userId)
-                                    {
-                                        <span class="badge bg-secondary small" style="font-size: 0.6rem;">Generada</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-info text-dark small" style="font-size: 0.6rem;">Asignada</span>
-                                    }
-                                </td>
-                                <td><span class="badge @GetStatusClass(order.Status)">@order.Status</span></td>
-                                <td>@order.Priority</td>
-                                <td>@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                                <td>
-                                    <button class="btn btn-sm btn-success"
-                                            @onclick="@(() => Navigation.NavigateTo($"/orders/manage/{order.Id}"))">
-                                        Ver Orden
-                                    </button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @{ var unassigned = all.Where(o => o.AssignedDriverId is null && o.Status != OrderStatus.Completed).ToList(); }
+                @if (unassigned.Count > 0)
+                {
+                    <div class="col-12 col-lg-6">
+                        <div class="driver-card is-unassigned">
+                            <div class="dc-head">
+                                <span class="dc-avatar dc-warn"><i class="bi bi-exclamation-triangle"></i></span>
+                                <div class="min-w-0">
+                                    <div class="dc-name">Sin conductor</div>
+                                    <div class="dc-sub text-danger fw-bold">@unassigned.Count esperando asignación</div>
+                                </div>
+                            </div>
+                            <div class="dc-orders">
+                                @foreach (var o in unassigned.OrderBy(o => o.ScheduledDate ?? DateTime.MaxValue))
+                                {
+                                    <a class="dc-order" href="/orders/manage/@o.Id">
+                                        <span class="badge @StatusClass(o.Status)">@OrderLabels.Status(o.Status)</span>
+                                        <span class="dc-order-title">#@o.Id · @o.Title</span>
+                                        @if (o.ScheduledDate is not null)
+                                        {
+                                            <span class="dc-order-date">@o.ScheduledDate.Value.ToString("dd/MM")</span>
+                                        }
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
-        </div>
+        }
+        else
+        {
+            <div class="toolbar mb-3">
+                <div class="btn-group btn-group-sm" role="group">
+                    @foreach (var f in Enum.GetValues<Filter>())
+                    {
+                        <button type="button"
+                                class="btn @(filter == f ? "btn-primary" : "btn-outline-primary")"
+                                @onclick="() => filter = f">
+                            @FilterLabel(f) <span class="badge bg-light text-dark ms-1">@CountFor(f)</span>
+                        </button>
+                    }
+                </div>
+                <div class="input-group input-group-sm search-box">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input class="form-control" placeholder="Buscar por título, cliente o zona…"
+                           value="@search" @oninput="e => search = e.Value?.ToString() ?? string.Empty" />
+                </div>
+            </div>
+
+            @if (Visible.Count == 0)
+            {
+                <div class="alert alert-light border">Ninguna orden coincide con ese filtro.</div>
+            }
+
+            <div class="row g-3">
+                @foreach (var o in Visible)
+                {
+                    var itemCount = MovingItems.Unpack(o.Items).Count;
+                    <div class="col-12 col-lg-6">
+                        <div class="order-card @(o.Status == OrderStatus.Completed ? "is-done" : "")">
+                            <div class="oc-head">
+                                <div class="min-w-0">
+                                    <span class="oc-num">#@o.Id</span>
+                                    <span class="oc-title">@o.Title</span>
+                                </div>
+                                <span class="badge @StatusClass(o.Status)">@OrderLabels.Status(o.Status)</span>
+                            </div>
+
+                            <div class="oc-rows">
+                                @if (!string.IsNullOrWhiteSpace(o.ClientName))
+                                {
+                                    <div class="oc-row"><i class="bi bi-person"></i> @o.ClientName</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(o.OriginZone) || !string.IsNullOrWhiteSpace(o.DestinationZone))
+                                {
+                                    <div class="oc-row">
+                                        <i class="bi bi-signpost-2"></i>
+                                        @(string.IsNullOrWhiteSpace(o.OriginZone) ? "—" : o.OriginZone)
+                                        <i class="bi bi-arrow-right mx-1"></i>
+                                        @(string.IsNullOrWhiteSpace(o.DestinationZone) ? "—" : o.DestinationZone)
+                                    </div>
+                                }
+                                @if (o.ScheduledDate is not null)
+                                {
+                                    <div class="oc-row"><i class="bi bi-calendar-event"></i> @o.ScheduledDate.Value.ToString("dd/MM/yyyy")</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(o.Floor))
+                                {
+                                    <div class="oc-row"><i class="bi bi-building"></i> @o.Floor</div>
+                                }
+                                @if (itemCount > 0)
+                                {
+                                    <div class="oc-row"><i class="bi bi-box-seam"></i> @itemCount @(itemCount == 1 ? "artículo" : "artículos")</div>
+                                }
+                                @if (isStaff)
+                                {
+                                    <div class="oc-row">
+                                        <i class="bi bi-person-badge"></i>
+                                        @(order_DriverName(o))
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="oc-foot">
+                                @if (!isStaff)
+                                {
+                                    <span class="oc-tag">@RoleTag(o)</span>
+                                }
+                                <span class="oc-when">Creada @o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                <span class="flex-grow-1"></span>
+                                <a class="btn btn-sm btn-outline-secondary" href="/orders/@o.Id/gallery" title="Galería de fotos">
+                                    <i class="bi bi-images"></i>
+                                </a>
+                                <a class="btn btn-sm btn-primary" href="/orders/manage/@o.Id">Ver orden</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     }
 </div>
+
 @code {
-    private List<Order>? userOrders = new(); // Inicializamos como lista vacía para evitar null reference
+    private enum Filter { All, Active, Completed }
+    private enum View { List, Drivers }
+
+    private List<Order>? all;
+    private List<ApplicationUser> drivers = [];
     private string? userId;
+    private bool isStaff;
+    private Filter filter = Filter.All;
+    private View view = View.List;
+    private string search = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        isStaff = user.IsInRole(Roles.Admin) || user.IsInRole(Roles.Office);
 
-        if (!string.IsNullOrEmpty(userId))
+        // Oficina y admin gestionan TODA la operación, así que ven todas las órdenes;
+        // el resto sigue viendo solo las suyas (las que creó o las que conduce).
+        var list = isStaff
+            ? await OrderService.GetAllOrdersAsync()
+            : string.IsNullOrEmpty(userId) ? [] : await OrderService.GetMyWorkAndRequestsAsync(userId);
+
+        if (isStaff)
         {
-            userOrders = await OrderService.GetMyWorkAndRequestsAsync(userId);
+            drivers = await OrderService.GetDriversAsync();
         }
+
+        // Primero lo que sigue vivo, y dentro de eso lo que ocurre antes. Las que no
+        // tienen fecha van al final del grupo, no arriba.
+        all = list
+            .OrderBy(o => o.Status == OrderStatus.Completed)
+            .ThenBy(o => o.ScheduledDate ?? DateTime.MaxValue)
+            .ThenByDescending(o => o.CreatedAt)
+            .ToList();
     }
 
-    private string GetStatusClass(OrderStatus status) => status switch
+    private string order_DriverName(Order o) =>
+        o.AssignedDriver?.DisplayName ?? o.AssignedDriver?.Email ?? "Sin conductor";
+
+    private static string Initial(ApplicationUser u)
+    {
+        var s = u.DisplayName ?? u.Email ?? "?";
+        return string.IsNullOrWhiteSpace(s) ? "?" : char.ToUpper(s[0]).ToString();
+    }
+
+    private List<Order> Visible =>
+        (all ?? []).Where(MatchesFilter).Where(MatchesSearch).ToList();
+
+    private bool MatchesFilter(Order o) => filter switch
+    {
+        Filter.Active => o.Status != OrderStatus.Completed,
+        Filter.Completed => o.Status == OrderStatus.Completed,
+        _ => true,
+    };
+
+    private bool MatchesSearch(Order o)
+    {
+        var q = search.Trim();
+        if (q.Length == 0) return true;
+        bool Has(string? s) => s is not null && s.Contains(q, StringComparison.OrdinalIgnoreCase);
+        return Has(o.Title) || Has(o.ClientName) || Has(o.OriginZone)
+               || Has(o.DestinationZone) || o.Id.ToString() == q;
+    }
+
+    private int CountFor(Filter f) => (all ?? []).Count(o => f switch
+    {
+        Filter.Active => o.Status != OrderStatus.Completed,
+        Filter.Completed => o.Status == OrderStatus.Completed,
+        _ => true,
+    });
+
+    private static string FilterLabel(Filter f) => f switch
+    {
+        Filter.Active => "Activas",
+        Filter.Completed => "Completadas",
+        _ => "Todas",
+    };
+
+    // Por qué esta orden le sale a este usuario (solo tiene sentido fuera de staff)
+    private string RoleTag(Order o)
+    {
+        if (o.AuthorId == userId && o.AssignedDriverId == userId) return "Autor y conductor";
+        if (o.AuthorId == userId) return "Generada por ti";
+        return "Asignada a ti";
+    }
+
+    private static string StatusClass(OrderStatus s) => s switch
     {
         OrderStatus.Requested => "bg-info text-dark",
         OrderStatus.Assigned => "bg-secondary",
@@ -105,6 +330,6 @@
         OrderStatus.InProgress => "bg-warning text-dark",
         OrderStatus.PendingSignature => "bg-primary",
         OrderStatus.Completed => "bg-success",
-        _ => "bg-secondary"
+        _ => "bg-secondary",
     };
 }
